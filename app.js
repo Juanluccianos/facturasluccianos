@@ -930,6 +930,7 @@ async function adminCuentas(el) {
 }
 
 const AYUDA_CFG = {
+  shares_envio_habilitado: 'CANDADO. false = no se envía nada a Shares (modo prueba). Poné true recién cuando validen todo.',
   tipos_shares: 'Tipo de comprobante ARCA → tipo_comprobante de Shares. "F" está probado; NC/ND a confirmar con Shares.',
   condicion_iva_por_letra: 'Condición IVA (código Shares) a usar según la letra si el proveedor no la tiene en el maestro. null = obligar a cargarla.',
   fiscal: 'Percepciones → ítem Shares (id_concepto_fc, codigo_concepto, total_key). Confirmá las cuentas de percepción IIBB con el plan de cuentas.',
