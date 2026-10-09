@@ -753,7 +753,9 @@ function modalCuentasShares(alTerminar) {
       let parar = false, desde = Number(leer('cs_desde') || 0), despues = leer('cs_despues') || '', total = Number(leer('cs_total') || 0);
       const cambios = [];
       let sinHist = 0, iguales = 0, errores = [], esperas = 0;
-      let pausa = 10, okSeguidos = 0;   // segundos entre lotes: sube si Shares corta, baja de a poco si anda bien
+      // Ritmo: tandas de 30 consultas y espera hasta completar la ventana (60 s; si Shares corta igual, se alarga de a 30 s)
+      const TANDA = 30;
+      let ventana = 60, usadas = 0, inicioTanda = Date.now();
       const dormir = (ms) => new Promise(ok => setTimeout(ok, ms));
       const pintar = (r) => {
         $('#cs-prog', el).innerHTML = `<b>${Math.min(r.siguiente, r.total)} de ${r.total}</b> proveedores revisados · ${cambios.length} cuentas actualizadas · ${iguales} ya estaban bien · ${sinHist} sin facturas en Shares${errores.length ? ` · <span style="color:#b42318">${errores.length} con error</span>` : ''}`;
@@ -774,9 +776,10 @@ function modalCuentasShares(alTerminar) {
             if (hay429 && esperas < 20) {
               // Límite de consultas de Shares: se guarda lo que salió bien, se espera un minuto y se repite el lote
               cambios.push(...r.actualizados);
-              esperas++; okSeguidos = 0; pausa = Math.min(60, pausa * 2);
+              esperas++; ventana = Math.min(300, ventana + 30);
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-espera" class="muted"></p>');
-              for (let s = 60; s > 0 && !parar; s--) { $('#cs-espera', el).textContent = `Shares pidió bajar el ritmo: sigo en ${s} s (desde ahora, ${pausa} s entre lotes)…`; await dormir(1000); }
+              for (let s = ventana; s > 0 && !parar; s--) { $('#cs-espera', el).textContent = `Shares cortó antes de las ${TANDA}: espero ${s} s (desde ahora, tandas de ${TANDA} cada ${ventana} s)…`; await dormir(1000); }
+              usadas = 0; inicioTanda = Date.now();
               $('#cs-espera', el).remove();
               continue;
             }
@@ -784,11 +787,18 @@ function modalCuentasShares(alTerminar) {
             const loteEntero = r.errores.length && r.errores.length >= (r.siguiente - r.desde);
             if (!loteEntero) { desde = r.siguiente; despues = r.ultimo || despues; total = r.total; guardar('cs_desde', desde); guardar('cs_despues', despues); guardar('cs_total', total); }
             pintar(r);
-            if (!r.errores.length) { esperas = 0; if (++okSeguidos >= 10 && pausa > 6) { pausa = Math.max(6, Math.round(pausa * 0.8)); okSeguidos = 0; } }
-            if (!r.fin) {   // ritmo parejo para no chocar con el límite de Shares
-              $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-ritmo" class="muted"></p>');
-              for (let s = pausa; s > 0 && !parar; s--) { $('#cs-ritmo', el).textContent = `Próximo lote en ${s} s (ritmo: 5 cada ${pausa} s)`; await dormir(1000); }
-              $('#cs-ritmo', el).remove();
+            if (!r.errores.length) esperas = 0;
+            usadas += Math.max(1, r.siguiente - r.desde);
+            if (!r.fin) {
+              if (usadas >= TANDA) {   // tanda completa: esperar a que pase la ventana desde que arrancó
+                const falta = Math.ceil((inicioTanda + ventana * 1000 - Date.now()) / 1000);
+                if (falta > 0) {
+                  $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-ritmo" class="muted"></p>');
+                  for (let s = falta; s > 0 && !parar; s--) { $('#cs-ritmo', el).textContent = `Tanda de ${TANDA} lista: sigo en ${s} s (ventana de ${ventana} s)`; await dormir(1000); }
+                  $('#cs-ritmo', el).remove();
+                }
+                usadas = 0; inicioTanda = Date.now();
+              } else await dormir(2000);
             }
             if (loteEntero) {   // falló todo el lote: algo pasa con Shares → se pausa en vez de seguir de largo
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p style="color:#b42318">Shares rechazó todo el lote: pausado. Mirá el error abajo; en un rato tocá "Empezar" y retoma desde acá.</p>');
