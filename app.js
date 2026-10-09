@@ -747,7 +747,10 @@ function modalCuentasShares(alTerminar) {
     <div id="cs-prog" class="small" style="margin-top:12px"></div><div id="cs-res" class="small" style="margin-top:8px;max-height:300px;overflow:auto"></div>`, {
     ancho: true,
     alMontar: (el) => {
-      let parar = false, desde = Number(localStorage.getItem('cs_desde') || 0);
+      const leer = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+      const guardar = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, String(v)); } catch { /* sin storage */ } };
+      // Avance: último CUIT procesado (y, por compatibilidad, el número viejo)
+      let parar = false, desde = Number(leer('cs_desde') || 0), despues = leer('cs_despues') || '', total = Number(leer('cs_total') || 0);
       const cambios = [];
       let sinHist = 0, iguales = 0, errores = [], esperas = 0;
       let pausa = 10, okSeguidos = 0;   // segundos entre lotes: sube si Shares corta, baja de a poco si anda bien
@@ -764,7 +767,7 @@ function modalCuentasShares(alTerminar) {
           while (!parar) {
             let r;
             for (let intento = 0; ; intento++) {
-              try { r = await api('/api/proveedores/sincronizar-shares', { method: 'POST', body: { desde, lote: 5 } }); break; }
+              try { r = await api('/api/proveedores/sincronizar-shares', { method: 'POST', body: { desde, despues, total, hechos: desde, lote: 5 } }); break; }
               catch (e) { if (intento >= 2) throw e; await new Promise(ok => setTimeout(ok, 3000)); }
             }
             const hay429 = r.errores.some(e => /HTTP 429/.test(e));
@@ -779,7 +782,7 @@ function modalCuentasShares(alTerminar) {
             }
             cambios.push(...r.actualizados); sinHist += r.sin_historial; iguales += r.iguales; errores.push(...r.errores);
             const loteEntero = r.errores.length && r.errores.length >= (r.siguiente - r.desde);
-            if (!loteEntero) { desde = r.siguiente; try { localStorage.setItem('cs_desde', String(desde)); } catch { /* sin storage */ } }
+            if (!loteEntero) { desde = r.siguiente; despues = r.ultimo || despues; total = r.total; guardar('cs_desde', desde); guardar('cs_despues', despues); guardar('cs_total', total); }
             pintar(r);
             if (!r.errores.length) { esperas = 0; if (++okSeguidos >= 10 && pausa > 6) { pausa = Math.max(6, Math.round(pausa * 0.8)); okSeguidos = 0; } }
             if (!r.fin) {   // ritmo parejo para no chocar con el límite de Shares
@@ -792,7 +795,7 @@ function modalCuentasShares(alTerminar) {
               break;
             }
             if (r.fin) {
-              try { localStorage.removeItem('cs_desde'); } catch { /* sin storage */ }
+              guardar('cs_desde', null); guardar('cs_despues', null); guardar('cs_total', null);
               const fis = Object.entries(r.fiscal || {});
               $('#cs-prog', el).insertAdjacentHTML('beforeend', `<p><b>¡Listo!</b>${fis.length ? ` Cuentas de percepciones aprendidas: ${fis.map(([id, c]) => `id ${esc(id)} → <span class="mono">${esc(c)}</span>`).join(' · ')}` : ''}</p>`);
               toast('Cuentas actualizadas desde Shares');
