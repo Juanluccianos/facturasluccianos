@@ -875,12 +875,32 @@ async function adminSalud(el) {
     ${fila(s.apps_script, 'Apps Script (Gmail + Drive)', 'APPS_SCRIPT_URL y APPS_SCRIPT_SECRET', 'apps-script')}
     ${fila(s.lector && !!s.lector_ultimo, 'Lector (GitHub Actions)', `${s.lector ? 'LECTOR_SECRET cargado' : 'falta LECTOR_SECRET'} · último contacto ${s.lector_ultimo ? fmtFH(s.lector_ultimo) : 'nunca'} · disparo inmediato ${s.lector_disparo ? 'sí' : 'no (corre cada 15 min)'} · ${s.proveedores_configurados} proveedores configurados`)}
     ${fila(s.shares, 'Shares', esc(s.shares_base), 'shares')}
+    <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — qué información se puede consultar</b><div class="small muted">Solo lectura: prueba endpoints de consulta (facturas ya cargadas, proveedores) con un CUIT de proveedor. No carga nada.</div></td><td><button class="btn btn-chico" id="b-consultas">Probar</button></td></tr>
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
     ${fila(s.cuentas > 0, 'Plan de cuentas', `${s.cuentas} cuentas`)}
     ${fila(s.proveedores > 0, 'Maestro de proveedores', `${s.proveedores} proveedores`)}
   </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>`;
   $$('[data-probar]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const r = await api('/api/probar/' + b.dataset.probar, { method: 'POST' }); toast(r.mensaje); }));
+  $('#b-consultas', el).onclick = async () => {
+    const cuit = await pedirTexto({ titulo: 'Probar consultas a Shares', ayuda: 'CUIT de un proveedor que tenga facturas cargadas en Shares (sin guiones). Solo lectura.', etiqueta: 'CUIT del proveedor', boton: 'Probar', minimo: 11, valor: '30709824364' });
+    if (!cuit) return;
+    toast('Consultando Shares…');
+    try {
+      const r = await api('/api/probar/shares-consultas', { method: 'POST', body: { cuit } });
+      const ok = r.resultados.filter(x => x.http && x.http < 400);
+      modal(`<h2>Consultas a Shares</h2>
+        <p class="muted">Empresa ${esc(r.cuit_empresa)} · proveedor ${esc(r.cuit_proveedor)} ${esc(r.razon_social || '')} · ${ok.length} de ${r.resultados.length} respondieron OK.</p>
+        ${r.resultados.map(x => `<div style="margin:10px 0"><b>${x.http && x.http < 400 ? '✅' : '❌'} ${esc(x.metodo)} ${esc(x.ruta)}</b> <span class="small muted">HTTP ${esc(String(x.http ?? '—'))}</span>
+          ${x.body ? `<div class="small muted mono">body ${esc(JSON.stringify(x.body))}</div>` : ''}
+          <pre class="small" style="white-space:pre-wrap;max-height:180px;overflow:auto">${esc(x.respuesta)}</pre></div>`).join('')}
+        ${r.permisos_token ? `<h3>Permisos del token</h3><pre class="small" style="white-space:pre-wrap">${esc(JSON.stringify(r.permisos_token, null, 2))}</pre>` : ''}
+        <div class="acciones"><button class="btn" id="b-copiar">Copiar todo</button></div>`, {
+        ancho: true,
+        alMontar: (m) => { $('#b-copiar', m).onclick = () => navigator.clipboard.writeText(JSON.stringify(r, null, 2)).then(() => toast('Copiado')); },
+      });
+    } catch (e) { toast(e.message, true); }
+  };
 }
 
 async function adminUsuarios(el) {
