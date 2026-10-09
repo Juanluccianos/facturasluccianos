@@ -756,7 +756,28 @@ function modalCuentasShares(alTerminar) {
       // Ritmo (criterio de Juan): lotes de 5 con 5 s de pausa hasta juntar 30; después 1 minuto de espera y vuelta a empezar
       const TANDA = 30, PAUSA_LOTE = 5, ESPERA_TANDA = 60;
       let usadas = 0;
-      const dormir = (ms) => new Promise(ok => setTimeout(ok, ms));
+      // Reloj en un Web Worker: Chrome frena los timers de las pestañas en segundo plano (hasta 1 por minuto),
+      // pero no los de un worker. Así el ritmo se mantiene aunque estés en otra pestaña.
+      let reloj = null;
+      try {
+        reloj = new Worker(URL.createObjectURL(new Blob(['onmessage=e=>setTimeout(()=>postMessage(e.data.id),e.data.ms)'], { type: 'text/javascript' })));
+      } catch { reloj = null; }
+      const esperando = new Map(); let idEspera = 0;
+      if (reloj) reloj.onmessage = (e) => { const ok = esperando.get(e.data); esperando.delete(e.data); ok && ok(); };
+      const dormir = (ms) => new Promise(ok => {
+        if (!reloj) return setTimeout(ok, ms);
+        const id = ++idEspera; esperando.set(id, ok); reloj.postMessage({ id, ms });
+      });
+      // Espera con texto: un solo timer (no uno por segundo) y el contador se calcula con la hora real
+      const esperar = async (seg, nodoId, texto) => {
+        const fin = Date.now() + seg * 1000;
+        while (!parar) {
+          const falta = Math.ceil((fin - Date.now()) / 1000);
+          if (falta <= 0) break;
+          const n = $('#' + nodoId, el); if (n) n.textContent = texto(falta);
+          await dormir(Math.min(1000, falta * 1000));
+        }
+      };
       const pintar = (r) => {
         $('#cs-prog', el).innerHTML = `<b>${Math.min(r.siguiente, r.total)} de ${r.total}</b> proveedores revisados · ${cambios.length} cuentas actualizadas · ${iguales} ya estaban bien · ${sinHist} sin facturas en Shares${errores.length ? ` · <span style="color:#b42318">${errores.length} con error</span>` : ''}`;
         const tipos = [...new Set(errores.map(e => e.replace(/^\d+:\s*/, '')))].slice(0, 5);
@@ -770,7 +791,7 @@ function modalCuentasShares(alTerminar) {
             let r;
             for (let intento = 0; ; intento++) {
               try { r = await api('/api/proveedores/sincronizar-shares', { method: 'POST', body: { desde, despues, total, hechos: desde, lote: 5 } }); break; }
-              catch (e) { if (intento >= 2) throw e; await new Promise(ok => setTimeout(ok, 3000)); }
+              catch (e) { if (intento >= 2) throw e; await dormir(3000); }
             }
             const hay429 = r.errores.some(e => /HTTP 429/.test(e));
             if (hay429 && esperas < 20) {
@@ -778,7 +799,7 @@ function modalCuentasShares(alTerminar) {
               cambios.push(...r.actualizados);
               esperas++;
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-espera" class="muted"></p>');
-              for (let s = ESPERA_TANDA; s > 0 && !parar; s--) { $('#cs-espera', el).textContent = `Shares cortó en la consulta ${usadas + 1} de la tanda: espero ${s} s y arranco una tanda nueva…`; await dormir(1000); }
+              await esperar(ESPERA_TANDA, 'cs-espera', (s) => `Shares cortó en la consulta ${usadas + 1} de la tanda: espero ${s} s y arranco una tanda nueva…`);
               usadas = 0;
               $('#cs-espera', el).remove();
               continue;
@@ -792,7 +813,7 @@ function modalCuentasShares(alTerminar) {
             if (!r.fin) {
               const espera = usadas >= TANDA ? ESPERA_TANDA : PAUSA_LOTE;
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-ritmo" class="muted"></p>');
-              for (let s = espera; s > 0 && !parar; s--) { $('#cs-ritmo', el).textContent = usadas >= TANDA ? `Tanda de ${TANDA} lista: sigo en ${s} s` : `Llevo ${usadas} de ${TANDA} en esta tanda · próximo lote en ${s} s`; await dormir(1000); }
+              await esperar(espera, 'cs-ritmo', (s) => usadas >= TANDA ? `Tanda de ${TANDA} lista: sigo en ${s} s` : `Llevo ${usadas} de ${TANDA} en esta tanda · próximo lote en ${s} s`);
               $('#cs-ritmo', el).remove();
               if (usadas >= TANDA) usadas = 0;
             }
