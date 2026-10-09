@@ -505,7 +505,7 @@ function pintarFactura(el, r) {
             <div class="campo"><label>Cuenta (codigo_concepto)</label><input name="imputacion.codigo_concepto" list="dl-cuentas" class="mono" value="${esc(d.imputacion?.codigo_concepto || '')}" ${dis}></div>
             <div class="campo" style="grid-column: span 2"><label>Denominación</label><input id="den-cuenta" disabled value="${esc(r.cuenta?.denominacion || nombreCuenta(d.imputacion?.codigo_concepto))}"></div>
           </div>
-          <p class="small muted">Origen: <b>${esc({ regla: 'regla de imputación', proveedor: 'cuenta por defecto del proveedor', ia: 'sugerida por Gemini — confirmala', manual: 'elegida por una persona' }[d.imputacion?.origen] || 'sin definir')}</b>${d.imputacion?.detalle ? ' · ' + esc(d.imputacion.detalle) : ''}${d.ia?.motivo_cuenta && d.imputacion?.origen === 'ia' ? ' · ' + esc(d.ia.motivo_cuenta) : ''}</p>
+          <p class="small muted">Origen: <b>${esc({ regla: 'regla de imputación', shares: 'la que usa en Shares', proveedor: 'cuenta por defecto del proveedor', ia: 'sugerida por Gemini — confirmala', manual: 'elegida por una persona' }[d.imputacion?.origen] || 'sin definir')}</b>${d.imputacion?.detalle ? ' · ' + esc(d.imputacion.detalle) : ''}${d.ia?.motivo_cuenta && d.imputacion?.origen === 'ia' ? ' · ' + esc(d.ia.motivo_cuenta) : ''}</p>
           ${d.local_detectado || d.detalle_resumen ? `<p class="small">${d.detalle_resumen ? `<b>Detalle:</b> ${esc(d.detalle_resumen)} ` : ''}${d.local_detectado ? `<b>Local:</b> ${esc(d.local_detectado)}` : ''}</p>` : ''}
           ${editable ? `<label class="check"><input type="checkbox" id="chk-regla"> Guardar como regla para este proveedor</label>
           <div class="campo hidden" id="c-palabra"><label>…solo cuando el detalle/local contenga (opcional)</label><input id="palabra" placeholder="ej. UNICENTER — vacío = siempre"></div>` : ''}
@@ -717,7 +717,7 @@ async function vistaShares(el) {
 async function vistaProveedores(el) {
   await cuentas().catch(() => null);
   el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU, cuenta por defecto y reglas de imputación.</p></div>
-    <div class="acciones">${puede('aprobador') ? '<button class="btn" id="b-nuevo">Nuevo proveedor</button>' : ''}${puede('admin') ? '<button class="btn btn-negro" id="b-imp">Importar Excel</button>' : ''}</div></div>
+    <div class="acciones">${puede('aprobador') ? '<button class="btn" id="b-nuevo">Nuevo proveedor</button>' : ''}${puede('admin') ? '<button class="btn" id="b-sh">Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">Importar Excel</button>' : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
     <div class="tabla-wrap"><table><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
   const cargar = async () => {
@@ -734,7 +734,54 @@ async function vistaProveedores(el) {
   $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(cargar, 300); };
   const bn = $('#b-nuevo'); if (bn) bn.onclick = () => modalProveedor({}, true, cargar);
   const bi = $('#b-imp'); if (bi) bi.onclick = () => modalImportar('proveedores', cargar);
+  const bs = $('#b-sh'); if (bs) bs.onclick = () => modalCuentasShares(cargar);
   await cargar();
+}
+
+// Recorre el maestro y deja como cuenta por defecto la que cada proveedor tiene más usada en Shares (solo lectura en Shares)
+function modalCuentasShares(alTerminar) {
+  modal(`<h2>Traer cuentas desde Shares</h2>
+    <p class="muted">Para cada proveedor del maestro se consultan sus últimas facturas registradas en Shares (solo lectura, no se carga nada) y se deja como <b>cuenta por defecto</b> la que más usó. Los proveedores sin facturas en Shares quedan como están. También aprende qué cuentas usa Shares para cada percepción.</p>
+    <p class="small muted">Puede tardar un rato con todo el maestro: dejá esta ventana abierta. Si se corta, volvé a tocar "Empezar" y sigue desde donde quedó.</p>
+    <div class="acciones"><button class="btn btn-negro" id="cs-ir">Empezar</button><button class="btn" id="cs-stop" disabled>Pausar</button></div>
+    <div id="cs-prog" class="small" style="margin-top:12px"></div><div id="cs-res" class="small" style="margin-top:8px;max-height:300px;overflow:auto"></div>`, {
+    ancho: true,
+    alMontar: (el) => {
+      let parar = false, desde = Number(localStorage.getItem('cs_desde') || 0);
+      const cambios = [];
+      let sinHist = 0, iguales = 0, errores = [];
+      const pintar = (r) => {
+        $('#cs-prog', el).innerHTML = `<b>${Math.min(r.siguiente, r.total)} de ${r.total}</b> proveedores revisados · ${cambios.length} cuentas actualizadas · ${iguales} ya estaban bien · ${sinHist} sin facturas en Shares${errores.length ? ` · <span style="color:#b42318">${errores.length} con error</span>` : ''}`;
+        $('#cs-res', el).innerHTML = cambios.slice(-200).reverse().map(c => `<div>${esc(c.razon_social)} <span class="mono">${fmtCuit(c.cuit)}</span>: ${esc(c.antes ?? '—')} → <b class="mono">${esc(c.ahora)}</b> <span class="muted">(${c.veces} de ${c.de})</span></div>`).join('');
+      };
+      $('#cs-stop', el).onclick = () => { parar = true; };
+      $('#cs-ir', el).onclick = async () => {
+        $('#cs-ir', el).disabled = true; $('#cs-stop', el).disabled = false; parar = false;
+        try {
+          while (!parar) {
+            let r;
+            for (let intento = 0; ; intento++) {
+              try { r = await api('/api/proveedores/sincronizar-shares', { method: 'POST', body: { desde, lote: 8 } }); break; }
+              catch (e) { if (intento >= 2) throw e; await new Promise(ok => setTimeout(ok, 3000)); }
+            }
+            cambios.push(...r.actualizados); sinHist += r.sin_historial; iguales += r.iguales; errores.push(...r.errores);
+            desde = r.siguiente; try { localStorage.setItem('cs_desde', String(desde)); } catch { /* sin storage */ }
+            pintar(r);
+            if (r.fin) {
+              try { localStorage.removeItem('cs_desde'); } catch { /* sin storage */ }
+              const fis = Object.entries(r.fiscal || {});
+              $('#cs-prog', el).insertAdjacentHTML('beforeend', `<p><b>¡Listo!</b>${fis.length ? ` Cuentas de percepciones aprendidas: ${fis.map(([id, c]) => `id ${esc(id)} → <span class="mono">${esc(c)}</span>`).join(' · ')}` : ''}</p>`);
+              toast('Cuentas actualizadas desde Shares');
+              alTerminar && alTerminar();
+              break;
+            }
+          }
+        } catch (e) { toast(e.message, true); }
+        $('#cs-ir', el).disabled = false; $('#cs-stop', el).disabled = true;
+        if (parar) $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p class="muted">Pausado. Tocá "Empezar" para seguir desde acá.</p>');
+      };
+    },
+  });
 }
 
 function modalProveedor(p, nuevo, alGuardar, extra = null) {
