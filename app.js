@@ -752,7 +752,8 @@ function modalCuentasShares(alTerminar) {
       let sinHist = 0, iguales = 0, errores = [];
       const pintar = (r) => {
         $('#cs-prog', el).innerHTML = `<b>${Math.min(r.siguiente, r.total)} de ${r.total}</b> proveedores revisados · ${cambios.length} cuentas actualizadas · ${iguales} ya estaban bien · ${sinHist} sin facturas en Shares${errores.length ? ` · <span style="color:#b42318">${errores.length} con error</span>` : ''}`;
-        $('#cs-res', el).innerHTML = cambios.slice(-200).reverse().map(c => `<div>${esc(c.razon_social)} <span class="mono">${fmtCuit(c.cuit)}</span>: ${esc(c.antes ?? '—')} → <b class="mono">${esc(c.ahora)}</b> <span class="muted">(${c.veces} de ${c.de})</span></div>`).join('');
+        const tipos = [...new Set(errores.map(e => e.replace(/^\d+:\s*/, '')))].slice(0, 5);
+        $('#cs-res', el).innerHTML = (tipos.length ? `<div style="color:#b42318;margin-bottom:8px"><b>Errores de Shares:</b><br>${tipos.map(esc).join('<br>')}</div>` : '') + cambios.slice(-200).reverse().map(c => `<div>${esc(c.razon_social)} <span class="mono">${fmtCuit(c.cuit)}</span>: ${esc(c.antes ?? '—')} → <b class="mono">${esc(c.ahora)}</b> <span class="muted">(${c.veces} de ${c.de})</span></div>`).join('');
       };
       $('#cs-stop', el).onclick = () => { parar = true; };
       $('#cs-ir', el).onclick = async () => {
@@ -765,8 +766,13 @@ function modalCuentasShares(alTerminar) {
               catch (e) { if (intento >= 2) throw e; await new Promise(ok => setTimeout(ok, 3000)); }
             }
             cambios.push(...r.actualizados); sinHist += r.sin_historial; iguales += r.iguales; errores.push(...r.errores);
-            desde = r.siguiente; try { localStorage.setItem('cs_desde', String(desde)); } catch { /* sin storage */ }
+            const loteEntero = r.errores.length && r.errores.length >= (r.siguiente - r.desde);
+            if (!loteEntero) { desde = r.siguiente; try { localStorage.setItem('cs_desde', String(desde)); } catch { /* sin storage */ } }
             pintar(r);
+            if (loteEntero) {   // falló todo el lote: algo pasa con Shares → se pausa en vez de seguir de largo
+              $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p style="color:#b42318">Shares rechazó todo el lote: pausado. Mirá el error abajo; en un rato tocá "Empezar" y retoma desde acá.</p>');
+              break;
+            }
             if (r.fin) {
               try { localStorage.removeItem('cs_desde'); } catch { /* sin storage */ }
               const fis = Object.entries(r.fiscal || {});
