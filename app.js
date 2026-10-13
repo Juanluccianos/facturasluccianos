@@ -47,7 +47,7 @@ const fmtFH = (s) => {
 };
 const nroCbte = (f) => (f.pto_vta != null && f.numero != null) ? `${String(f.pto_vta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}` : '—';
 const fmtCuit = (c) => { c = String(c || ''); return c.length === 11 ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : (c || '—'); };
-const TIPOS = { 1: 'FA', 2: 'ND A', 3: 'NC A', 6: 'FB', 7: 'ND B', 8: 'NC B', 11: 'FC', 12: 'ND C', 13: 'NC C', 51: 'FM', 52: 'ND M', 53: 'NC M', 201: 'FCE A', 202: 'ND FCE A', 203: 'NC FCE A', 206: 'FCE B', 207: 'ND FCE B', 208: 'NC FCE B', 211: 'FCE C', 212: 'ND FCE C', 213: 'NC FCE C' };
+const TIPOS = { 1: 'FA', 2: 'ND A', 3: 'NC A', 6: 'FB', 7: 'ND B', 8: 'NC B', 11: 'FC', 12: 'ND C', 13: 'NC C', 51: 'FM', 52: 'ND M', 53: 'NC M', 201: 'FCE A', 202: 'ND FCE A', 203: 'NC FCE A', 206: 'FCE B', 207: 'ND FCE B', 208: 'NC FCE B', 211: 'FCE C', 212: 'ND FCE C', 213: 'NC FCE C', 17: 'LSP A', 18: 'LSP B' };
 const ESTADOS = { recibida: 'En cola de lectura', leyendo: 'Leyendo', excepcion: 'En excepción', lista: 'Lista para Shares', cargada: 'Cargada en Shares', error_shares: 'Error Shares', rechazada: 'Rechazada' };
 const METODOS = { plantilla: 'Configuración del proveedor', plantilla_pendiente: 'Configuración pendiente', reglas: 'Reglas generales (sin IA)', ia: 'Gemini (IA)', manual: 'Carga manual' };
 const badgeMetodo = (m) => m ? `<span class="badge ${m === 'ia' ? 'b-normal' : m === 'plantilla' ? 'b-ok' : 'b-aviso'}">${esc(METODOS[m] || m)}</span>` : '';
@@ -294,6 +294,7 @@ const MOTIVOS = {
   ARCA_ERROR: ['arca', 'ARCA no respondió', 'Se reintenta sola cada 15 minutos.'],
   ARCA_PENDIENTE: ['arca', 'Falta constatar en ARCA', 'Se reintenta sola cada 15 minutos.'],
   ARCA_OFF: ['arca', 'ARCA apagado', 'La constatación está desactivada.'],
+  ARCA_NO_APLICA: ['arca', 'Servicio público (C.E.S.P.)', 'Luz, gas o agua: ARCA no permite constatarla por web service.'],
   LECTURA: ['manual', 'No se pudo leer', 'Completá los datos mirando el PDF.'],
   NO_ES_FACTURA: ['manual', 'No parece una factura', 'Puede ser un remito, un resumen o publicidad.'],
   TIPO_NO_SOPORTADO: ['manual', 'Tipo no contemplado', 'Este tipo de comprobante no se carga automático.'],
