@@ -28,9 +28,23 @@ const NIVEL = { carga: 1, aprobador: 2, admin: 3 };
 const puede = (rol) => S.user && NIVEL[S.user.rol] >= NIVEL[rol];
 
 const fmtNum = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const $$m = (n) => (n === null || n === undefined || n === '') ? '—' : '$ ' + fmtNum.format(Number(n));
-const fmtF = (iso) => { if (!iso) return '—'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
-const fmtFH = (s) => { if (!s) return '—'; const d = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') || String(s).includes('+') ? '' : 'Z')); return d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }); };
+// Formateadores a prueba de datos raros: nunca devuelven "undefined", "NaN" ni "Invalid Date".
+const $$m = (n) => { if (n === null || n === undefined || n === '') return '—'; const x = Number(n); return Number.isFinite(x) ? '$ ' + fmtNum.format(x) : '—'; };
+// Fechas: acepta AAAA-MM-DD (nuestra base) y DD/MM/AAAA (Shares); cualquier otra cosa se muestra tal cual
+const fmtF = (v) => {
+  if (!v) return '—';
+  const s = String(v).trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}`;
+  if ((m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/))) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})$/))) return `${m[3]}/${m[2]}/${m[1]}`;
+  return s;
+};
+const fmtFH = (s) => {
+  if (!s) return '—';
+  const t = String(s);
+  const d = new Date(t.replace(' ', 'T') + (/Z|[+-]\d{2}:?\d{2}$/.test(t) || !/\d{2}:\d{2}/.test(t) ? '' : 'Z'));
+  return Number.isNaN(d.getTime()) ? fmtF(t) : d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+};
 const nroCbte = (f) => (f.pto_vta != null && f.numero != null) ? `${String(f.pto_vta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}` : '—';
 const fmtCuit = (c) => { c = String(c || ''); return c.length === 11 ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : (c || '—'); };
 const TIPOS = { 1: 'FA', 2: 'ND A', 3: 'NC A', 6: 'FB', 7: 'ND B', 8: 'NC B', 11: 'FC', 12: 'ND C', 13: 'NC C', 51: 'FM', 52: 'ND M', 53: 'NC M', 201: 'FCE A', 202: 'ND FCE A', 203: 'NC FCE A', 206: 'FCE B', 207: 'ND FCE B', 208: 'NC FCE B', 211: 'FCE C', 212: 'ND FCE C', 213: 'NC FCE C' };
@@ -661,6 +675,7 @@ async function vistaFacturas(el) {
 async function vistaFactura(el, id) {
   await cuentas().catch(() => null);
   const r = await api('/api/facturas/' + id);
+  if (!r || !r.factura) throw new Error(`No existe la factura #${id}.`);
   pintarFactura(el, r);
   cargarPdf(id);
 }
@@ -1425,7 +1440,7 @@ async function adminConfig(el) {
 async function adminAuditoria(el) {
   const r = await api('/api/auditoria');
   el.innerHTML = `<div class="tabla-wrap" style="max-height:65vh"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Entidad</th><th>Acción</th><th>Campo</th><th>Antes → Después</th></tr></thead><tbody>
-    ${r.auditoria.map(a => `<tr><td class="small mono">${fmtFH(a.ts)}</td><td class="small">${esc(a.usuario)}</td><td class="small">${a.entidad === 'factura' ? `<a href="#/factura/${esc(a.entidad_id)}">factura #${esc(a.entidad_id)}</a>` : esc(a.entidad + ' ' + a.entidad_id)}</td><td class="small">${esc(a.accion)}</td><td class="small mono">${esc(a.campo || '')}</td><td class="small mono">${esc(String(a.valor_anterior ?? '').slice(0, 80))} → ${esc(String(a.valor_nuevo ?? '').slice(0, 80))}</td></tr>`).join('')}
+    ${r.auditoria.map(a => `<tr><td class="small mono">${fmtFH(a.ts)}</td><td class="small">${esc(a.usuario)}</td><td class="small">${a.entidad === 'factura' ? `<a href="#/factura/${esc(a.entidad_id)}">factura #${esc(a.entidad_id)}</a>` : esc([a.entidad, a.entidad_id].filter(x => x != null && x !== '').join(' ') || '—')}</td><td class="small">${esc(a.accion)}</td><td class="small mono">${esc(a.campo || '')}</td><td class="small mono">${esc(String(a.valor_anterior ?? '').slice(0, 80))} → ${esc(String(a.valor_nuevo ?? '').slice(0, 80))}</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 
@@ -1539,7 +1554,7 @@ async function vistaFicha(el, cuit) {
       <div class="tabla-wrap"><table><thead>${encabezadoFacturas()}</thead><tbody id="tb">${filasFacturas(facts)}</tbody></table></div></div>
     ${sh.length ? `<div class="panel"><div class="panel-titulo"><h2>Últimas cargadas en Shares</h2><span class="ayuda">de la última consulta a Shares (incluye cargas a mano)</span></div>
       <div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Nro. registro</th><th>Cuentas</th><th class="num">Total</th></tr></thead><tbody>
-      ${sh.map(h => `<tr><td class="mono">${esc(fmtF(h.fecha) === '—' ? h.fecha || '—' : fmtF(h.fecha))}</td><td class="mono">${esc(h.tipo || '')} ${String(h.pv ?? '').padStart(5, '0')}-${String(h.nro ?? '').padStart(8, '0')}</td><td class="mono">${esc(h.nro_reg ?? '—')}</td>
+      ${sh.map(h => `<tr><td class="mono">${esc(fmtF(h.fecha))}</td><td class="mono">${h.pv != null && h.nro != null ? `${esc(h.tipo || '')} ${String(h.pv).padStart(5, '0')}-${String(h.nro).padStart(8, '0')}` : '—'}</td><td class="mono">${esc(h.nro_reg ?? '—')}</td>
         <td class="small">${[...new Set((h.items || []).filter(i => i[0] === 2 || i[0] === 3).map(i => i[1]))].map(c => `<span class="mono">${esc(c)}</span> ${esc(nombreCuenta(c) || '')}`).join('<br>') || '—'}</td><td class="num">${$$m(h.total)}</td></tr>`).join('')}
       </tbody></table></div></div>` : ''}`;
   $$('#tb tr[data-id]', el).forEach(tr => tr.onclick = () => { location.hash = '#/factura/' + tr.dataset.id; });
