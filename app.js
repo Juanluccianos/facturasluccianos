@@ -49,11 +49,24 @@ function toast(msg, error = false) {
 }
 
 async function api(path, { method = 'GET', body, raw = false } = {}) {
-  const res = await fetch(API + path, {
-    method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  // "Failed to fetch" = no llegó ninguna respuesta (corte de red, el Worker se reinició o se pasó de tiempo).
+  // Las consultas (GET) se reintentan solas 2 veces; las que modifican datos no, para no duplicar nada.
+  let res;
+  for (let intento = 0; ; intento++) {
+    try {
+      res = await fetch(API + path, {
+        method,
+        headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (method === 'GET' && [502, 503, 504].includes(res.status) && intento < 2) throw new TypeError('HTTP ' + res.status);
+      break;
+    } catch (e) {
+      if (!(e instanceof TypeError)) throw e;
+      if (method !== 'GET' || intento >= 2) throw new Error(method === 'GET' ? 'No hay conexión con el servidor. Probá de nuevo en unos segundos.' : 'Se cortó la conexión y no sé si se guardó. Recargá la factura antes de volver a intentar.');
+      await new Promise(r => setTimeout(r, 700 * (intento + 1)));
+    }
+  }
   if (res.status === 401 && S.token && !path.startsWith('/api/login')) {
     salir(false);
     throw new Error('La sesión venció. Volvé a ingresar.');
@@ -391,7 +404,7 @@ async function router() {
   window.scrollTo(0, 0);
   if (r.nav !== 'tablero') contadores();
   try { await r.v($('#vista'), ...m.slice(1)); }
-  catch (e) { if (S.token && $('#vista')) $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p></div>`; }
+  catch (e) { if (S.token && $('#vista')) { $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p><button class="btn btn-acento" id="b-reint">${ICO.refresh}Reintentar</button></div>`; $('#b-reint').onclick = router; } }
 }
 
 async function iniciar() {
