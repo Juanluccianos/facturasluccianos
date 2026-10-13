@@ -820,7 +820,7 @@ function pintarFactura(el, r) {
     const cod = d.imputacion?.codigo_concepto;
     tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Lo único que falta: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `Faltan ${abiertas.length} cosas`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
       <div class="cuerpo">
-        ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}"><div class="txt"><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(String(e.mensaje || '').replace(/“Confirmar proveedor”/g, '“Confirmar”'))}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
+        ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}" data-cod="${esc(e.codigo)}"><div class="txt"><div class="vivo-ok">${ICO.check}<span></span></div><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(String(e.mensaje || '').replace(/“Confirmar proveedor”/g, '“Confirmar”'))}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
           ${editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar igual</button>` : ''}
           ${e.codigo === 'PROVEEDOR_DESCONOCIDO' && puede('aprobador') ? `<button class="btn btn-chico btn-negro" id="b-alta-prov">Dar de alta</button>` : ''}</div>`; }).join('')}
         ${verSug ? `<div class="sugerida"><span class="ico">${ICO.sparkle}</span><div style="min-width:0"><div class="cod">${esc(cod || 'Sin cuenta')}</div><div class="small">${esc(r.cuenta?.denominacion || nombreCuenta(cod) || 'Elegí una cuenta del plan')}</div></div>
@@ -1030,6 +1030,7 @@ function conectarFactura(el, r) {
   form.addEventListener('click', (e) => { if (e.target.matches('[data-quitar]')) { e.target.parentElement.remove(); actualizarCuadre(); } });
   form.addEventListener('input', (e) => {
     actualizarCuadre();
+    setTimeout(controlEnVivo, 0);
     if (e.target.name === 'imputacion.codigo_concepto') $('#den-cuenta').value = nombreCuenta(e.target.value);
     // IVA automático al tipear el neto
     if (e.target.dataset.k === 'neto') {
@@ -1041,7 +1042,48 @@ function conectarFactura(el, r) {
   });
   const ag = $('#add-grav'), ap = $('#add-perc');
   if (ag) ag.onclick = () => $('#gravado').insertAdjacentHTML('beforeend', filaGravado({ alicuota: 21 }));
-  if (ap) ap.onclick = () => $('#percepciones').insertAdjacentHTML('beforeend', filaPercepcion({ tipo: 'IIBB' }));
+  if (ap) ap.onclick = () => { $('#percepciones').insertAdjacentHTML('beforeend', filaPercepcion({ tipo: 'IIBB' })); controlEnVivo(); };
+  form.addEventListener('change', () => controlEnVivo());
+  form.addEventListener('click', (e) => { if (e.target.closest('[data-quitar]')) setTimeout(controlEnVivo, 0); });
+
+  // Mientras se corrige, cada cartel muestra si lo que se cambió ya lo resuelve (se confirma de verdad al tocar Confirmar)
+  function controlEnVivo() {
+    const box = $('.tarea'); if (!box) return;
+    const d = leerFormulario(r.datos), o = r.datos || vacioDatos(), im = d.importes;
+    let suma = 0; for (const g of im.gravado) suma += g.neto + g.iva;
+    suma += im.sin_discriminar + im.no_gravado + im.exento + im.otros_tributos; for (const p of d.percepciones) suma += p.importe;
+    const cierra = im.total > 0 && Math.abs(Math.round((suma - im.total) * 100) / 100) <= 0.05;
+    const cambio = (a, b) => String(a ?? '') !== String(b ?? '');
+    const oc = o.comprobante || {}, dc = d.comprobante || {};
+    const tocoArca = cambio(numAR(o.importes?.total), im.total) || ['pto_vta', 'numero', 'fecha_emision', 'cae', 'tipo_arca'].some(k => cambio(oc[k], dc[k])) || cambio(o.emisor?.cuit, d.emisor?.cuit) || cambio(o.receptor?.cuit, d.receptor?.cuit);
+    const cuenta = d.imputacion?.codigo_concepto;
+    const cuentaOk = !!cuenta && (!S.cuentas?.length || S.cuentas.some(c => String(c.codigo_concepto) === String(cuenta)));
+    const iibbOk = d.percepciones.filter(p => p.tipo === 'IIBB').every(p => p.jurisdiccion);
+    const reglas = {
+      ARITMETICA: cierra && 'Ahora los importes cierran.',
+      LECTURA: cierra && dc.numero && dc.cae && d.emisor?.cuit && 'Datos completos y los importes cierran.',
+      QR_INCONSISTENTE: cierra && tocoArca && 'Corregiste los datos: se vuelven a controlar al confirmar.',
+      ARCA_RECHAZADO: tocoArca && '!Cambiaste datos: ARCA se vuelve a consultar al tocar Confirmar.',
+      ARCA_ERROR: tocoArca && '!Cambiaste datos: ARCA se vuelve a consultar al tocar Confirmar.',
+      PROVEEDOR_NUEVO: '!Se resuelve al tocar Confirmar (si el desglose y la cuenta están bien).',
+      FORMATO_CAMBIO: '!Se resuelve al tocar Confirmar (si los datos están bien).',
+      FISCAL_MAPEO: iibbOk && 'Todas las percepciones de IIBB tienen jurisdicción.',
+      IMPUTACION: cuentaOk && 'Cuenta elegida.',
+      CUENTA_INEXISTENTE: cuentaOk && 'La cuenta existe en el plan.',
+    };
+    let listas = 0, total = 0;
+    $$('.excepcion[data-cod]', box).forEach(card => {
+      total++;
+      const ok = reglas[card.dataset.cod];
+      card.classList.toggle('vivo', !!ok);
+      if (ok) { listas++; $('.vivo-ok span', card).textContent = ok.startsWith('!') ? ok.slice(1) : 'Corregido: ' + ok; }
+    });
+    const h = $('.panel-titulo h2', box);
+    if (h && !h.dataset.orig) h.dataset.orig = h.textContent;
+    if (h) h.textContent = listas === total ? 'Todo listo: tocá Confirmar' : listas ? `${h.dataset.orig} · ${listas} de ${total} en orden` : h.dataset.orig;
+    box.classList.toggle('lista-vivo', listas === total);
+  }
+  controlEnVivo();
   const chk = $('#chk-regla');
   if (chk) chk.onchange = () => $('#c-palabra').classList.toggle('hidden', !chk.checked);
   actualizarCuadre();
