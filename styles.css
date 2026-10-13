@@ -478,3 +478,10 @@ main { overflow-x: clip; }
   .modal-box { padding: 20px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Enviar a Shares: cuenta editable por fila y en lote */
+.td-cuenta { min-width: 220px; }
+.in-cuenta { width: 110px; padding: 5px 8px; font-size: 13px; font-family: var(--mono); }
+.td-cuenta .sub-celda { white-space: normal; max-width: 240px; }
+.lote-cuenta { display: inline-flex; gap: 6px; align-items: center; }
+.lote-cuenta .in-cuenta { width: 170px; }

@@ -794,6 +794,13 @@ function posCola(id) {
 }
 const ORIGEN_CUENTA = { regla: 'Regla de imputación', shares: 'La que usa en Shares', proveedor: 'Cuenta habitual del proveedor', ia: 'Sugerida por Gemini', manual: 'Elegida por una persona' };
 
+function bloqueCuenta(r, d, editable) {
+  const cod = d.imputacion?.codigo_concepto;
+  return `<div class="sugerida"><span class="ico">${ICO.sparkle}</span><div style="min-width:0"><div class="cod">${esc(cod || 'Sin cuenta')}</div><div class="small">${esc(r.cuenta?.denominacion || nombreCuenta(cod) || 'Elegí una cuenta del plan')}</div></div>
+    <div class="src">${esc(ORIGEN_CUENTA[d.imputacion?.origen] || 'Sin definir')}${d.imputacion?.detalle ? `<br><b>${esc(d.imputacion.detalle)}</b>` : ''}</div></div>
+    ${editable ? `<button type="button" class="btn btn-ghost btn-chico" id="b-otra-cuenta" style="align-self:flex-start">Elegir otra cuenta</button>` : ''}`;
+}
+
 function pintarFactura(el, r) {
   const f = r.factura, d = r.datos || vacioDatos(), c = d.comprobante || {}, im = d.importes || {};
   const editable = ['recibida', 'excepcion', 'lista', 'error_shares'].includes(f.estado);
@@ -817,19 +824,17 @@ function pintarFactura(el, r) {
     tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Shares no la aceptó</h2><span class="badge b-critica">HTTP ${esc(r.shares_respuesta.http_status)}</span></div><div class="cuerpo"><p>${esc(r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body).slice(0, 300))}</p></div></section>`;
   } else if (abiertas.length) {
     const critica = abiertas.some(e => e.severidad === 'critica');
-    const verSug = hay('IMPUTACION') || hay('PROVEEDOR_NUEVO') || hay('CUENTA_INEXISTENTE') || (d.imputacion?.origen === 'ia' && editable);
-    const cod = d.imputacion?.codigo_concepto;
+    const verSug = !!r.datos;   // la cuenta se muestra siempre: es lo que más se mira antes de mandar a Shares
     tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Lo único que falta: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `Faltan ${abiertas.length} cosas`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
       <div class="cuerpo">
         ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}" data-cod="${esc(e.codigo)}"><div class="txt"><div class="vivo-ok">${ICO.check}<span></span></div><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(String(e.mensaje || '').replace(/“Confirmar proveedor”/g, '“Confirmar”'))}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
           ${editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar igual</button>` : ''}
           ${e.codigo === 'PROVEEDOR_DESCONOCIDO' && puede('aprobador') ? `<button class="btn btn-chico btn-negro" id="b-alta-prov">Dar de alta</button>` : ''}</div>`; }).join('')}
-        ${verSug ? `<div class="sugerida"><span class="ico">${ICO.sparkle}</span><div style="min-width:0"><div class="cod">${esc(cod || 'Sin cuenta')}</div><div class="small">${esc(r.cuenta?.denominacion || nombreCuenta(cod) || 'Elegí una cuenta del plan')}</div></div>
-          <div class="src">${esc(ORIGEN_CUENTA[d.imputacion?.origen] || 'Sin definir')}${d.imputacion?.detalle ? `<br><b>${esc(d.imputacion.detalle)}</b>` : ''}</div></div>
-          ${editable ? `<button type="button" class="btn btn-ghost btn-chico" id="b-otra-cuenta" style="align-self:flex-start">Elegir otra cuenta</button>` : ''}` : ''}
+        ${verSug ? bloqueCuenta(r, d, editable) : ''}
       </div></section>`;
   } else if (f.estado === 'lista') {
-    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Pasó todos los controles. ${puede('aprobador') ? 'Podés enviarla ahora o junto con las demás desde “Enviar a Shares”.' : 'Un aprobador la envía a Shares.'}</p></div></section>`;
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Pasó todos los controles. Revisá la cuenta: ${puede('aprobador') ? 'después la enviás desde acá o junto con las demás desde “Enviar a Shares”.' : 'un aprobador la envía a Shares.'}</p>
+      ${r.datos ? bloqueCuenta(r, d, editable) : ''}</div></section>`;
   } else if (f.estado === 'cargada') {
     tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>No hay nada más que hacer con esta factura. Cargarla a mano llevaba unos ${TIEMPOS.manual} minutos; con el sistema, ${f.auto_ok ? 'entró sola: ~' + TIEMPOS.auto : '~' + TIEMPOS.revisada} min. <b>Ahorro: ${String(TIEMPOS.manual - (f.auto_ok ? TIEMPOS.auto : TIEMPOS.revisada)).replace('.', ',')} min.</b></p></div></section>`;
   }
@@ -1167,21 +1172,55 @@ function conectarFactura(el, r) {
 //  Envío a Shares (aprobador)
 // ---------------------------------------------------------------------------
 async function vistaShares(el) {
-  const r = await api('/api/facturas?estado=lista,error_shares&limite=500&orden=vto');
-  el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que pasaron todos los controles. Nada se carga sin tu aprobación.</p></div>
-    <div class="acciones"><span class="muted" id="sel-info"></span><button class="btn btn-acento" id="b-env" disabled>${ICO.send}Aprobar y enviar</button></div></div>
-    <div class="panel"><div class="tabla-wrap"><table><thead><tr><th><input type="checkbox" id="todas"></th>${encabezadoFacturas(false).replace('<tr>', '').replace('</tr>', '')}</tr></thead>
-    <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay nada listo para enviar.</td></tr>'}</tbody></table></div></div>
+  const [r] = await Promise.all([api('/api/facturas?estado=lista,error_shares&limite=500&orden=vto'), cuentas().catch(() => [])]);
+  const ORIG = { manual: 'elegida', regla: 'regla', shares: 'Shares', proveedor: 'maestro', ia: 'Gemini' };
+  const celdaCuenta = (f) => `<td class="td-cuenta"><input class="in-cuenta mono" list="dl-cuentas" data-cta="${f.id}" value="${esc(f.cuenta ?? '')}" placeholder="Cuenta" aria-label="Cuenta de la factura #${f.id}">
+    <small class="sub-celda" data-den="${f.id}">${esc(f.cuenta_denominacion || nombreCuenta(f.cuenta) || 'Sin cuenta')}${f.imputacion_origen ? ` · ${esc(ORIG[f.imputacion_origen] || f.imputacion_origen)}` : ''}</small></td>`;
+  el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que pasaron todos los controles. Revisá la cuenta de cada una: la cambiás ahí mismo. Nada se carga sin tu aprobación.</p></div>
+    <div class="acciones"><span class="muted" id="sel-info"></span>
+      <span class="lote-cuenta hidden" id="lote"><input class="in-cuenta mono" list="dl-cuentas" id="lote-cta" placeholder="Cuenta para las elegidas"><button class="btn btn-chico" id="b-lote">Cambiar cuenta</button></span>
+      <button class="btn btn-acento" id="b-env" disabled>${ICO.send}Aprobar y enviar</button></div></div>
+    ${datalistCuentas()}
+    <div class="panel"><div class="tabla-wrap"><table><thead><tr><th><input type="checkbox" id="todas"></th>${encabezadoFacturas(false).replace('<tr>', '').replace('</tr>', '')}<th>Cuenta</th></tr></thead>
+    <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}${celdaCuenta(f)}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay nada listo para enviar.</td></tr>'}</tbody></table></div></div>
     <div id="resultado"></div>`;
+  const existe = (v) => !S.cuentas?.length || S.cuentas.some(c => String(c.codigo_concepto) === String(v).trim());
+  const cambiar = async (ids, cod) => {
+    const res = await api('/api/facturas/cuenta', { method: 'POST', body: { ids, codigo_concepto: Number(cod) } });
+    const mal = res.resultados.filter(x => !x.ok || x.estado !== 'lista');
+    toast(mal.length ? `Cuenta ${cod} guardada. ${mal.length} quedaron con algo para revisar.` : `✓ Cuenta ${cod} en ${ids.length} factura(s)`, !!mal.length);
+    if (mal.some(x => x.estado && x.estado !== 'lista')) await vistaShares(el);
+    else ids.forEach(id => { const s = $(`[data-den="${id}"]`); if (s) s.textContent = `${res.cuenta?.denominacion || nombreCuenta(cod)} · elegida`; const i = $(`[data-cta="${id}"]`); if (i) i.value = cod; });
+  };
+  $$('[data-cta]').forEach(inp => {
+    inp.onclick = (e) => e.stopPropagation();
+    inp.onfocus = () => { inp.dataset.ant = inp.value; };
+    inp.onchange = async () => {
+      const v = inp.value.trim();
+      if (!v || v === inp.dataset.ant) return;
+      if (!existe(v)) { toast(`La cuenta ${v} no está en el plan`, true); inp.value = inp.dataset.ant || ''; return; }
+      inp.disabled = true;
+      try { await cambiar([Number(inp.dataset.cta)], v); inp.dataset.ant = v; } catch (e) { toast(e.message, true); inp.value = inp.dataset.ant || ''; }
+      inp.disabled = false;
+    };
+    inp.oninput = () => { const s = $(`[data-den="${inp.dataset.cta}"]`); if (s && existe(inp.value) && inp.value) s.textContent = nombreCuenta(inp.value); };
+  });
+  $('#b-lote').onclick = () => conBoton($('#b-lote'), async () => {
+    const v = $('#lote-cta').value.trim();
+    const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
+    if (!v || !existe(v)) return toast('Elegí una cuenta del plan', true);
+    await cambiar(ids, v);
+  });
   const info = () => {
     const sel = $$('[data-sel]:checked');
     const tot = sel.reduce((a, x) => a + Number(x.dataset.total), 0);
     $('#sel-info').textContent = sel.length ? `${sel.length} seleccionadas · ${$$m(tot)}` : '';
     $('#b-env').disabled = !sel.length;
+    $('#lote').classList.toggle('hidden', sel.length < 2);
   };
   $('#todas').onchange = (e) => { $$('[data-sel]').forEach(c => { c.checked = e.target.checked; }); info(); };
   $$('[data-sel]').forEach(c => c.onchange = info);
-  $$('tr[data-id] td:not(:first-child)').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { location.hash = '#/factura/' + td.parentElement.dataset.id; }; });
+  $$('tr[data-id] td:not(:first-child):not(.td-cuenta)').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { location.hash = '#/factura/' + td.parentElement.dataset.id; }; });
   $('#b-env').onclick = () => conBoton($('#b-env'), async () => {
     const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
     if (!confirm(`¿Enviar ${ids.length} comprobante(s) a Shares?`)) return;
