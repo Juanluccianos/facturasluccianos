@@ -184,6 +184,18 @@ const cuad = (s) => `<span class="cuad" style="background:${colorDe(s)}" aria-hi
 const nombreProv = (f) => f.razon_social_emisor || (f.mail_from || '').replace(/<.*>/, '').replace(/"/g, '').trim() || f.archivo_nombre || 'Sin identificar';
 const $$corto = (n) => { n = Number(n) || 0; return Math.abs(n) >= 1e6 ? '$ ' + (n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M' : $$m(n); };
 
+// ---------------------------------------------------------------------------
+//  Tiempo ahorrado (minutos por factura). Ajustalos cuando midas con cronómetro.
+//  MANUAL (alguien con práctica): abrir mail y bajar PDF 0,5 · constatar en ARCA 1
+//          · buscar proveedor y tipear cabecera 1,5 · netos/IVA/percepciones 1
+//          · elegir cuenta, controlar y grabar 1  →  5 min
+//  AUTO: entró sola, solo se mira y se aprueba en lote → 0,5 min
+//  REVISADA: necesitó una persona (proveedor nuevo, cuenta, importes) → 3 min
+// ---------------------------------------------------------------------------
+const TIEMPOS = { manual: 5, auto: 0.5, revisada: 3 };
+function minutosSistema(pctAuto) { const p = pctAuto == null ? 0.5 : pctAuto / 100; return p * TIEMPOS.auto + (1 - p) * TIEMPOS.revisada; }
+function fmtDuracion(min) { min = Math.round(min); if (min < 60) return min + ' min'; const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + m + ' min' : ''); }
+
 // Tema claro/oscuro (lo inicializa index.html antes de pintar)
 function temaActual() { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
 function alternarTema() {
@@ -442,9 +454,10 @@ async function vistaTablero(el) {
       <a href="${nErr ? '#/shares' : '#/facturas'}" class="${nErr ? 'mal' : ''}"><h3>Cargadas en el mes</h3><div class="v">${t.cargadas_mes}</div><div class="s">${nErr ? `${nErr} con error de Shares` : `${pe('cargada').n} en total`}</div></a>
     </nav>
     <div class="kpis">
-      <div class="kpi"><div class="et">Sin intervención</div><div class="val">${pct === null ? '—' : pct + '%'}</div><div class="sub">meta 80–90% · ${t.automatico_mes.ok} de ${t.automatico_mes.total} en el mes</div>
+      <div class="kpi"><div class="et">Sin intervención</div><div class="val">${pct === null ? '—' : pct + '%'}</div><div class="sub">${t.automatico_mes.ok} de ${t.automatico_mes.total} en el mes · meta 80–90%<br><a href="#/proveedores" style="color:inherit">${t.proveedores_configurados} proveedores se leen solos</a></div>
         <div class="medidor"><i style="width:${pct || 0}%;background:var(--accent)"></i><b style="left:80%"></b><b style="left:90%"></b></div></div>
-      <a class="kpi" href="#/proveedores"><div class="et">Proveedores que se leen solos</div><div class="val">${t.proveedores_configurados}</div><div class="sub">con configuración confirmada</div></a>
+      <div class="kpi" title="Manual ≈ ${TIEMPOS.manual} min por factura · con el sistema ≈ ${minutosSistema(pct).toFixed(1).replace('.', ',')} min (sola ${TIEMPOS.auto} · revisada ${TIEMPOS.revisada})"><div class="et">Tiempo ahorrado</div><div class="val">${fmtDuracion(t.cargadas_mes * (TIEMPOS.manual - minutosSistema(pct)))}</div>
+        <div class="sub">este mes · ${fmtDuracion(pe('cargada').n * (TIEMPOS.manual - minutosSistema(pct)))} desde el inicio<br>~${String(+(TIEMPOS.manual - minutosSistema(pct)).toFixed(1)).replace('.', ',')} min por factura cargada</div></div>
       <a class="kpi" href="#/facturas" data-orden="vto"><div class="et">Vencen en 7 días</div><div class="val">${$$corto(t.vencen_7_dias.monto)}</div><div class="sub">${t.vencen_7_dias.n} factura(s)</div></a>
       <div class="kpi"><div class="et">Lectura del mes</div><div class="val">${Object.values(lect).reduce((a, b) => a + b, 0)}</div><div class="sub">${lect.plantilla || 0} por configuración · ${lect.reglas || 0} reglas · ${lect.ia || 0} IA</div>
         <div class="medidor"><i style="width:${pLect('plantilla')}%;background:var(--accent)"></i><i style="width:${pLect('reglas')}%;background:var(--info)"></i><i style="width:${pLect('ia')}%;background:var(--warn)"></i></div></div>
@@ -498,25 +511,27 @@ function modalSubir() {
 // ---------------------------------------------------------------------------
 //  Para revisar (cola de trabajo) y listado de facturas
 // ---------------------------------------------------------------------------
-function chipsExc(s) {
+function chipsExc(s, max = 2) {
   if (!s) return '';
-  return `<div class="chips">${s.split(',').map(x => { const [c, sev] = x.split(':'); const m = motivo(c); return `<span class="badge ${sev === 'critica' ? 'b-critica' : TONO_BADGE[m.tono]}" title="${esc(c + ' · ' + m.d)}">${esc(m.t)}</span>`; }).join('')}</div>`;
+  const vistos = new Set(), lista = [];
+  for (const x of s.split(',')) { const [c, sev] = x.split(':'); if (vistos.has(c)) continue; vistos.add(c); lista.push({ c, sev, m: motivo(c) }); }
+  lista.sort((a, b) => (a.sev === 'critica' ? 0 : 1) - (b.sev === 'critica' ? 0 : 1) || a.m.orden - b.m.orden);
+  const ver = lista.slice(0, max), resto = lista.slice(max);
+  return `<div class="chips">${ver.map(({ c, sev, m }) => `<span class="badge ${sev === 'critica' ? 'b-critica' : TONO_BADGE[m.tono]}" title="${esc(c + ' · ' + m.d)}">${esc(m.t)}</span>`).join('')}${resto.length ? `<span class="tag" title="${esc(resto.map(x => x.m.t).join(' · '))}">+${resto.length}</span>` : ''}</div>`;
 }
 function filasFacturas(lista, { conExc = true } = {}) {
   if (!lista.length) return `<tr><td colspan="8" class="vacio">No hay facturas para mostrar.</td></tr>`;
   return lista.map(f => `<tr class="click" data-id="${f.id}">
-    <td><div class="prov">${cuad(nombreProv(f))}<div><b>${esc(nombreProv(f))}</b><small class="mono">${fmtCuit(f.cuit_emisor)} · #${f.id}</small></div></div></td>
-    <td>${badgeEstado(f.estado)}</td>
+    <td><div class="prov">${cuad(nombreProv(f))}<div><b>${esc(nombreProv(f))}</b><small class="mono">${f.cuit_emisor ? fmtCuit(f.cuit_emisor) + ' · ' : ''}#${f.id}</small></div></div></td>
+    <td>${badgeEstado(f.estado)}<small class="sub-celda">recibida ${fmtFH(f.recibido_at)}</small></td>
     <td class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</td>
-    <td class="mono">${fmtF(f.fecha_emision)}</td>
-    <td class="mono">${fmtF(f.fecha_vto)}</td>
+    <td class="mono">${fmtF(f.fecha_emision)}${f.fecha_vto ? `<small class="sub-celda">vence ${fmtF(f.fecha_vto)}</small>` : ''}</td>
     <td class="num"><b>${f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : ''}${$$m(f.total)}</b></td>
-    ${conExc ? `<td>${chipsExc(f.excepciones)}${f.error_proceso && !['lista', 'cargada'].includes(f.estado) ? `<div class="small muted">${esc(f.error_proceso).slice(0, 120)}</div>` : ''}</td>` : ''}
-    <td class="small muted">${fmtFH(f.recibido_at)}</td>
+    ${conExc ? `<td class="celda-motivos">${chipsExc(f.excepciones)}${!f.excepciones && f.error_proceso && !['lista', 'cargada'].includes(f.estado) ? `<div class="small muted" title="${esc(f.error_proceso)}">${esc(String(f.error_proceso).slice(0, 60))}…</div>` : ''}</td>` : ''}
   </tr>`).join('');
 }
 function encabezadoFacturas(conExc = true) {
-  return `<tr><th>Proveedor</th><th>Estado</th><th>Comprobante</th><th>Emisión</th><th>Vto.</th><th class="num">Total</th>${conExc ? '<th>Motivos</th>' : ''}<th>Recibida</th></tr>`;
+  return `<tr><th>Proveedor</th><th>Estado</th><th>Comprobante</th><th>Emisión</th><th class="num">Total</th>${conExc ? '<th>Motivos</th>' : ''}</tr>`;
 }
 function guardarCola(ids) { try { sessionStorage.setItem('cola_ids', JSON.stringify(ids)); } catch { } }
 function leerCola() { try { return JSON.parse(sessionStorage.getItem('cola_ids') || '[]'); } catch { return []; } }
@@ -682,7 +697,7 @@ function pintarFactura(el, r) {
   } else if (f.estado === 'lista') {
     tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Pasó todos los controles. ${puede('aprobador') ? 'Podés enviarla ahora o junto con las demás desde “Enviar a Shares”.' : 'Un aprobador la envía a Shares.'}</p></div></section>`;
   } else if (f.estado === 'cargada') {
-    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>No hay nada más que hacer con esta factura.</p></div></section>`;
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>No hay nada más que hacer con esta factura. Cargarla a mano llevaba unos ${TIEMPOS.manual} minutos; con el sistema, ${f.auto_ok ? 'entró sola: ~' + TIEMPOS.auto : '~' + TIEMPOS.revisada} min. <b>Ahorro: ${String(TIEMPOS.manual - (f.auto_ok ? TIEMPOS.auto : TIEMPOS.revisada)).replace('.', ',')} min.</b></p></div></section>`;
   }
 
   // ---- Controles (checklist) ----
@@ -1001,14 +1016,14 @@ async function vistaShares(el) {
 async function vistaProveedores(el) {
   await cuentas().catch(() => null);
   el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU, cuenta por defecto y reglas de imputación.</p></div>
-    <div class="acciones">${puede('aprobador') ? '<button class="btn" id="b-nuevo">Nuevo proveedor</button>' : ''}${puede('admin') ? '<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>' : ''}</div></div>
+    <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-nuevo">${ICO.user}Nuevo proveedor</button>` : ''}${puede('admin') ? `<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>` : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
     <div class="tabla-wrap"><table><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
   const cargar = async () => {
     const r = await api('/api/proveedores?q=' + encodeURIComponent($('#q').value.trim()));
     $('#tb').innerHTML = r.proveedores.length ? r.proveedores.map(p => `<tr class="click" data-cuit="${p.cuit}">
       <td><div class="prov">${cuad(p.razon_social)}<div><b>${esc(p.razon_social)}</b></div></div></td><td class="mono">${fmtCuit(p.cuit)}</td><td class="mono">${esc(p.codigo_shares || '—')}</td><td class="mono">${esc(p.condicion_iva ?? '—')}</td>
-      <td><span class="mono">${esc(p.cuenta_default || '—')}</span> <span class="small muted">${esc(p.cuenta_denominacion || '')}</span></td>
+      <td class="celda-cuenta"><span class="mono">${esc(p.cuenta_default || '—')}</span>${p.cuenta_denominacion ? `<small>${esc(p.cuenta_denominacion)}</small>` : ''}</td>
       <td class="mono small">${p.cbu ? '···' + esc(p.cbu.slice(-6)) : '—'}</td><td>${p.config_version ? `<span class="badge b-ok">config v${p.config_version}</span>` : '<span class="badge b-aviso">sin configurar</span>'}</td><td class="num">${p.facturas}</td>
       <td>${p.activo ? '<span class="badge b-ok">activo</span>' : '<span class="badge b-aviso">inactivo</span>'}</td></tr>`).join('')
       : '<tr><td colspan="9" class="vacio">No hay proveedores. Importá el maestro desde un Excel exportado de Shares.</td></tr>';
