@@ -426,7 +426,7 @@ function pintarContadores(c) { $$('[data-cnt]').forEach(x => { const n = c[x.dat
 
 async function router() {
   if (!S.token) return vistaLogin();
-  if (S.pdfUrl) { URL.revokeObjectURL(S.pdfUrl); S.pdfUrl = null; }
+  if (S.pdfUrl) { URL.revokeObjectURL(S.pdfUrl); S.pdfUrl = null; S.pdfBytes = null; }
   const h = location.hash || '#/tablero';
   const r = RUTAS.find(x => x.re.test(h)) || RUTAS[0];
   const m = h.match(r.re) || [];
@@ -459,6 +459,8 @@ async function iniciar() {
   bienvenida();
 }
 window.addEventListener('hashchange', router);
+let _pdfResize;
+window.addEventListener('resize', () => { clearTimeout(_pdfResize); _pdfResize = setTimeout(() => { if ($('#pdf-paginas') && S.pdfBytes) mostrarPdf(); }, 250); });
 document.addEventListener('DOMContentLoaded', iniciar);
 
 // Atajos: Ctrl K busca; en "Para revisar" J/K se mueven, Enter abre, / busca
@@ -707,17 +709,81 @@ async function vistaFactura(el, id) {
   cargarPdf(id);
 }
 
+// ---------------------------------------------------------------------------
+//  Visor de PDF propio (pdf.js): páginas a lo ancho, sin la barra lateral del navegador,
+//  con zoom, abrir en pestaña nueva y descargar. Si pdf.js no carga, usa el visor del navegador.
+// ---------------------------------------------------------------------------
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let _pdfjsCarga = null;
+function cargarPdfjs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!_pdfjsCarga) _pdfjsCarga = new Promise((ok, mal) => {
+    const sc = document.createElement('script');
+    sc.src = PDFJS + 'pdf.min.js';
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; ok(window.pdfjsLib); };
+    sc.onerror = () => { _pdfjsCarga = null; mal(new Error('no cargó pdf.js')); };
+    document.head.appendChild(sc);
+  });
+  return _pdfjsCarga;
+}
+
 async function cargarPdf(id) {
-  const visor = $('#visor');
-  if (!visor) return;
+  if (!$('#visor')) return;
   try {
     const res = await api(`/api/facturas/${id}/pdf`, { raw: true });
     const blob = await res.blob();
     if (S.pdfUrl) URL.revokeObjectURL(S.pdfUrl);
     S.pdfUrl = URL.createObjectURL(blob);
-    if ($('#visor')) $('#visor').innerHTML = `<iframe src="${S.pdfUrl}#view=FitH" title="PDF de la factura"></iframe>`;
+    S.pdfBytes = new Uint8Array(await blob.arrayBuffer());
+    await mostrarPdf();
   } catch (e) {
     if ($('#visor')) $('#visor').innerHTML = `<div class="vacio">No se pudo cargar el PDF: ${esc(e.message)}</div>`;
+  }
+}
+
+async function mostrarPdf() {
+  const visor = $('#visor');
+  if (!visor || !S.pdfUrl) return;
+  S.pdfZoom = S.pdfZoom || 1;
+  visor.innerHTML = `<div class="pdf-barra">
+      <button class="ibtn" data-z="-" title="Alejar" aria-label="Alejar">${svgI('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/>')}</button>
+      <span class="pdf-zoom">${Math.round(S.pdfZoom * 100)}%</span>
+      <button class="ibtn" data-z="+" title="Acercar" aria-label="Acercar">${svgI('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/>')}</button>
+      <button class="ibtn" data-z="1" title="Ajustar al ancho" aria-label="Ajustar al ancho">${svgI('<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/>')}</button>
+      <span style="flex:1"></span>
+      <a class="ibtn" href="${S.pdfUrl}" target="_blank" rel="noopener" title="Abrir en pestaña nueva" aria-label="Abrir en pestaña nueva">${svgI('<path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>')}</a>
+      <a class="ibtn" href="${S.pdfUrl}" download="factura.pdf" title="Descargar" aria-label="Descargar">${svgI('<path d="M12 3v12M8 11l4 4 4-4M4 21h16"/>')}</a>
+    </div><div class="pdf-paginas" id="pdf-paginas"><div class="vacio"><span><span class="cargando"></span> Abriendo PDF…</span></div></div>`;
+  $$('[data-z]', visor).forEach(b => b.onclick = () => {
+    S.pdfZoom = b.dataset.z === '1' ? 1 : Math.min(3, Math.max(0.5, S.pdfZoom + (b.dataset.z === '+' ? 0.25 : -0.25)));
+    mostrarPdf();
+  });
+  const cont = $('#pdf-paginas', visor);
+  let pdfjs;
+  try { pdfjs = await cargarPdfjs(); }
+  catch { cont.innerHTML = `<iframe src="${S.pdfUrl}#view=FitH&navpanes=0" title="PDF de la factura"></iframe>`; cont.classList.add('con-iframe'); return; }
+  try {
+    const doc = await pdfjs.getDocument({ data: S.pdfBytes.slice() }).promise;
+    if (!cont.isConnected) return;
+    cont.innerHTML = '';
+    const ancho = Math.max(280, cont.clientWidth - 24) * S.pdfZoom;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    for (let n = 1; n <= doc.numPages; n++) {
+      const pag = await doc.getPage(n);
+      const base = pag.getViewport({ scale: 1 });
+      const vp = pag.getViewport({ scale: (ancho / base.width) * dpr });
+      const cv = document.createElement('canvas');
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      cv.style.width = Math.floor(vp.width / dpr) + 'px';
+      cv.title = 'Doble clic: abrir en pestaña nueva';
+      cv.ondblclick = () => window.open(S.pdfUrl, '_blank', 'noopener');
+      if (!cont.isConnected) return;
+      cont.appendChild(cv);
+      await pag.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    }
+    if (doc.numPages > 1) cont.insertAdjacentHTML('beforeend', `<div class="pdf-pie">${doc.numPages} páginas</div>`);
+  } catch (e) {
+    cont.innerHTML = `<iframe src="${S.pdfUrl}#view=FitH&navpanes=0" title="PDF de la factura"></iframe>`; cont.classList.add('con-iframe');
   }
 }
 
@@ -951,7 +1017,7 @@ function conectarFactura(el, r) {
     S.cnt = null;
     // Si estaba para revisar y quedó resuelta, pasa sola a la siguiente de la cola
     if (r.factura.estado === 'excepcion' && nuevo.factura.estado !== 'excepcion' && pc.sig) { location.hash = '#/factura/' + pc.sig; return; }
-    pintarFactura(el, nuevo); if (S.pdfUrl) $('#visor').innerHTML = `<iframe src="${S.pdfUrl}#view=FitH" title="PDF de la factura"></iframe>`; else cargarPdf(id);
+    pintarFactura(el, nuevo); if (S.pdfUrl) mostrarPdf(); else cargarPdf(id);
   };
   const bAnt = $('#b-ant'), bSig = $('#b-sig');
   if (bAnt) bAnt.onclick = () => { if (pc.ant) location.hash = '#/factura/' + pc.ant; };

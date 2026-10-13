@@ -258,6 +258,17 @@ tr.click:hover td { background: var(--surface-2); }
 .detalle { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .visor { position: sticky; top: calc(var(--top-h) + 16px); height: calc(100vh - var(--top-h) - 40px); min-height: 480px; overflow: hidden; background: #3b3c40; border-radius: var(--r-lg); border: 0; padding: 0; }
 .visor iframe { width: 100%; height: 100%; border: 0; background: #3b3c40; display: block; }
+.visor { display: flex; flex-direction: column; }
+.pdf-barra { display: flex; align-items: center; gap: 2px; padding: 6px 8px; background: #2a2b2e; color: #e6e4df; flex: none; }
+.pdf-barra .ibtn { color: #d6d4cf; width: 32px; height: 32px; text-decoration: none; }
+.pdf-barra .ibtn:hover { background: rgba(255,255,255,.1); color: #fff; border-color: transparent; }
+.pdf-zoom { font: 600 12px var(--mono); min-width: 44px; text-align: center; color: #d6d4cf; }
+.pdf-paginas { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pdf-paginas canvas { display: block; background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.4); border-radius: 2px; flex: none; cursor: zoom-in; max-width: none; }
+.pdf-paginas.con-iframe { padding: 0; }
+.pdf-paginas.con-iframe iframe { flex: 1; height: auto; width: 100%; }
+.pdf-paginas .vacio { color: #d6d4cf; margin: auto; }
+.pdf-pie { font-size: 12px; color: #b9b7b1; }
 .visor .vacio { height: 100%; display: grid; place-items: center; color: #d6d4cf; }
 .lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ficha { padding: 18px 20px; }
