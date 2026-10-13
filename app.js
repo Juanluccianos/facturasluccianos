@@ -502,8 +502,8 @@ async function vistaTablero(el) {
 
   el.innerHTML = `
     <div class="encabezado">
-      <div><h1>${saludo}, ${esc(String(S.user.nombre).split(' ')[0])}</h1><p>${esc(hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1))} · el lector revisa la casilla cada 15 minutos</p></div>
-      <div class="acciones"><button class="btn" id="b-procesar">${ICO.refresh}Leer pendientes</button><button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div>
+      <div><h1>${saludo}, ${esc(String(S.user.nombre).split(' ')[0])}</h1><p>${esc(hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1))} · el mail se revisa solo cada 15 minutos</p></div>
+      <div class="acciones"><button class="btn" id="b-procesar" title="Revisa la casilla en el momento y lee lo que haya entrado">${ICO.mail}Revisar el mail</button><button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div>
     </div>
     <section class="hero ${nRev ? '' : 'tranqui'}">
       <div><span class="et">Para revisar ahora</span>
@@ -539,7 +539,7 @@ async function vistaTablero(el) {
     </div>`;
   $('#b-subir').onclick = modalSubir;
   const bp = $('#b-procesar');
-  bp.onclick = () => conBoton(bp, async () => { const r = await api('/api/lector/disparar', { method: 'POST' }); toast(r.mensaje, !r.ok); });
+  bp.onclick = () => conBoton(bp, async () => { const r = await api('/api/lector/disparar', { method: 'POST' }); toast(r.mensaje, !r.ok); if (r.nuevas) { S.cnt = null; setTimeout(() => { if (location.hash === '#/tablero' || !location.hash) router(); }, 1500); } });
   $$('.traba li', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; sessionStorage.setItem('bandeja_grupo', li.dataset.grupo); location.hash = '#/bandeja'; });
   $$('.feed li', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; location.hash = '#/factura/' + li.dataset.id; });
   $$('[data-orden]', el).forEach(a => a.onclick = () => sessionStorage.setItem('facturas_orden', a.dataset.orden));
