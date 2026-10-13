@@ -22,7 +22,7 @@
   --sh-1: 0 1px 2px rgba(21,20,15,.05), 0 2px 8px rgba(21,20,15,.05);
   --sh-2: 0 14px 34px rgba(21,20,15,.16), 0 2px 6px rgba(21,20,15,.08);
   --sh-3: 0 24px 64px rgba(21,20,15,.26), 0 2px 8px rgba(21,20,15,.08);
-  --logo-filter: none; --side-w: 248px; --top-h: 58px;
+  --acento-sobre-tinta: #b5df7c; --logo-filter: none; --side-w: 248px; --top-h: 58px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -31,7 +31,7 @@
     --accent: #8fc25a; --accent-ink: #a3d16f; --accent-soft: #223018; --accent-hover: #9bcb67; --on-accent: #10140b;
     --pos: #52c483; --pos-bg: #15291e; --warn: #f0a94a; --warn-bg: #33260f; --neg: #f2776c; --neg-bg: #3a1c1a; --info: #7da2ef; --info-bg: #1b2539;
     --sh-1: 0 1px 2px rgba(0,0,0,.4); --sh-2: 0 16px 40px rgba(0,0,0,.6); --sh-3: 0 24px 64px rgba(0,0,0,.65);
-    --logo-filter: invert(1); color-scheme: dark;
+    --acento-sobre-tinta: #4f7a28; --logo-filter: invert(1); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
@@ -40,7 +40,7 @@
   --accent: #8fc25a; --accent-ink: #a3d16f; --accent-soft: #223018; --accent-hover: #9bcb67; --on-accent: #10140b;
   --pos: #52c483; --pos-bg: #15291e; --warn: #f0a94a; --warn-bg: #33260f; --neg: #f2776c; --neg-bg: #3a1c1a; --info: #7da2ef; --info-bg: #1b2539;
   --sh-1: 0 1px 2px rgba(0,0,0,.4); --sh-2: 0 16px 40px rgba(0,0,0,.6); --sh-3: 0 24px 64px rgba(0,0,0,.65);
-  --logo-filter: invert(1); color-scheme: dark;
+  --acento-sobre-tinta: #4f7a28; --logo-filter: invert(1); color-scheme: dark;
 }
 
 /* ---------- 2. Base y layout ---------- */
@@ -202,7 +202,7 @@ tr.click:hover td { background: var(--surface-2); }
 .hero .et { font-size: 11.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: color-mix(in srgb, var(--paper) 60%, transparent); }
 .hero h2 { margin: 6px 0 4px; font: 800 30px/1.1 var(--display); letter-spacing: -.8px; }
 .hero p { margin: 0; color: color-mix(in srgb, var(--paper) 72%, transparent); max-width: 60ch; }
-.hero .grande { font: 800 64px/1 var(--display); letter-spacing: -2px; color: var(--accent); text-align: right; }
+.hero .grande { font: 800 72px/1 var(--display); letter-spacing: -2px; color: var(--acento-sobre-tinta); text-align: right; text-shadow: 0 0 28px color-mix(in srgb, var(--acento-sobre-tinta) 35%, transparent); }
 .hero .lado { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .hero .motivos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .hero .motivos span { font-size: 12.5px; padding: 4px 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--paper) 12%, transparent); }
