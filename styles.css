@@ -347,10 +347,65 @@ pre.json { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 12
 .cargando { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gira .7s linear infinite; vertical-align: -2px; }
 @keyframes gira { to { transform: rotate(360deg); } }
 
+/* ---------- 7b. Gráficos, ranking, agenda, ficha y guía ---------- */
+.txt-neg { color: var(--neg); } .txt-pos { color: var(--pos); }
+.barras { display: flex; align-items: flex-end; gap: 6px; height: calc(var(--alto, 150px) + 24px); }
+.barra { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; position: relative; outline: none; }
+.barra i { display: block; background: color-mix(in srgb, var(--accent) 45%, var(--surface)); border-radius: 4px 4px 0 0; max-height: var(--alto, 150px); transition: background .12s; }
+.barra.act i { background: var(--accent); }
+.barra .et { font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px; white-space: nowrap; overflow: hidden; height: 18px; }
+.barra:hover i, .barra:focus-visible i { background: var(--accent-hover); }
+.barra .tip { position: absolute; bottom: calc(100% - 18px); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 6px 10px; border-radius: var(--r-sm); font-size: 12.5px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .1s; z-index: 3; box-shadow: var(--sh-2); text-align: center; }
+.barra .tip small { display: block; opacity: .7; font-size: 11px; }
+.barra:hover .tip, .barra:focus-visible .tip { opacity: 1; }
+.barra:nth-child(-n+2) .tip { left: 0; transform: none; }
+.barra:nth-last-child(-n+2) .tip { left: auto; right: 0; transform: none; }
+main { overflow-x: clip; }
+.ranking { list-style: none; margin: 0; padding: 6px 8px; }
+.ranking li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 10px; border-radius: var(--r-md); }
+.ranking li[data-href] { cursor: pointer; } .ranking li[data-href]:hover { background: var(--surface-2); }
+.ranking .pos { font: 700 12px var(--mono); color: var(--muted); text-align: right; }
+.ranking .t { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranking .d { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.ranking .r { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.ranking .r b { font: 700 14px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ranking .r small { font-size: 11.5px; color: var(--muted); }
+.ranking li.otros .t { color: var(--muted); }
+.semana { border-bottom: 1px solid var(--line); }
+.semana:last-child { border-bottom: 0; }
+.semana-t { display: flex; justify-content: space-between; gap: 12px; padding: 12px 18px; background: var(--surface-2); font-size: 13.5px; color: var(--muted); }
+.semana-t b { color: var(--text); }
+.semana.esta .semana-t { background: var(--accent-soft); }
+.semana.esta .semana-t b:first-child { color: var(--accent-ink); }
+.ficha-prov { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.cuad.grande { width: 52px; height: 52px; font-size: 17px; border-radius: var(--r-md); }
+.pasos-guia { list-style: none; margin: 0; padding: 8px 18px 14px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; }
+.pasos-guia li { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+.num-paso { display: flex; align-items: center; gap: 8px; color: var(--accent-ink); }
+.num-paso svg { width: 34px; height: 34px; padding: 8px; border-radius: var(--r-md); background: var(--accent-soft); }
+.num-paso b { font: 800 13px var(--display); color: var(--muted); }
+.pasos-guia .t { font: 700 15px var(--display); }
+.pasos-guia p, .guia-txt p { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); }
+.guia-txt p { margin-bottom: 10px; } .guia-txt b { color: var(--text); }
+.atajos kbd, .guia-txt kbd { font: 600 11px var(--mono); border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+.atajos dd { font-family: var(--sans); }
+.motivos-guia { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 24px; padding: 14px 18px 18px; }
+.motivos-guia h3 { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; }
+.motivos-guia .ico { width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; }
+.motivos-guia .ico svg { width: 14px; height: 14px; }
+.motivos-guia dl { margin: 0; } .motivos-guia dt { font-weight: 600; font-size: 13.5px; margin-top: 8px; } .motivos-guia dd { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.bienv { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 8px 4px 0; }
+.bienv-ico svg { width: 56px; height: 56px; padding: 14px; border-radius: var(--r-lg); background: var(--accent-soft); color: var(--accent-ink); }
+.bienv .et { font-size: 11.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--muted); }
+.bienv h2 { margin: 0; padding: 0; font-size: 24px; }
+.bienv p { max-width: 46ch; margin: 0 0 6px; }
+.puntos { display: flex; gap: 6px; margin: 6px 0 14px; } .puntos i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); } .puntos i.on { background: var(--accent); width: 22px; border-radius: 4px; }
+
 /* ---------- 8. Mobile y accesibilidad ---------- */
 .mnav { display: none; }
 @media (max-width: 1100px) {
   .detalle, .dos { grid-template-columns: minmax(0, 1fr); }
+  .pasos-guia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .visor { position: relative; top: 0; height: 70vh; }
   .recorrido { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .recorrido a { border-bottom: 1px solid var(--line); border-radius: 0 !important; }
@@ -371,6 +426,8 @@ pre.json { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 12
   .recorrido { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .qi { grid-template-columns: 4px 34px minmax(0, 1fr) auto; row-gap: 6px; }
   .qi .porque, .qi .monto { grid-column: 3 / 5; }
+  .pasos-guia { grid-template-columns: minmax(0, 1fr); }
+  .barra .et { font-size: 9.5px; }
   .qi .monto { text-align: left; }
   .qi .monto small { display: inline; margin-left: 6px; }
   .qi .ir, .teclas { display: none; }
@@ -388,7 +445,11 @@ pre.json { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 12
 .top .marca-m { display: none; }
 @media (max-width: 860px) { .top .marca-m { display: block; } }
 @media (max-width: 560px) {
-  .kpis { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi { padding: 13px 14px; } .kpi .val { font-size: 21px; }
+  .barras { gap: 3px; }
+  .barras .barra:nth-child(even) .et { visibility: hidden; }
+  .ficha-prov h1 { font-size: 21px; }
   .encabezado .acciones { width: 100%; }
   .modal-box { padding: 20px 16px; }
 }

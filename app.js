@@ -176,6 +176,9 @@ const ICO = {
   alert: svgI('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
   coin: svgI('<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2a2.6 2.6 0 0 1-2.5-1.5M12 6.5V8M12 16v1.5"/>'),
   clock: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  calendar: svgI('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>'),
+  chart: svgI('<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-8"/>'),
+  book: svgI('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>'),
 };
 const COLORES_AV = ['#b0254a', '#2d5bba', '#1f7a45', '#a85a07', '#6b4bb8', '#0f7d86', '#7a4a2e', '#c0392b'];
 const iniciales = (s) => String(s || '?').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2 && !/^(SRL|SAS|S\.?A\.?|SA|SOCIEDAD|ANONIMA)$/i.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase() || String(s || '?').slice(0, 1).toUpperCase();
@@ -305,6 +308,10 @@ const RUTAS = [
   { re: /^#\/factura\/(\d+)$/, v: vistaFactura, nav: 'bandeja', miga: 'Trabajo / <b>Factura</b>' },
   { re: /^#\/shares$/, v: vistaShares, nav: 'shares', miga: 'Trabajo / <b>Enviar a Shares</b>' },
   { re: /^#\/proveedores$/, v: vistaProveedores, nav: 'proveedores', miga: 'Datos / <b>Proveedores</b>' },
+  { re: /^#\/proveedor\/(\d{11})$/, v: vistaFicha, nav: 'proveedores', miga: 'Datos / Proveedores / <b>Ficha</b>' },
+  { re: /^#\/pagos$/, v: vistaPagos, nav: 'pagos', miga: 'Trabajo / <b>Agenda de pagos</b>' },
+  { re: /^#\/analisis$/, v: vistaAnalisis, nav: 'analisis', miga: 'Datos / <b>Análisis de compras</b>' },
+  { re: /^#\/guia$/, v: vistaGuia, nav: 'guia', miga: '<b>Guía de uso</b>' },
   { re: /^#\/admin$/, v: vistaAdmin, nav: 'admin', miga: 'Datos / <b>Configuración</b>' },
   { re: /^#\/cuenta$/, v: vistaMiCuenta, nav: '', miga: '<b>Mi cuenta</b>' },
 ];
@@ -323,9 +330,13 @@ function shell(ruta) {
         ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
         ${puede('aprobador') ? it('shares', 'send', 'Enviar a Shares', '<span class="cnt" data-cnt="lista"></span>') : ''}
         ${it('facturas', 'doc', 'Todas las facturas')}
+        ${it('pagos', 'calendar', 'Agenda de pagos')}
         <div class="grp-t">Datos</div>
         ${it('proveedores', 'users', 'Proveedores')}
+        ${it('analisis', 'chart', 'Análisis de compras')}
         ${puede('admin') ? it('admin', 'gear', 'Configuración') : ''}
+        <div class="grp-t">Ayuda</div>
+        ${it('guia', 'book', 'Guía de uso')}
       </nav>
       <div class="me"><a class="av" href="#/cuenta" title="Mi cuenta">${esc(iniciales(S.user.nombre))}</a>
         <a class="who" href="#/cuenta"><b>${esc(S.user.nombre)}</b><small>${esc(rol)}</small></a>
@@ -390,7 +401,8 @@ async function iniciar() {
     S.user = r.usuario; S.arca = r.arca_modo;
   } catch { return vistaLogin(); }
   cuentas().catch(() => null);
-  router();
+  await router();
+  bienvenida();
 }
 window.addEventListener('hashchange', router);
 document.addEventListener('DOMContentLoaded', iniciar);
@@ -1015,7 +1027,7 @@ async function vistaShares(el) {
 // ---------------------------------------------------------------------------
 async function vistaProveedores(el) {
   await cuentas().catch(() => null);
-  el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU, cuenta por defecto y reglas de imputación.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU y cuenta habitual. Tocá uno para ver su ficha.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-nuevo">${ICO.user}Nuevo proveedor</button>` : ''}${puede('admin') ? `<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>` : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
     <div class="tabla-wrap"><table><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
@@ -1027,7 +1039,7 @@ async function vistaProveedores(el) {
       <td class="mono small">${p.cbu ? '···' + esc(p.cbu.slice(-6)) : '—'}</td><td>${p.config_version ? `<span class="badge b-ok">config v${p.config_version}</span>` : '<span class="badge b-aviso">sin configurar</span>'}</td><td class="num">${p.facturas}</td>
       <td>${p.activo ? '<span class="badge b-ok">activo</span>' : '<span class="badge b-aviso">inactivo</span>'}</td></tr>`).join('')
       : '<tr><td colspan="9" class="vacio">No hay proveedores. Importá el maestro desde un Excel exportado de Shares.</td></tr>';
-    $$('#tb tr[data-cuit]').forEach(tr => tr.onclick = async () => { const x = await api('/api/proveedores/' + tr.dataset.cuit); modalProveedor(x.proveedor, false, cargar, x); });
+    $$('#tb tr[data-cuit]').forEach(tr => tr.onclick = () => { location.hash = '#/proveedor/' + tr.dataset.cuit; });
   };
   let deb;
   $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(cargar, 300); };
@@ -1405,4 +1417,298 @@ async function vistaMiCuenta(el) {
     b.remove();
     $('#b-conf').onclick = () => conBoton($('#b-conf'), async () => { await api('/api/yo/totp/confirmar', { method: 'POST', body: { code: $('#code').value } }); S.user.totp_activo = true; toast('Doble factor activado'); vistaMiCuenta(el); });
   });
+}
+
+// ---------------------------------------------------------------------------
+//  Gráficos simples (una sola serie, color de acento, tooltip al pasar el mouse)
+// ---------------------------------------------------------------------------
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const fmtMes = (ym, largo = false) => { const [y, m] = String(ym).split('-').map(Number); return largo ? `${MESES[m - 1]} ${y}` : `${MESES[m - 1]} ${String(y).slice(2)}`; };
+function ultimosMeses(n, hasta = new Date().toISOString().slice(0, 7)) {
+  const [y, m] = hasta.split('-').map(Number), out = [];
+  for (let i = n - 1; i >= 0; i--) { const d = new Date(Date.UTC(y, m - 1 - i, 1)); out.push(d.toISOString().slice(0, 7)); }
+  return out;
+}
+// datos: [{ et, v, sub?, act? }]
+function barras(datos, { alto = 150, fmt = $$corto } = {}) {
+  const max = Math.max(1, ...datos.map(x => Math.abs(x.v)));
+  return `<div class="barras" style="--alto:${alto}px" role="img" aria-label="Gráfico de barras">${datos.map(x => `<div class="barra ${x.act ? 'act' : ''}" tabindex="0">
+    <span class="tip"><b>${esc(fmt(x.v))}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</span>
+    <i style="height:${x.v ? Math.max(2, Math.round(100 * Math.abs(x.v) / max)) : 0}%"></i><span class="et">${esc(x.et)}</span></div>`).join('')}</div>`;
+}
+// filas: [{ t, d?, v, href?, extra? }] → ranking con barrita
+function ranking(filas, { fmt = $$m, total = null, limite = 12 } = {}) {
+  if (!filas.length) return '<div class="vacio">Sin datos para el período.</div>';
+  const max = Math.max(1, ...filas.map(x => Math.abs(x.v)));
+  const ver = filas.slice(0, limite), resto = filas.slice(limite);
+  const otros = resto.reduce((a, x) => a + x.v, 0);
+  const fila = (x, i) => `<li ${x.href ? `data-href="${esc(x.href)}" tabindex="0"` : ''}><span class="pos">${i + 1}</span>
+    <div style="min-width:0"><div class="t">${esc(x.t)}</div>${x.d ? `<div class="d">${esc(x.d)}</div>` : ''}<div class="barrita"><i style="width:${Math.round(100 * Math.abs(x.v) / max)}%;background:var(--accent)"></i></div></div>
+    <div class="r"><b>${esc(fmt(x.v))}</b>${total ? `<small>${(100 * x.v / total).toFixed(1).replace('.', ',')}%</small>` : ''}${x.extra ? `<small>${esc(x.extra)}</small>` : ''}</div></li>`;
+  return `<ul class="ranking">${ver.map(fila).join('')}${resto.length ? `<li class="otros"><span class="pos">+</span><div><div class="t">Otros ${resto.length}</div></div><div class="r"><b>${esc(fmt(otros))}</b>${total ? `<small>${(100 * otros / total).toFixed(1).replace('.', ',')}%</small>` : ''}</div></li>` : ''}</ul>`;
+}
+function conectarRanking(el) { $$('.ranking li[data-href]', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; location.hash = li.dataset.href; }); }
+async function copiar(txt) { try { await navigator.clipboard.writeText(txt); toast('Copiado: ' + txt); } catch { toast('No se pudo copiar', true); } }
+
+// ---------------------------------------------------------------------------
+//  Ficha del proveedor
+// ---------------------------------------------------------------------------
+const COND_IVA = { 73: 'Resp. inscripto', 77: 'Monotributo', 67: 'Consumidor final', 78: 'Resp. no inscripto', 69: 'Exento', 65: 'No responsable', 84: 'No categorizado' };
+async function vistaFicha(el, cuit) {
+  await cuentas().catch(() => null);
+  const x = await api('/api/proveedores/' + cuit);
+  const p = x.proveedor;
+  const facts = x.facturas || [];
+  if (!p && !facts.length) { el.innerHTML = `<div class="panel panel-pad"><h2>No encontré el proveedor ${fmtCuit(cuit)}</h2><p class="muted">No está en el maestro ni tiene facturas.</p><a class="btn" href="#/proveedores">${ICO.back}Volver</a></div>`; return; }
+  const nombre = p?.razon_social || facts[0]?.razon_social_emisor || fmtCuit(cuit);
+  const porMes = Object.fromEntries((x.mensual || []).map(r => [r.mes, r]));
+  const meses = ultimosMeses(12);
+  const tot12 = meses.reduce((a, m) => a + (porMes[m]?.total || 0), 0);
+  const n12 = meses.reduce((a, m) => a + (porMes[m]?.n || 0), 0);
+  const conCompras = meses.filter(m => porMes[m]?.total).length;
+  const pl = (x.plantillas || []).find(q => q.estado === 'activa');
+  const sh = x.shares || [];
+  const cuentasSh = {};
+  sh.forEach(h => (h.items || []).filter(i => i[0] === 2 || i[0] === 3).forEach(i => { cuentasSh[i[1]] = (cuentasSh[i[1]] || 0) + 1; }));
+  const ultima = facts[0];
+  guardarCola(facts.map(f => f.id));
+  el.innerHTML = `
+    <div class="encabezado">
+      <div class="ficha-prov">${cuad(nombre).replace('class="cuad"', 'class="cuad grande"')}<div><h1>${esc(nombre)}</h1>
+        <p><span class="mono">${fmtCuit(cuit)}</span> · ${esc(COND_IVA[p?.condicion_iva] || 'Cond. IVA sin cargar')}${p?.codigo_shares ? ` · Cód. Shares <span class="mono">${esc(p.codigo_shares)}</span>` : ''}${p && !p.activo ? ' · <span class="badge b-aviso">inactivo</span>' : ''}</p></div></div>
+      <div class="acciones"><a class="btn btn-ghost" href="#/proveedores">${ICO.back}Proveedores</a>${p && puede('aprobador') ? `<button class="btn" id="b-editar">${ICO.gear}Editar</button>` : ''}</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="et">Comprado en 12 meses</div><div class="val">${$$corto(tot12)}</div><div class="sub">${n12} comprobante(s) · con IVA</div></div>
+      <div class="kpi"><div class="et">Promedio mensual</div><div class="val">${$$corto(conCompras ? tot12 / conCompras : 0)}</div><div class="sub">en los ${conCompras} meses con compras</div></div>
+      <div class="kpi"><div class="et">Última factura</div><div class="val">${ultima ? fmtF(ultima.fecha_emision) : '—'}</div><div class="sub">${ultima ? $$m(ultima.total) + ' · ' + esc(ESTADOS[ultima.estado] || ultima.estado) : 'sin facturas en la app'}</div></div>
+      <div class="kpi"><div class="et">Lectura</div><div class="val">${pl ? 'Sola' : 'Manual'}</div><div class="sub">${pl ? `configuración v${esc(pl.version)} · ${esc(pl.usos || 0)} usos` : 'se configura al confirmar su primera factura'}</div></div>
+    </div>
+    <div class="dos">
+      <div class="panel"><div class="panel-titulo"><h2>Compras por mes</h2><span class="ayuda">facturas en la app · con IVA · NC restan</span></div>
+        <div class="panel-pad">${tot12 ? barras(meses.map(m => ({ et: fmtMes(m), v: porMes[m]?.total || 0, sub: `${porMes[m]?.n || 0} comprobante(s) · ${fmtMes(m, true)}`, act: m === meses[11] }))) : '<div class="vacio">Sin compras en los últimos 12 meses.</div>'}</div></div>
+      <div class="panel"><div class="panel-titulo"><h2>Cómo se carga</h2></div>
+        <dl class="kv panel-pad">
+          <dt>Cuenta habitual</dt><dd>${p?.cuenta_default ? `${esc(p.cuenta_default)} · ${esc(nombreCuenta(p.cuenta_default))}` : '—'}</dd>
+          <dt>CBU</dt><dd>${p?.cbu ? `${esc(p.cbu)} <button class="btn-link" data-copiar="${esc(p.cbu)}">copiar</button>` : '—'}</dd>
+          ${p?.alias_cbu ? `<dt>Alias</dt><dd>${esc(p.alias_cbu)}</dd>` : ''}
+          ${p?.dias_pago ? `<dt>Plazo de pago</dt><dd>${esc(p.dias_pago)} días</dd>` : ''}
+          <dt>Reglas</dt><dd>${(x.reglas || []).length ? x.reglas.map(r => `${esc(r.codigo_concepto)}${r.palabra_clave ? ` si dice “${esc(r.palabra_clave)}”` : ' siempre'}`).join('<br>') : 'ninguna'}</dd>
+          ${Object.keys(cuentasSh).length ? `<dt>En Shares usa</dt><dd>${Object.entries(cuentasSh).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([c, n]) => `${esc(c)} · ${esc(nombreCuenta(c) || '')} <span class="muted">(${n} de ${sh.length})</span>`).join('<br>')}</dd>` : ''}
+          ${p?.notas ? `<dt>Notas</dt><dd style="font-family:var(--sans)">${esc(p.notas)}</dd>` : ''}
+        </dl></div>
+    </div>
+    <div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Facturas en la app</h2><span class="ayuda">${facts.length} ${facts.length === 100 ? '(las últimas 100)' : ''}</span></div>
+      <div class="tabla-wrap"><table><thead>${encabezadoFacturas()}</thead><tbody id="tb">${filasFacturas(facts)}</tbody></table></div></div>
+    ${sh.length ? `<div class="panel"><div class="panel-titulo"><h2>Últimas cargadas en Shares</h2><span class="ayuda">de la última consulta a Shares (incluye cargas a mano)</span></div>
+      <div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Nro. registro</th><th>Cuentas</th><th class="num">Total</th></tr></thead><tbody>
+      ${sh.map(h => `<tr><td class="mono">${esc(fmtF(h.fecha) === '—' ? h.fecha || '—' : fmtF(h.fecha))}</td><td class="mono">${esc(h.tipo || '')} ${String(h.pv ?? '').padStart(5, '0')}-${String(h.nro ?? '').padStart(8, '0')}</td><td class="mono">${esc(h.nro_reg ?? '—')}</td>
+        <td class="small">${[...new Set((h.items || []).filter(i => i[0] === 2 || i[0] === 3).map(i => i[1]))].map(c => `<span class="mono">${esc(c)}</span> ${esc(nombreCuenta(c) || '')}`).join('<br>') || '—'}</td><td class="num">${$$m(h.total)}</td></tr>`).join('')}
+      </tbody></table></div></div>` : ''}`;
+  $$('#tb tr[data-id]', el).forEach(tr => tr.onclick = () => { location.hash = '#/factura/' + tr.dataset.id; });
+  $$('[data-copiar]', el).forEach(b => b.onclick = () => copiar(b.dataset.copiar));
+  const be = $('#b-editar');
+  if (be) be.onclick = () => modalProveedor(p, false, () => router(), x);
+}
+
+// ---------------------------------------------------------------------------
+//  Agenda de pagos
+// ---------------------------------------------------------------------------
+const isoMas = (dias) => { const d = new Date(); d.setDate(d.getDate() + dias); return d.toLocaleDateString('sv-SE'); };
+function lunesDe(iso) { const d = new Date(iso + 'T12:00:00'); const dia = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dia); return d.toLocaleDateString('sv-SE'); }
+async function vistaPagos(el) {
+  const RANGOS = { vencidas: ['Vencidas (30 días)', -30, -1], semana: ['Esta semana', 0, 6], quince: ['Próximos 15 días', 0, 15], mes: ['Próximos 30 días', 0, 30], todo: ['−30 a +60 días', -30, 60] };
+  let rango = sessionStorage.getItem('pagos_rango') || 'quince';
+  let incluirCargadas = sessionStorage.getItem('pagos_cargadas') !== '0';
+  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que vence, agrupado por semana, con el CBU a mano. La app no sabe qué ya se pagó: es una guía para planificar.</p></div>
+    <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
+    <div class="seg" id="seg">${Object.entries(RANGOS).map(([k, r]) => `<button data-r="${k}" class="${k === rango ? 'on' : ''}">${r[0]}</button>`).join('')}</div>
+    <div class="kpis" id="kp"></div>
+    <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor o CUIT" aria-label="Filtrar"></label>
+      <label class="check" style="margin:0"><input type="checkbox" id="chk-carg" ${incluirCargadas ? 'checked' : ''}> Incluir todas (no solo las cargadas/listas)</label></div>
+      <div id="lista"><div class="vacio"><span class="cargando"></span></div></div></div>`;
+  let datos = null;
+  const pintar = () => {
+    const q = $('#q').value.trim().toLowerCase();
+    const hoy = datos.hoy;
+    const fs = datos.facturas.filter(f => (incluirCargadas || ['lista', 'cargada', 'error_shares'].includes(f.estado)))
+      .filter(f => !q || String(f.razon_social_emisor || '').toLowerCase().includes(q) || String(f.cuit_emisor || '').includes(q.replace(/-/g, '')))
+      .map(f => ({ ...f, pesos: (Number(f.total) || 0) * (f.moneda && f.moneda !== 'PES' && Number(f.cotizacion) > 1 ? Number(f.cotizacion) : 1) * (TIPOS_NC_F.includes(Number(f.tipo_cbte_arca)) ? -1 : 1) }));
+    const total = fs.reduce((a, f) => a + f.pesos, 0);
+    const venc = fs.filter(f => f.fecha_vto < hoy), vencT = venc.reduce((a, f) => a + f.pesos, 0);
+    const provs = new Set(fs.map(f => f.cuit_emisor)).size;
+    const sinCbu = fs.filter(f => !(f.cbu_maestro || f.cbu_factura)).length;
+    $('#kp').innerHTML = `<div class="kpi"><div class="et">A pagar en el período</div><div class="val">${$$corto(total)}</div><div class="sub">${fs.length} comprobante(s) · ${provs} proveedor(es)</div></div>
+      <div class="kpi ${venc.length ? 'alerta' : ''}"><div class="et">Ya vencido</div><div class="val">${$$corto(vencT)}</div><div class="sub">${venc.length} comprobante(s)</div></div>
+      <div class="kpi"><div class="et">Sin CBU cargado</div><div class="val">${sinCbu}</div><div class="sub">completalo en la ficha del proveedor</div></div>`;
+    const sem = {};
+    fs.forEach(f => { const k = lunesDe(f.fecha_vto); (sem[k] = sem[k] || []).push(f); });
+    const claves = Object.keys(sem).sort();
+    $('#lista').innerHTML = claves.length ? claves.map(k => {
+      const fin = new Date(k + 'T12:00:00'); fin.setDate(fin.getDate() + 6);
+      const st = sem[k].reduce((a, f) => a + f.pesos, 0);
+      const esta = k === lunesDe(hoy);
+      return `<div class="semana ${esta ? 'esta' : ''}"><div class="semana-t"><b>${esta ? 'Esta semana' : k < lunesDe(hoy) ? 'Semana vencida' : 'Semana'} · ${fmtF(k).slice(0, 5)} al ${fmtF(fin.toLocaleDateString('sv-SE')).slice(0, 5)}</b><span>${sem[k].length} · <b>${$$m(st)}</b></span></div>
+        <div class="tabla-wrap"><table><tbody>${sem[k].map(f => { const cbu = f.cbu_maestro || f.cbu_factura, alias = f.alias_maestro || f.alias_factura, difCbu = f.cbu_maestro && f.cbu_factura && f.cbu_maestro !== f.cbu_factura;
+          return `<tr class="click" data-id="${f.id}"><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
+          <td><div class="prov">${cuad(f.razon_social_emisor || '?')}<div><b>${esc(f.razon_social_emisor || 'Sin identificar')}</b><small class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</small></div></div></td>
+          <td>${badgeEstado(f.estado)}</td>
+          <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? '<small class="sub-celda txt-neg">⚠ distinto al de la factura</small>' : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
+          <td class="num"><b>${$$m(f.pesos)}</b>${f.moneda && f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.total)}</small>` : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro rango.</div>';
+    $$('#lista tr[data-id]').forEach(tr => tr.onclick = (e) => { if (e.target.closest('[data-copiar]')) return; location.hash = '#/factura/' + tr.dataset.id; });
+    $$('#lista [data-copiar]').forEach(b => b.onclick = (e) => { e.stopPropagation(); copiar(b.dataset.copiar); });
+    pintar.filas = fs;
+  };
+  const cargar = async () => {
+    const r = RANGOS[rango];
+    $('#lista').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
+    datos = await api(`/api/pagos?desde=${isoMas(r[1])}&hasta=${isoMas(r[2])}`);
+    pintar();
+  };
+  $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
+  $('#q').oninput = () => datos && pintar();
+  $('#chk-carg').onchange = (e) => { incluirCargadas = e.target.checked; sessionStorage.setItem('pagos_cargadas', incluirCargadas ? '1' : '0'); pintar(); };
+  $('#b-csv').onclick = () => descargarCsv(`agenda_pagos_${new Date().toISOString().slice(0, 10)}.csv`, [
+    ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'CBU', 'Alias', 'Moneda', 'Total original', 'Total en pesos', 'ID'],
+    ...(pintar.filas || []).map(f => [f.fecha_vto, f.cuit_emisor, f.razon_social_emisor, `${TIPOS[f.tipo_cbte_arca] || ''} ${nroCbte(f)}`, ESTADOS[f.estado] || f.estado, f.cbu_maestro || f.cbu_factura || '', f.alias_maestro || f.alias_factura || '', f.moneda || 'PES', String(f.total ?? '').replace('.', ','), String(Math.round(f.pesos * 100) / 100).replace('.', ','), f.id]),
+  ]);
+  await cargar();
+}
+const TIPOS_NC_F = [3, 8, 13, 53, 203, 208, 213];
+
+// ---------------------------------------------------------------------------
+//  Análisis de compras
+// ---------------------------------------------------------------------------
+async function vistaAnalisis(el) {
+  const mesHoy = new Date().toLocaleDateString('sv-SE').slice(0, 7);
+  let desde = sessionStorage.getItem('an_desde') || mesHoy, hasta = sessionStorage.getItem('an_hasta') || mesHoy;
+  let vista = sessionStorage.getItem('an_vista') || 'cuenta', soloOk = sessionStorage.getItem('an_solo') === 'ok', medida = sessionStorage.getItem('an_medida') || 'neto';
+  el.innerHTML = `<div class="encabezado"><div><h1>Análisis de compras</h1><p>Lo comprado según las facturas que entraron a la app, en pesos. Las notas de crédito restan.</p></div>
+    <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
+    <div class="panel"><div class="filtros">
+      <div class="campo"><label for="an-d">Desde</label><input type="month" id="an-d" value="${desde}"></div>
+      <div class="campo"><label for="an-h">Hasta</label><input type="month" id="an-h" value="${hasta}"></div>
+      <div class="campo"><label for="an-m">Importe</label><select id="an-m"><option value="neto" ${medida === 'neto' ? 'selected' : ''}>Neto (sin IVA ni percepciones)</option><option value="total" ${medida === 'total' ? 'selected' : ''}>Total con IVA</option></select></div>
+      <div class="campo"><label for="an-s">Facturas</label><select id="an-s"><option value="">Todas menos rechazadas</option><option value="ok" ${soloOk ? 'selected' : ''}>Solo listas o cargadas</option></select></div>
+      <div class="campo"><label>&nbsp;</label><div class="acciones"><button class="btn btn-chico" data-p="mes">Este mes</button><button class="btn btn-chico" data-p="ant">Mes pasado</button><button class="btn btn-chico" data-p="3m">Últimos 3</button><button class="btn btn-chico" data-p="anio">Este año</button></div></div>
+    </div></div>
+    <div id="an-cuerpo" style="margin-top:16px"><div class="vacio"><span class="cargando"></span></div></div>`;
+  let datos = null;
+  const pintar = () => {
+    const filas = datos.filas.filter(f => f.mes >= desde && f.mes <= hasta);
+    const ant = datos.filas.filter(f => f.mes === datos.mes_anterior);
+    const v = (f) => f[medida];
+    const tot = filas.reduce((a, f) => a + v(f), 0), totAnt = ant.reduce((a, f) => a + v(f), 0);
+    const nMeses = ultimosMeses(24, hasta).filter(m => m >= desde).length || 1;
+    const sinCuenta = filas.filter(f => !f.cuenta), sinCuentaT = sinCuenta.reduce((a, f) => a + v(f), 0);
+    const agrupar = (key, et, d, href) => {
+      const g = new Map();
+      filas.forEach(f => { const k = key(f); const x = g.get(k) || { t: et(f), d: d(f), v: 0, n: 0, href: href(f) }; x.v += v(f); x.n++; g.set(k, x); });
+      return [...g.values()].map(x => ({ ...x, extra: `${x.n} comp.` })).sort((a, b) => b.v - a.v);
+    };
+    const grupos = {
+      cuenta: agrupar(f => f.cuenta || '-', f => f.cuenta ? `${f.cuenta} · ${f.cuenta_den || nombreCuenta(f.cuenta) || 'Sin nombre'}` : 'Sin cuenta asignada', () => '', () => null),
+      proveedor: agrupar(f => f.cuit || f.proveedor, f => f.proveedor, f => fmtCuit(f.cuit), f => f.cuit ? '#/proveedor/' + f.cuit : null),
+      local: agrupar(f => f.local || '-', f => f.local || 'Sin local detectado', () => '', () => null),
+    };
+    const meses = ultimosMeses(Math.min(24, Math.max(6, nMeses)), hasta);
+    const porMes = {}; datos.filas.forEach(f => { porMes[f.mes] = (porMes[f.mes] || 0) + v(f); });
+    const varPct = totAnt && desde === hasta ? Math.round(100 * (tot - totAnt) / Math.abs(totAnt)) : null;
+    $('#an-cuerpo').innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="et">Comprado ${desde === hasta ? 'en ' + fmtMes(desde, true) : 'en el período'}</div><div class="val">${$$corto(tot)}</div><div class="sub">${medida === 'neto' ? 'neto' : 'con IVA'}${varPct !== null ? ` · <b class="${varPct > 0 ? 'txt-neg' : 'txt-pos'}">${varPct > 0 ? '+' : ''}${varPct}%</b> vs ${fmtMes(datos.mes_anterior, true)}` : ''}</div></div>
+        <div class="kpi"><div class="et">Comprobantes</div><div class="val">${filas.length}</div><div class="sub">${new Set(filas.map(f => f.cuit)).size} proveedores</div></div>
+        <div class="kpi"><div class="et">Promedio mensual</div><div class="val">${$$corto(tot / nMeses)}</div><div class="sub">${nMeses} mes(es)</div></div>
+        <div class="kpi ${sinCuenta.length ? 'alerta' : ''}"><div class="et">Sin cuenta asignada</div><div class="val">${$$corto(sinCuentaT)}</div><div class="sub">${sinCuenta.length} comprobante(s) por revisar</div></div>
+      </div>
+      <div class="panel"><div class="panel-titulo"><h2>Evolución mensual</h2><span class="ayuda">${medida === 'neto' ? 'neto' : 'con IVA'} · en pesos</span></div>
+        <div class="panel-pad">${barras(meses.map(m => ({ et: fmtMes(m), v: porMes[m] || 0, sub: fmtMes(m, true), act: m >= desde && m <= hasta })))}</div></div>
+      <div class="panel"><div class="panel-titulo"><div class="seg" style="margin:0" id="an-v">${[['cuenta', 'Por cuenta'], ['proveedor', 'Por proveedor'], ['local', 'Por local']].map(([k, t]) => `<button data-v="${k}" class="${vista === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+        <span class="ayuda">${vista === 'local' ? 'el local sale del detalle de la factura' : vista === 'proveedor' ? 'tocá uno para ver su ficha' : ''}</span></div>
+        <div id="an-rank">${ranking(grupos[vista], { total: tot, limite: 15 })}</div></div>`;
+    $$('#an-v button').forEach(b => b.onclick = () => { vista = b.dataset.v; sessionStorage.setItem('an_vista', vista); pintar(); });
+    conectarRanking($('#an-cuerpo'));
+    pintar.filas = filas;
+  };
+  const cargar = async () => {
+    if (desde > hasta) [desde, hasta] = [hasta, desde];
+    sessionStorage.setItem('an_desde', desde); sessionStorage.setItem('an_hasta', hasta);
+    $('#an-d').value = desde; $('#an-h').value = hasta;
+    $('#an-cuerpo').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
+    // Trae hasta 12 meses antes para el gráfico de evolución
+    const desdeGraf = ultimosMeses(Math.max(6, ultimosMeses(24, hasta).filter(m => m >= desde).length), hasta)[0];
+    datos = await api(`/api/analisis?desde=${desdeGraf < desde ? desdeGraf : desde}&hasta=${hasta}${soloOk ? '&solo=ok' : ''}`);
+    // el Worker compara contra el mes anterior al "desde" pedido: lo recalculamos sobre el "desde" elegido
+    const [y, m] = desde.split('-').map(Number);
+    datos.mes_anterior = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+    pintar();
+  };
+  $('#an-d').onchange = (e) => { desde = e.target.value || mesHoy; cargar(); };
+  $('#an-h').onchange = (e) => { hasta = e.target.value || mesHoy; cargar(); };
+  $('#an-m').onchange = (e) => { medida = e.target.value; sessionStorage.setItem('an_medida', medida); pintar(); };
+  $('#an-s').onchange = (e) => { soloOk = e.target.value === 'ok'; sessionStorage.setItem('an_solo', soloOk ? 'ok' : ''); cargar(); };
+  $$('[data-p]', el).forEach(b => b.onclick = () => {
+    const ms = ultimosMeses(13, mesHoy);
+    if (b.dataset.p === 'mes') desde = hasta = mesHoy;
+    if (b.dataset.p === 'ant') desde = hasta = ms[11];
+    if (b.dataset.p === '3m') { desde = ms[10]; hasta = mesHoy; }
+    if (b.dataset.p === 'anio') { desde = mesHoy.slice(0, 4) + '-01'; hasta = mesHoy; }
+    cargar();
+  });
+  $('#b-csv').onclick = () => descargarCsv(`analisis_compras_${desde}_${hasta}.csv`, [
+    ['ID', 'Mes', 'CUIT', 'Proveedor', 'Cuenta', 'Denominación', 'Local', 'Neto', 'Total', 'Estado', 'En USD'],
+    ...(pintar.filas || []).map(f => [f.id, f.mes, f.cuit, f.proveedor, f.cuenta || '', f.cuenta_den || '', f.local || '', String(f.neto).replace('.', ','), String(f.total).replace('.', ','), ESTADOS[f.estado] || f.estado, f.usd ? 'sí' : '']),
+  ]);
+  await cargar();
+}
+
+// ---------------------------------------------------------------------------
+//  Guía de uso + bienvenida la primera vez
+// ---------------------------------------------------------------------------
+const PASOS_GUIA = [
+  ['mail', 'Llega por mail', 'El proveedor manda la factura a la casilla. Cada 15 minutos la app la guarda en Drive y la pone en cola. También podés subirla a mano con “Subir factura”.'],
+  ['sparkle', 'Se lee sola', 'El lector usa el QR de ARCA y la configuración del proveedor. Si el proveedor es nuevo, usa reglas generales o Gemini, y una persona confirma esa primera vez.'],
+  ['shield', 'Se valida', 'Se constata el CAE en ARCA, se controla que los importes cierren, que esté a nombre de una empresa del grupo y que no esté cargada en Shares.'],
+  ['inbox', 'Vos revisás lo raro', 'Lo que no pasa un control va a “Para revisar”, con el motivo en criollo. Lo resolvés y pasa sola a la siguiente.'],
+  ['send', 'Va a Shares', 'Las que pasan todo quedan en “Enviar a Shares”. Un aprobador las manda en lote. Nada se carga sin aprobación.'],
+];
+async function vistaGuia(el) {
+  const grupos = Object.entries(GRUPOS).filter(([k]) => k !== 'lectura').sort((a, b) => a[1].orden - b[1].orden);
+  el.innerHTML = `<div class="encabezado"><div><h1>Guía de uso</h1><p>Cómo funciona la app, qué significa cada motivo y los atajos para ir más rápido.</p></div>
+    <div class="acciones"><button class="btn" id="b-bienv">${ICO.sparkle}Ver la bienvenida otra vez</button></div></div>
+    <div class="panel"><div class="panel-titulo"><h2>El recorrido de una factura</h2></div>
+      <ol class="pasos-guia">${PASOS_GUIA.map(([ic, t, d], i) => `<li><span class="num-paso">${ICO[ic]}<b>${i + 1}</b></span><div><div class="t">${esc(t)}</div><p>${esc(d)}</p></div></li>`).join('')}</ol></div>
+    <div class="dos" style="margin-top:16px">
+      <div class="panel"><div class="panel-titulo"><h2>Cómo revisar una factura</h2></div><div class="panel-pad guia-txt">
+        <p><b>1. Mirá el recuadro verde.</b> Dice exactamente qué falta. Si es un proveedor nuevo, revisá el desglose contra el PDF y la cuenta sugerida (si viene de Shares, es la que usa siempre).</p>
+        <p><b>2. Corregí lo que haga falta</b> en la pestaña Datos. Abajo te dice si los importes cierran al centavo.</p>
+        <p><b>3. Tocá el botón verde.</b> Se guarda, se revalida y pasás a la siguiente de la cola.</p>
+        <p><b>¿Algo no corresponde?</b> “Pedir aclaración” responde el mail del proveedor. “Rechazar” la saca del circuito (queda registrada y se puede reabrir). “Aceptar igual” deja pasar un control con un comentario que queda en el historial.</p>
+        <p><b>Proveedor nuevo:</b> al confirmarlo, la app aprende dónde está cada dato y sus próximas facturas se leen solas, sin IA.</p></div></div>
+      <div class="panel"><div class="panel-titulo"><h2>Atajos</h2></div><div class="panel-pad">
+        <dl class="kv atajos"><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Buscar desde cualquier pantalla. Un número abre esa factura (ej. 14).</dd>
+          <dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>Bajar / subir en “Para revisar”.</dd><dt><kbd>Enter</kbd></dt><dd>Abrir la factura marcada.</dd><dt><kbd>/</kbd></dt><dd>Ir al buscador de la cola.</dd></dl>
+        <h3 style="margin:18px 0 8px">Otras pantallas</h3>
+        <div class="guia-txt"><p><b>Agenda de pagos:</b> qué vence por semana con el CBU para copiar. <b>Análisis de compras:</b> cuánto se compró por cuenta, proveedor y local. <b>Ficha del proveedor:</b> tocá cualquier proveedor para ver sus compras, cómo se carga y su historial en Shares.</p></div></div></div>
+    </div>
+    <div class="panel"><div class="panel-titulo"><h2>Qué significa cada motivo</h2><span class="ayuda">los mismos que ves en “Para revisar”</span></div>
+      <div class="motivos-guia">${grupos.map(([k, g]) => { const [bg, fg] = g.tono === 'acc' ? ['accent-soft', 'accent-ink'] : [g.tono + '-bg', g.tono];
+        return `<section><h3 style="color:var(--${fg})"><span class="ico" style="background:var(--${bg});color:var(--${fg})">${ICO[g.ico]}</span>${esc(g.t)}</h3><dl>${Object.entries(MOTIVOS).filter(([, m]) => m[0] === k).map(([c, m]) => `<dt>${esc(m[1])} <span class="mono muted small">${c}</span></dt><dd>${esc(m[2])}</dd>`).join('')}</dl></section>`; }).join('')}</div></div>`;
+  $('#b-bienv').onclick = () => bienvenida(true);
+}
+function bienvenida(forzar = false) {
+  try { if (!forzar && localStorage.getItem('facturas_bienvenida')) return; localStorage.setItem('facturas_bienvenida', '1'); } catch { if (!forzar) return; }
+  let i = 0;
+  const pintar = (el, cerrar) => {
+    const [ic, t, d] = PASOS_GUIA[i];
+    el.innerHTML = `<div class="bienv"><span class="bienv-ico">${ICO[ic]}</span><span class="et">Paso ${i + 1} de ${PASOS_GUIA.length}</span><h2>${esc(t)}</h2><p class="muted">${esc(d)}</p>
+      <div class="puntos">${PASOS_GUIA.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="acciones" style="justify-content:space-between;width:100%"><button class="btn btn-ghost" id="bv-salt">${i === PASOS_GUIA.length - 1 ? '' : 'Saltar'}</button>
+        <span class="acciones">${i ? `<button class="btn" id="bv-ant">${ICO.back}Atrás</button>` : ''}<button class="btn btn-acento" id="bv-sig">${i === PASOS_GUIA.length - 1 ? 'Empezar' : 'Siguiente'} ${ICO.arrow}</button></span></div></div>`;
+    $('#bv-sig', el).onclick = () => { if (i === PASOS_GUIA.length - 1) return cerrar(); i++; pintar(el, cerrar); };
+    const a = $('#bv-ant', el); if (a) a.onclick = () => { i--; pintar(el, cerrar); };
+    $('#bv-salt', el).onclick = cerrar;
+  };
+  modal('<div></div>', { alMontar: (el, cerrar) => pintar(el, cerrar) });
 }
