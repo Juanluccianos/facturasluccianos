@@ -225,6 +225,8 @@ const $$corto = (n) => { n = Number(n) || 0; return Math.abs(n) >= 1e6 ? '$ ' + 
 //  REVISADA: necesitó una persona (proveedor nuevo, cuenta, importes) → 3 min
 // ---------------------------------------------------------------------------
 const TIEMPOS = { manual: 5, auto: 0.5, revisada: 3 };
+// Minutos ahorrados por un grupo de facturas cargadas: cada una según cómo entró (sola o revisada). No cambia después.
+function ahorro(n, solas) { n = Number(n) || 0; solas = Math.min(Number(solas) || 0, n); return solas * (TIEMPOS.manual - TIEMPOS.auto) + (n - solas) * (TIEMPOS.manual - TIEMPOS.revisada); }
 function minutosSistema(pctAuto) { const p = pctAuto == null ? 0.5 : pctAuto / 100; return p * TIEMPOS.auto + (1 - p) * TIEMPOS.revisada; }
 function fmtDuracion(min) { min = Math.round(min); if (min < 60) return min + ' min'; const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + m + ' min' : ''); }
 
@@ -525,8 +527,8 @@ async function vistaTablero(el) {
     <div class="kpis">
       <div class="kpi"><div class="et">Sin intervención</div><div class="val">${pct === null ? '—' : pct + '%'}</div><div class="sub">${t.automatico_mes.ok} de ${t.automatico_mes.total} en el mes · meta 80–90%<br><a href="#/proveedores" style="color:inherit">${t.proveedores_configurados} proveedores se leen solos</a></div>
         <div class="medidor"><i style="width:${pct || 0}%;background:var(--accent)"></i><b style="left:80%"></b><b style="left:90%"></b></div></div>
-      <div class="kpi" title="Manual ≈ ${TIEMPOS.manual} min por factura · con el sistema ≈ ${minutosSistema(pct).toFixed(1).replace('.', ',')} min (sola ${TIEMPOS.auto} · revisada ${TIEMPOS.revisada})"><div class="et">Tiempo ahorrado</div><div class="val">${fmtDuracion(t.cargadas_mes * (TIEMPOS.manual - minutosSistema(pct)))}</div>
-        <div class="sub">este mes · ${fmtDuracion(pe('cargada').n * (TIEMPOS.manual - minutosSistema(pct)))} desde el inicio<br>~${String(+(TIEMPOS.manual - minutosSistema(pct)).toFixed(1)).replace('.', ',')} min por factura cargada</div></div>
+      <div class="kpi" title="Cada factura cargada suma según cómo entró: sola ${String(TIEMPOS.manual - TIEMPOS.auto).replace('.', ',')} min ahorrados (${TIEMPOS.manual} manual − ${String(TIEMPOS.auto).replace('.', ',')}) · revisada ${TIEMPOS.manual - TIEMPOS.revisada} min (${TIEMPOS.manual} − ${TIEMPOS.revisada})"><div class="et">Tiempo ahorrado</div><div class="val">${fmtDuracion(ahorro(t.cargadas_mes, t.cargadas_solas_mes))}</div>
+        <div class="sub">este mes · ${fmtDuracion(ahorro(t.cargadas_total ?? pe('cargada').n, t.cargadas_solas_total))} desde el inicio<br>~${t.cargadas_mes ? String(+(ahorro(t.cargadas_mes, t.cargadas_solas_mes) / t.cargadas_mes).toFixed(1)).replace('.', ',') : '—'} min por factura cargada</div></div>
       <a class="kpi" href="#/facturas" data-orden="vto"><div class="et">Vencen en 7 días</div><div class="val">${$$corto(t.vencen_7_dias.monto)}</div><div class="sub">${t.vencen_7_dias.n} factura(s)</div></a>
       <div class="kpi"><div class="et">Lectura del mes</div><div class="val">${Object.values(lect).reduce((a, b) => a + b, 0)}</div><div class="sub">${lect.plantilla || 0} por configuración · ${lect.reglas || 0} reglas · ${lect.ia || 0} IA</div>
         <div class="medidor"><i style="width:${pLect('plantilla')}%;background:var(--accent)"></i><i style="width:${pLect('reglas')}%;background:var(--info)"></i><i style="width:${pLect('ia')}%;background:var(--warn)"></i></div></div>
