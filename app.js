@@ -145,21 +145,131 @@ async function salir(llamarApi = true) {
   vistaLogin();
 }
 
+// ---------------------------------------------------------------------------
+//  Íconos (trazo de 2px, estilo feather) y avatares
+// ---------------------------------------------------------------------------
+const svgI = (p) => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICO = {
+  home: svgI('<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'),
+  inbox: svgI('<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'),
+  doc: svgI('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'),
+  send: svgI('<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>'),
+  users: svgI('<path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="9" cy="8" r="4"/><path d="M17 11a3 3 0 1 0 0-6M21 21v-2a4 4 0 0 0-3-3.87"/>'),
+  gear: svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  search: svgI('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'),
+  upload: svgI('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>'),
+  refresh: svgI('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>'),
+  logout: svgI('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'),
+  check: svgI('<path d="M20 6 9 17l-5-5"/>'),
+  arrow: svgI('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+  back: svgI('<path d="M19 12H5M11 18l-6-6 6-6"/>'),
+  user: svgI('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>'),
+  copy: svgI('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
+  shield: svgI('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>'),
+  calc: svgI('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/>'),
+  x: svgI('<path d="M6 6l12 12M18 6 6 18"/>'),
+  mail: svgI('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>'),
+  sparkle: svgI('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'),
+  sun: svgI('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  moon: svgI('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+  info: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>'),
+  alert: svgI('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
+  coin: svgI('<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2a2.6 2.6 0 0 1-2.5-1.5M12 6.5V8M12 16v1.5"/>'),
+  clock: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+};
+const COLORES_AV = ['#b0254a', '#2d5bba', '#1f7a45', '#a85a07', '#6b4bb8', '#0f7d86', '#7a4a2e', '#c0392b'];
+const iniciales = (s) => String(s || '?').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2 && !/^(SRL|SAS|S\.?A\.?|SA|SOCIEDAD|ANONIMA)$/i.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase() || String(s || '?').slice(0, 1).toUpperCase();
+const colorDe = (s) => COLORES_AV[[...String(s || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORES_AV.length];
+const cuad = (s) => `<span class="cuad" style="background:${colorDe(s)}" aria-hidden="true">${esc(iniciales(s))}</span>`;
+const nombreProv = (f) => f.razon_social_emisor || (f.mail_from || '').replace(/<.*>/, '').replace(/"/g, '').trim() || f.archivo_nombre || 'Sin identificar';
+const $$corto = (n) => { n = Number(n) || 0; return Math.abs(n) >= 1e6 ? '$ ' + (n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M' : $$m(n); };
+
+// Tema claro/oscuro (lo inicializa index.html antes de pintar)
+function temaActual() { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
+function alternarTema() {
+  const nuevo = temaActual() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = nuevo;
+  try { localStorage.setItem('facturas_tema', nuevo); } catch { }
+  const b = $('#b-tema'); if (b) b.innerHTML = nuevo === 'dark' ? ICO.sun : ICO.moon;
+}
+
+// ---------------------------------------------------------------------------
+//  Motivos en criollo: cada código de excepción → grupo, título y tono
+// ---------------------------------------------------------------------------
+const GRUPOS = {
+  nuevo: { t: 'Proveedor nuevo', ico: 'user', tono: 'acc', orden: 2 },
+  duplicado: { t: 'Ya cargada', ico: 'copy', tono: 'neg', orden: 1 },
+  cuenta: { t: 'Falta la cuenta', ico: 'coin', tono: 'acc', orden: 3 },
+  importes: { t: 'Revisar importes', ico: 'calc', tono: 'warn', orden: 4 },
+  arca: { t: 'ARCA', ico: 'shield', tono: 'info', orden: 5 },
+  manual: { t: 'Cargar a mano', ico: 'doc', tono: 'warn', orden: 6 },
+  lectura: { t: 'Leyendo', ico: 'clock', tono: 'info', orden: 7 },
+};
+const MOTIVOS = {
+  PROVEEDOR_NUEVO: ['nuevo', 'Proveedor nuevo', 'Primera factura: confirmá el desglose y la cuenta. Las próximas se leen solas.'],
+  FORMATO_CAMBIO: ['nuevo', 'Cambió el formato', 'El proveedor cambió su factura: confirmá que se leyó bien.'],
+  PROVEEDOR_DESCONOCIDO: ['nuevo', 'No está en el maestro', 'Dalo de alta para poder cargarla en Shares.'],
+  PROVEEDOR_COND_IVA: ['nuevo', 'Falta condición de IVA', 'Completala en la ficha del proveedor.'],
+  YA_EN_SHARES: ['duplicado', 'Ya está en Shares', 'Alguien la cargó antes: rechazala como duplicada.'],
+  DUPLICADO: ['duplicado', 'Posible duplicado', 'Ya entró otra igual por la casilla.'],
+  IMPUTACION: ['cuenta', 'Confirmar la cuenta', 'Elegí o confirmá la cuenta contable.'],
+  CUENTA_INEXISTENTE: ['cuenta', 'Cuenta fuera del plan', 'La cuenta no existe en el plan de Shares.'],
+  FISCAL_MAPEO: ['cuenta', 'Percepción sin cuenta', 'Hay una percepción que no sabemos dónde imputar.'],
+  ARITMETICA: ['importes', 'Los importes no cierran', 'La suma de los componentes no da el total.'],
+  QR_INCONSISTENTE: ['importes', 'No coincide con el QR', 'Lo leído no coincide con el QR de ARCA.'],
+  MONEDA: ['importes', 'Moneda extranjera', 'Revisá el tipo de cambio: a Shares va en pesos.'],
+  FECHA: ['importes', 'Fecha rara', 'La fecha está fuera del rango esperado.'],
+  CBU: ['importes', 'CBU distinto', 'El CBU no es el del maestro: ojo antes de pagar.'],
+  CBU_NUEVO: ['importes', 'CBU nuevo', 'Primera vez que vemos este CBU.'],
+  ARCA_RECHAZADO: ['arca', 'ARCA no valida el CAE', 'El comprobante no figura en ARCA como emitido.'],
+  ARCA_ERROR: ['arca', 'ARCA no respondió', 'Se reintenta sola cada 15 minutos.'],
+  ARCA_PENDIENTE: ['arca', 'Falta constatar en ARCA', 'Se reintenta sola cada 15 minutos.'],
+  ARCA_OFF: ['arca', 'ARCA apagado', 'La constatación está desactivada.'],
+  LECTURA: ['manual', 'No se pudo leer', 'Completá los datos mirando el PDF.'],
+  NO_ES_FACTURA: ['manual', 'No parece una factura', 'Puede ser un remito, un resumen o publicidad.'],
+  TIPO_NO_SOPORTADO: ['manual', 'Tipo no contemplado', 'Este tipo de comprobante no se carga automático.'],
+  FACTURA_B: ['manual', 'Factura B', 'Nos facturaron B: revisá si corresponde.'],
+  DESTINATARIO: ['manual', 'Emitida a otro CUIT', 'No está a nombre de una empresa del grupo.'],
+  SHARES_CONSULTA: ['manual', 'No se pudo consultar Shares', 'No pudimos chequear si ya estaba cargada.'],
+};
+const motivo = (cod) => { const m = MOTIVOS[cod] || ['manual', cod, '']; return { ...GRUPOS[m[0]], grupoT: GRUPOS[m[0]].t, g: m[0], t: m[1], d: m[2], titulo: m[1] }; };
+// DESC_EXC se mantiene para compatibilidad (tablas viejas, CSV)
+const DESC_EXC = Object.fromEntries(Object.entries(MOTIVOS).map(([k, v]) => [k, v[1]]));
+const TONO_BADGE = { acc: 'b-acc', warn: 'b-warn', neg: 'b-critica', info: 'b-recibida' };
+
+// Motivo principal de una factura (el más grave / prioritario)
+function motivoPrincipal(f) {
+  if (['recibida', 'leyendo'].includes(f.estado)) return { ...GRUPOS.lectura, g: 'lectura', titulo: 'Leyendo', d: f.error_proceso ? 'Último error: ' + f.error_proceso : 'El lector la procesa en minutos.' };
+  const cods = (f.excepciones || '').split(',').filter(Boolean).map(x => { const [c, sev] = x.split(':'); return { c, sev, m: motivo(c) }; });
+  if (!cods.length) return { ...GRUPOS.manual, g: 'manual', titulo: 'Revisar', d: f.error_proceso || 'Abrila para ver el detalle.' };
+  cods.sort((a, b) => (a.sev === 'critica' ? 0 : 1) - (b.sev === 'critica' ? 0 : 1) || a.m.orden - b.m.orden);
+  const p = cods[0].m;
+  return { ...p, extra: cods.length - 1, codigos: cods.map(x => x.c) };
+}
+
+// ---------------------------------------------------------------------------
+//  Login
+// ---------------------------------------------------------------------------
 async function vistaLogin() {
   let setup = false;
   try { setup = (await api('/api/estado')).setup_requerido; } catch (e) {
-    $('#app').innerHTML = `<div class="login"><div class="panel"><h1>Sin conexión</h1><p>No pude conectar con el servidor (${esc(API)}).<br>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Reintentar</button></div></div>`;
+    $('#app').innerHTML = `<div class="login"><div class="login-arte"><img src="logo-negro.png" alt="Lucciano's"><div></div></div>
+      <div class="login-form"><div class="caja"><h1>Sin conexión</h1><p>No pude conectar con el servidor (${esc(API)}).<br>${esc(e.message)}</p><button class="btn btn-acento btn-grande" onclick="location.reload()">${ICO.refresh}Reintentar</button></div></div></div>`;
     return;
   }
-  $('#app').innerHTML = `<div class="login"><form class="panel" id="f-login">
-    <h1>${setup ? 'Primer ingreso' : 'Facturas de proveedores'}</h1>
-    <p>${setup ? 'Creá el usuario administrador.' : "Lucciano's · Administración"}</p>
-    ${setup ? '<div class="campo"><label>Nombre</label><input name="nombre" required autocomplete="name"></div>' : ''}
-    <div class="campo"><label>Email</label><input name="email" type="email" required autocomplete="username"></div>
-    <div class="campo"><label>Contraseña</label><input name="password" type="password" required autocomplete="${setup ? 'new-password' : 'current-password'}" minlength="${setup ? 10 : 1}"></div>
-    <div class="campo hidden" id="c-totp"><label>Código de doble factor</label><input name="totp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
-    <button class="btn btn-negro" style="width:100%" type="submit">${setup ? 'Crear y entrar' : 'Ingresar'}</button>
-  </form></div>`;
+  $('#app').innerHTML = `<div class="login">
+    <div class="login-arte"><img src="logo-negro.png" alt="Lucciano's">
+      <div><h2>Las facturas de proveedores, sin tipear.</h2><p>Llegan por mail, se leen solas, se validan contra ARCA y quedan listas para Shares. Vos solo mirás lo que necesita una persona.</p></div>
+      <div class="pasos"><span>${ICO.mail}Llega por mail</span><span>${ICO.sparkle}Se lee sola</span><span>${ICO.shield}ARCA la valida</span><span>${ICO.send}Va a Shares</span></div></div>
+    <div class="login-form"><form id="f-login">
+      <h1>${setup ? 'Primer ingreso' : 'Ingresar'}</h1>
+      <p>${setup ? 'Creá el usuario administrador.' : "Usá tu mail de Lucciano's."}</p>
+      ${setup ? '<div class="campo"><label for="lg-n">Nombre</label><input id="lg-n" name="nombre" required autocomplete="name"></div>' : ''}
+      <div class="campo"><label for="lg-u">Mail</label><input id="lg-u" name="email" type="email" required autocomplete="username"></div>
+      <div class="campo"><label for="lg-p">Contraseña</label><input id="lg-p" name="password" type="password" required autocomplete="${setup ? 'new-password' : 'current-password'}" minlength="${setup ? 10 : 1}"></div>
+      <div class="campo hidden" id="c-totp"><label for="lg-t">Código de verificación</label><input id="lg-t" name="totp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="mono"></div>
+      <button class="btn btn-acento btn-grande" type="submit">${setup ? 'Crear y entrar' : 'Entrar'} ${ICO.arrow}</button>
+    </form></div></div>`;
   $('#f-login').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target));
@@ -174,32 +284,68 @@ async function vistaLogin() {
 }
 
 // ---------------------------------------------------------------------------
-//  Shell + router
+//  Shell (barra lateral + barra superior + menú inferior en celular) y router
 // ---------------------------------------------------------------------------
 const RUTAS = [
-  { re: /^#\/tablero$/, v: vistaTablero, nav: 'tablero' },
-  { re: /^#\/bandeja$/, v: vistaBandeja, nav: 'bandeja' },
-  { re: /^#\/facturas$/, v: vistaFacturas, nav: 'facturas' },
-  { re: /^#\/factura\/(\d+)$/, v: vistaFactura, nav: 'bandeja' },
-  { re: /^#\/shares$/, v: vistaShares, nav: 'shares' },
-  { re: /^#\/proveedores$/, v: vistaProveedores, nav: 'proveedores' },
-  { re: /^#\/admin$/, v: vistaAdmin, nav: 'admin' },
-  { re: /^#\/cuenta$/, v: vistaMiCuenta, nav: '' },
+  { re: /^#\/tablero$/, v: vistaTablero, nav: 'tablero', miga: '<b>Inicio</b>' },
+  { re: /^#\/bandeja$/, v: vistaBandeja, nav: 'bandeja', miga: 'Trabajo / <b>Para revisar</b>' },
+  { re: /^#\/facturas$/, v: vistaFacturas, nav: 'facturas', miga: 'Trabajo / <b>Todas las facturas</b>' },
+  { re: /^#\/factura\/(\d+)$/, v: vistaFactura, nav: 'bandeja', miga: 'Trabajo / <b>Factura</b>' },
+  { re: /^#\/shares$/, v: vistaShares, nav: 'shares', miga: 'Trabajo / <b>Enviar a Shares</b>' },
+  { re: /^#\/proveedores$/, v: vistaProveedores, nav: 'proveedores', miga: 'Datos / <b>Proveedores</b>' },
+  { re: /^#\/admin$/, v: vistaAdmin, nav: 'admin', miga: 'Datos / <b>Configuración</b>' },
+  { re: /^#\/cuenta$/, v: vistaMiCuenta, nav: '', miga: '<b>Mi cuenta</b>' },
 ];
 
-function shell(navActivo) {
-  const items = [
-    ['tablero', 'Tablero'], ['bandeja', 'Bandeja'], ['facturas', 'Facturas'],
-    ...(puede('aprobador') ? [['shares', 'Enviar a Shares']] : []),
-    ['proveedores', 'Proveedores'],
-    ...(puede('admin') ? [['admin', 'Admin']] : []),
-  ];
-  return `<header class="top">
-    <a class="marca" href="#/tablero"><b>LUCCIANO'S</b><span>Facturas proveedores</span></a>
-    <nav class="nav">${items.map(([k, t]) => `<a href="#/${k}" class="${k === navActivo ? 'activo' : ''}">${t}</a>`).join('')}</nav>
-    <div class="usuario"><a href="#/cuenta" class="nombre">${esc(S.user.nombre)}</a><span class="badge b-aviso">${esc(S.user.rol)}</span><button class="btn btn-chico" id="b-salir">Salir</button></div>
-  </header><main id="vista"><div class="vacio"><span class="cargando"></span></div></main>`;
+function shell(ruta) {
+  const a = ruta.nav;
+  const it = (k, ic, t, cnt = '') => `<a href="#/${k}" class="${k === a ? 'activo' : ''}" ${k === a ? 'aria-current="page"' : ''}>${ICO[ic]}<span>${t}</span>${cnt}</a>`;
+  const rol = { admin: 'Administrador', aprobador: 'Aprobador', carga: 'Carga' }[S.user.rol] || S.user.rol;
+  const arcaOk = S.arca && S.arca !== 'off';
+  return `<div class="app">
+    <aside class="side">
+      <a class="brand" href="#/tablero"><img src="logo-negro.png" alt="Lucciano's"><span>Facturas de proveedores</span></a>
+      <nav class="nav" aria-label="Secciones">
+        ${it('tablero', 'home', 'Inicio')}
+        <div class="grp-t">Trabajo</div>
+        ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
+        ${puede('aprobador') ? it('shares', 'send', 'Enviar a Shares', '<span class="cnt" data-cnt="lista"></span>') : ''}
+        ${it('facturas', 'doc', 'Todas las facturas')}
+        <div class="grp-t">Datos</div>
+        ${it('proveedores', 'users', 'Proveedores')}
+        ${puede('admin') ? it('admin', 'gear', 'Configuración') : ''}
+      </nav>
+      <div class="me"><a class="av" href="#/cuenta" title="Mi cuenta">${esc(iniciales(S.user.nombre))}</a>
+        <a class="who" href="#/cuenta"><b>${esc(S.user.nombre)}</b><small>${esc(rol)}</small></a>
+        <div class="ibtns"><button class="ibtn" id="b-tema" title="Claro / oscuro" aria-label="Cambiar tema">${temaActual() === 'dark' ? ICO.sun : ICO.moon}</button><button class="ibtn" id="b-salir" title="Salir" aria-label="Salir">${ICO.logout}</button></div></div>
+    </aside>
+    <div style="min-width:0">
+      <header class="top"><img class="marca-m" src="logo-negro.png" alt="Lucciano's"><div class="crumbs">${ruta.miga}</div>
+        <label class="buscar">${ICO.search}<input id="buscar-global" placeholder="Buscar factura, proveedor o CUIT…" aria-label="Buscar"><kbd>Ctrl K</kbd></label>
+        <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div></header>
+      <main id="vista" class="entra"><div class="vacio"><span class="cargando"></span></div></main>
+    </div></div>
+    <nav class="mnav" aria-label="Secciones">
+      <a href="#/tablero" class="${a === 'tablero' ? 'activo' : ''}">${ICO.home}Inicio</a>
+      <a href="#/bandeja" class="${a === 'bandeja' ? 'activo' : ''}">${ICO.inbox}Revisar<span class="cnt hot" data-cnt="revisar"></span></a>
+      ${puede('aprobador') ? `<a href="#/shares" class="${a === 'shares' ? 'activo' : ''}">${ICO.send}Shares</a>` : ''}
+      <a href="#/facturas" class="${a === 'facturas' ? 'activo' : ''}">${ICO.doc}Facturas</a>
+      <a href="#/proveedores" class="${a === 'proveedores' ? 'activo' : ''}">${ICO.users}Proveed.</a>
+    </nav>`;
 }
+
+// Contadores de la barra lateral (se cachean 60 s para no gastar lecturas de D1)
+async function contadores(t = null) {
+  try {
+    if (!t) {
+      if (S.cnt && Date.now() - S.cnt.at < 60000) return pintarContadores(S.cnt);
+      t = await api('/api/tablero');
+    }
+    S.cnt = { at: Date.now(), revisar: t.por_estado?.excepcion?.n || 0, lista: (t.por_estado?.lista?.n || 0) + (t.por_estado?.error_shares?.n || 0) };
+    pintarContadores(S.cnt);
+  } catch { /* no es crítico */ }
+}
+function pintarContadores(c) { $$('[data-cnt]').forEach(x => { const n = c[x.dataset.cnt]; x.textContent = n ? n : ''; }); }
 
 async function router() {
   if (!S.token) return vistaLogin();
@@ -207,11 +353,22 @@ async function router() {
   const h = location.hash || '#/tablero';
   const r = RUTAS.find(x => x.re.test(h)) || RUTAS[0];
   const m = h.match(r.re) || [];
-  $('#app').innerHTML = shell(r.nav);
+  $('#app').innerHTML = shell(r);
   $('#b-salir').onclick = () => salir();
+  $('#b-tema').onclick = alternarTema;
+  const bg = $('#buscar-global');
+  bg.onkeydown = (e) => {
+    if (e.key !== 'Enter' || !bg.value.trim()) return;
+    const q = bg.value.trim();
+    if (/^#?\d{1,6}$/.test(q)) { location.hash = '#/factura/' + q.replace('#', ''); return; }
+    sessionStorage.setItem('facturas_q', q);
+    if (location.hash === '#/facturas') router(); else location.hash = '#/facturas';
+  };
   S.vista = h;
+  window.scrollTo(0, 0);
+  if (r.nav !== 'tablero') contadores();
   try { await r.v($('#vista'), ...m.slice(1)); }
-  catch (e) { if (S.token) $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p></div>`; }
+  catch (e) { if (S.token && $('#vista')) $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p></div>`; }
 }
 
 async function iniciar() {
@@ -226,55 +383,94 @@ async function iniciar() {
 window.addEventListener('hashchange', router);
 document.addEventListener('DOMContentLoaded', iniciar);
 
+// Atajos: Ctrl K busca; en "Para revisar" J/K se mueven, Enter abre, / busca
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { const b = $('#buscar-global'); if (b) { e.preventDefault(); b.focus(); b.select(); } return; }
+  if (location.hash !== '#/bandeja' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || !$('#modal').hidden) return;
+  const filas = $$('.cola .qi');
+  if (!filas.length) return;
+  let i = filas.findIndex(x => x.classList.contains('sel'));
+  if (e.key === 'j' || e.key === 'ArrowDown') i = Math.min(filas.length - 1, i + 1);
+  else if (e.key === 'k' || e.key === 'ArrowUp') i = Math.max(0, i - 1);
+  else if (e.key === 'Enter' && i >= 0) { location.hash = filas[i].getAttribute('href'); return; }
+  else if (e.key === '/') { e.preventDefault(); $('#q')?.focus(); return; }
+  else return;
+  e.preventDefault();
+  filas.forEach((x, k) => x.classList.toggle('sel', k === i));
+  filas[i].scrollIntoView({ block: 'nearest' });
+});
+
 // ---------------------------------------------------------------------------
-//  Tablero
+//  Inicio
 // ---------------------------------------------------------------------------
 async function vistaTablero(el) {
-  const t = await api('/api/tablero');
+  const [t, ult] = await Promise.all([api('/api/tablero'), api('/api/facturas?limite=6&orden=id').catch(() => ({ facturas: [] }))]);
+  contadores(t);
   const pe = (k) => t.por_estado[k] || { n: 0, monto: 0 };
   const pct = t.automatico_mes.pct;
+  const nRev = pe('excepcion').n, nLeyendo = pe('recibida').n + pe('leyendo').n, nErr = pe('error_shares').n;
+  const hora = new Date().getHours();
+  const saludo = hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const hoyTxt = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  // Motivos agrupados en criollo
+  const grupos = {};
+  for (const x of t.top_excepciones) { const m = motivo(x.codigo); grupos[m.g] = grupos[m.g] || { ...m, t: m.grupoT, n: 0, cods: [] }; grupos[m.g].n += x.n; grupos[m.g].cods.push(x.codigo); }
+  const lg = Object.entries(grupos).sort((a, b) => b[1].n - a[1].n);
+  const maxG = Math.max(1, ...lg.map(([, g]) => g.n));
+  const lect = t.lectura_mes || {};
+  const totLect = Object.values(lect).reduce((a, b) => a + b, 0) || 1;
+  const pLect = (k) => Math.round(100 * (lect[k] || 0) / totLect);
+  const tonoVar = (tono) => tono === 'acc' ? ['accent-soft', 'accent-ink', 'accent'] : [tono + '-bg', tono, tono];
+
   el.innerHTML = `
     <div class="encabezado">
-      <div><h1>Tablero</h1><p>Hoy ${fmtF(t.hoy)} · ARCA: ${esc(S.arca === 'off' ? 'sin constatación' : S.arca)}</p></div>
-      <div class="acciones"><button class="btn btn-negro" id="b-subir">Subir factura</button><button class="btn" id="b-procesar">Leer pendientes ahora</button></div>
+      <div><h1>${saludo}, ${esc(String(S.user.nombre).split(' ')[0])}</h1><p>${esc(hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1))} · el lector revisa la casilla cada 15 minutos</p></div>
+      <div class="acciones"><button class="btn" id="b-procesar">${ICO.refresh}Leer pendientes</button><button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div>
     </div>
+    <section class="hero ${nRev ? '' : 'tranqui'}">
+      <div><span class="et">Para revisar ahora</span>
+        <h2>${nRev ? `${nRev} ${nRev === 1 ? 'factura espera' : 'facturas esperan'} una persona` : 'No hay nada para revisar'}</h2>
+        <p>${nRev ? 'Todo lo demás entró solo. Arrancá por los proveedores nuevos: al confirmarlos, sus próximas facturas se cargan sin intervención.' : 'Todas las facturas que entraron pasaron los controles. Podés revisar las que están listas para Shares.'}</p>
+        ${lg.length ? `<div class="motivos">${lg.map(([, g]) => `<span>${g.n} · ${esc(g.t.toLowerCase())}</span>`).join('')}</div>` : ''}</div>
+      <div class="lado"><span class="grande">${nRev}</span>${nRev ? `<a class="btn btn-acento btn-grande" href="#/bandeja">Empezar a revisar ${ICO.arrow}</a>` : puede('aprobador') && pe('lista').n ? `<a class="btn btn-acento btn-grande" href="#/shares">Ver listas para Shares ${ICO.arrow}</a>` : ''}</div>
+    </section>
+    <nav class="panel recorrido" aria-label="Recorrido de las facturas">
+      <a href="#/facturas"><h3>Recibidas hoy</h3><div class="v">${t.recibidas_hoy}</div><div class="s">${t.recibidas_mes} en el mes</div></a>
+      <a href="#/facturas" data-estado="recibida"><h3>Leyendo</h3><div class="v">${nLeyendo}</div><div class="s">tardan 1–2 minutos</div></a>
+      <a href="#/bandeja" class="${nRev ? 'act' : ''}"><h3>Para revisar</h3><div class="v">${nRev}</div><div class="s">${$$corto(pe('excepcion').monto)}</div></a>
+      <a href="${puede('aprobador') ? '#/shares' : '#/facturas'}" class="bien"><h3>Listas para Shares</h3><div class="v">${pe('lista').n}</div><div class="s">${$$corto(pe('lista').monto)}</div></a>
+      <a href="${nErr ? '#/shares' : '#/facturas'}" class="${nErr ? 'mal' : ''}"><h3>Cargadas en el mes</h3><div class="v">${t.cargadas_mes}</div><div class="s">${nErr ? `${nErr} con error de Shares` : `${pe('cargada').n} en total`}</div></a>
+    </nav>
     <div class="kpis">
-      <a class="kpi" href="#/facturas"><div class="et">Recibidas hoy</div><div class="val">${t.recibidas_hoy}</div><div class="sub">${t.recibidas_mes} en el mes</div></a>
-      <a class="kpi" href="#/facturas"><div class="et">En cola de lectura</div><div class="val">${pe('recibida').n + pe('leyendo').n}</div><div class="sub">el lector pasa cada 15 min</div></a>
-      <a class="kpi ${pe('excepcion').n ? 'alerta' : ''}" href="#/bandeja"><div class="et">En excepción</div><div class="val">${pe('excepcion').n}</div><div class="sub">${$$m(pe('excepcion').monto)}</div></a>
-      <a class="kpi ok" href="${puede('aprobador') ? '#/shares' : '#/facturas'}"><div class="et">Listas para Shares</div><div class="val">${pe('lista').n}</div><div class="sub">${$$m(pe('lista').monto)}</div></a>
-      <a class="kpi ${pe('error_shares').n ? 'alerta' : ''}" href="#/shares"><div class="et">Error Shares</div><div class="val">${pe('error_shares').n}</div><div class="sub">rechazadas por Shares</div></a>
-      <div class="kpi"><div class="et">Cargadas en el mes</div><div class="val">${t.cargadas_mes}</div><div class="sub">${pe('cargada').n} en total</div></div>
-      <div class="kpi"><div class="et">Sin intervención</div><div class="val">${pct === null ? '—' : pct + '%'}</div><div class="sub">${t.automatico_mes.ok} de ${t.automatico_mes.total} en el mes · meta 80–90%</div></div>
-      <a class="kpi" href="#/proveedores"><div class="et">Proveedores configurados</div><div class="val">${t.proveedores_configurados}</div><div class="sub">se leen solos, sin IA</div></a>
-      <div class="kpi"><div class="et">Lectura del mes</div><div class="val">${(t.lectura_mes.plantilla || 0)}</div><div class="sub">por configuración · ${t.lectura_mes.reglas || 0} reglas · ${t.lectura_mes.ia || 0} Gemini</div></div>
-      <div class="kpi"><div class="et">Vencen en 7 días</div><div class="val">${t.vencen_7_dias.n}</div><div class="sub">${$$m(t.vencen_7_dias.monto)}</div></div>
+      <div class="kpi"><div class="et">Sin intervención</div><div class="val">${pct === null ? '—' : pct + '%'}</div><div class="sub">meta 80–90% · ${t.automatico_mes.ok} de ${t.automatico_mes.total} en el mes</div>
+        <div class="medidor"><i style="width:${pct || 0}%;background:var(--accent)"></i><b style="left:80%"></b><b style="left:90%"></b></div></div>
+      <a class="kpi" href="#/proveedores"><div class="et">Proveedores que se leen solos</div><div class="val">${t.proveedores_configurados}</div><div class="sub">con configuración confirmada</div></a>
+      <a class="kpi" href="#/facturas" data-orden="vto"><div class="et">Vencen en 7 días</div><div class="val">${$$corto(t.vencen_7_dias.monto)}</div><div class="sub">${t.vencen_7_dias.n} factura(s)</div></a>
+      <div class="kpi"><div class="et">Lectura del mes</div><div class="val">${Object.values(lect).reduce((a, b) => a + b, 0)}</div><div class="sub">${lect.plantilla || 0} por configuración · ${lect.reglas || 0} reglas · ${lect.ia || 0} IA</div>
+        <div class="medidor"><i style="width:${pLect('plantilla')}%;background:var(--accent)"></i><i style="width:${pLect('reglas')}%;background:var(--info)"></i><i style="width:${pLect('ia')}%;background:var(--warn)"></i></div></div>
     </div>
-    <div class="panel">
-      <div class="panel-titulo"><h2>Motivos de excepción abiertos</h2><a class="btn btn-chico" href="#/bandeja">Ir a la bandeja</a></div>
-      ${t.top_excepciones.length ? `<table><tbody>${t.top_excepciones.map(x => `<tr class="click" data-cod="${esc(x.codigo)}"><td class="mono">${esc(x.codigo)}</td><td class="muted">${esc(DESC_EXC[x.codigo] || '')}</td><td class="num">${x.n}</td></tr>`).join('')}</tbody></table>`
-      : '<div class="vacio">No hay excepciones abiertas. 🎉</div>'}
+    <div class="dos">
+      <div class="panel"><div class="panel-titulo"><h2>Qué está trabando</h2><span class="ayuda">tocá un motivo para ver esas facturas</span></div>
+        ${lg.length ? `<ul class="traba">${lg.map(([k, g]) => { const [bg, fg, bar] = tonoVar(g.tono); return `<li data-grupo="${k}" tabindex="0"><span class="ico" style="background:var(--${bg});color:var(--${fg})">${ICO[g.ico]}</span>
+          <div><div class="t">${esc(g.t)}</div><div class="d">${esc(g.cods.map(c => motivo(c).t).join(' · '))}</div><div class="barrita"><i style="width:${Math.round(100 * g.n / maxG)}%;background:var(--${bar})"></i></div></div><span class="n">${g.n}</span></li>`; }).join('')}</ul>`
+        : `<div class="vacio"><span class="grande">Nada trabado</span>No hay excepciones abiertas.</div>`}</div>
+      <div class="panel"><div class="panel-titulo"><h2>Últimas que entraron</h2><a class="btn btn-ghost btn-chico" href="#/facturas">Ver todas</a></div>
+        ${ult.facturas.length ? `<ul class="feed">${ult.facturas.map(f => `<li data-id="${f.id}" tabindex="0">${cuad(nombreProv(f))}<div style="min-width:0"><div class="t">${esc(nombreProv(f))}</div><div class="d">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)} · ${esc(METODOS[f.lector_metodo] || 'sin leer')}</div></div>
+          <div class="r"><b>${f.total != null ? $$m(f.total) : '—'}</b>${badgeEstado(f.estado)}</div></li>`).join('')}</ul>` : '<div class="vacio">Todavía no entró ninguna factura.</div>'}</div>
     </div>`;
   $('#b-subir').onclick = modalSubir;
   const bp = $('#b-procesar');
-  if (bp) bp.onclick = () => conBoton(bp, async () => { const r = await api('/api/lector/disparar', { method: 'POST' }); toast(r.mensaje, !r.ok); });
-  $$('tr[data-cod]', el).forEach(tr => tr.onclick = () => { sessionStorage.setItem('bandeja_cod', tr.dataset.cod); location.hash = '#/bandeja'; });
+  bp.onclick = () => conBoton(bp, async () => { const r = await api('/api/lector/disparar', { method: 'POST' }); toast(r.mensaje, !r.ok); });
+  $$('.traba li', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; sessionStorage.setItem('bandeja_grupo', li.dataset.grupo); location.hash = '#/bandeja'; });
+  $$('.feed li', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; location.hash = '#/factura/' + li.dataset.id; });
+  $$('[data-orden]', el).forEach(a => a.onclick = () => sessionStorage.setItem('facturas_orden', a.dataset.orden));
+  $$('[data-estado]', el).forEach(a => a.onclick = () => sessionStorage.setItem('facturas_estado', a.dataset.estado));
 }
 
-const DESC_EXC = {
-  PROVEEDOR_NUEVO: 'Primera factura del proveedor: confirmar', FORMATO_CAMBIO: 'El proveedor cambió el formato de su factura',
-  LECTURA: 'No se pudo leer automáticamente', NO_ES_FACTURA: 'El PDF no es un comprobante', QR_INCONSISTENTE: 'El QR no coincide con lo leído',
-  ARCA_RECHAZADO: 'ARCA no valida el CAE', ARCA_ERROR: 'No se pudo consultar ARCA', ARCA_PENDIENTE: 'Falta constatar en ARCA',
-  DESTINATARIO: 'Emitida a otro CUIT', DUPLICADO: 'Posible duplicado', PROVEEDOR_DESCONOCIDO: 'Proveedor fuera del maestro',
-  PROVEEDOR_COND_IVA: 'Falta condición IVA', ARITMETICA: 'Los importes no cierran', MONEDA: 'Moneda extranjera', CBU: 'CBU distinto al del maestro',
-  IMPUTACION: 'Cuenta contable a definir/confirmar', CUENTA_INEXISTENTE: 'Cuenta fuera del plan', FISCAL_MAPEO: 'Percepción sin mapeo fiscal',
-  FECHA: 'Fecha fuera de rango', FACTURA_B: 'Factura B recibida', TIPO_NO_SOPORTADO: 'Tipo de comprobante no contemplado',
-};
-
 function modalSubir() {
-  modal(`<h2>Subir factura</h2><p class="muted">Para facturas que no llegaron por mail. Entran al mismo circuito (IA + validaciones).</p>
-    <label class="drop" id="drop"><input type="file" accept="application/pdf" multiple hidden id="f-pdf">Arrastrá PDFs acá o hacé clic para elegir</label>
-    <div id="sub-res" class="small" style="margin-top:12px"></div>`, {
+  modal(`<h2>Subir factura</h2><p class="muted">Para facturas que no llegaron por mail. Entran al mismo circuito: lectura, ARCA y controles.</p>
+    <label class="drop" id="drop"><input type="file" accept="application/pdf" multiple hidden id="f-pdf">${ICO.upload}<span>Arrastrá los PDF acá o <u>elegilos</u></span><small class="muted">Hasta 15 MB cada uno</small></label>
+    <div id="sub-res" class="small" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>`, {
     alMontar: (el) => {
       const drop = $('#drop', el), inp = $('#f-pdf', el), res = $('#sub-res', el);
       const subir = async (files) => {
@@ -300,70 +496,92 @@ function modalSubir() {
 }
 
 // ---------------------------------------------------------------------------
-//  Bandeja de excepciones y listado de facturas
+//  Para revisar (cola de trabajo) y listado de facturas
 // ---------------------------------------------------------------------------
 function chipsExc(s) {
   if (!s) return '';
-  return `<div class="chips">${s.split(',').map(x => { const [c, sev] = x.split(':'); return `<span class="badge b-${esc(sev)}" title="${esc(DESC_EXC[c] || '')}">${esc(c)}</span>`; }).join('')}</div>`;
+  return `<div class="chips">${s.split(',').map(x => { const [c, sev] = x.split(':'); const m = motivo(c); return `<span class="badge ${sev === 'critica' ? 'b-critica' : TONO_BADGE[m.tono]}" title="${esc(c + ' · ' + m.d)}">${esc(m.t)}</span>`; }).join('')}</div>`;
 }
 function filasFacturas(lista, { conExc = true } = {}) {
-  if (!lista.length) return `<tr><td colspan="9" class="vacio">No hay facturas para mostrar.</td></tr>`;
+  if (!lista.length) return `<tr><td colspan="8" class="vacio">No hay facturas para mostrar.</td></tr>`;
   return lista.map(f => `<tr class="click" data-id="${f.id}">
-    <td class="mono muted">#${f.id}</td>
+    <td><div class="prov">${cuad(nombreProv(f))}<div><b>${esc(nombreProv(f))}</b><small class="mono">${fmtCuit(f.cuit_emisor)} · #${f.id}</small></div></div></td>
     <td>${badgeEstado(f.estado)}</td>
-    <td><div>${esc(f.razon_social_emisor || f.mail_from || f.archivo_nombre || '—')}</div><div class="small muted mono">${fmtCuit(f.cuit_emisor)}</div></td>
     <td class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</td>
     <td class="mono">${fmtF(f.fecha_emision)}</td>
     <td class="mono">${fmtF(f.fecha_vto)}</td>
-    <td class="num">${f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : ''}${$$m(f.total)}</td>
-    ${conExc ? `<td>${chipsExc(f.excepciones)}${f.error_proceso && f.estado !== 'lista' ? `<div class="small muted">${esc(f.error_proceso).slice(0, 120)}</div>` : ''}</td>` : ''}
+    <td class="num"><b>${f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : ''}${$$m(f.total)}</b></td>
+    ${conExc ? `<td>${chipsExc(f.excepciones)}${f.error_proceso && !['lista', 'cargada'].includes(f.estado) ? `<div class="small muted">${esc(f.error_proceso).slice(0, 120)}</div>` : ''}</td>` : ''}
     <td class="small muted">${fmtFH(f.recibido_at)}</td>
   </tr>`).join('');
 }
 function encabezadoFacturas(conExc = true) {
-  return `<tr><th>#</th><th>Estado</th><th>Proveedor</th><th>Comprobante</th><th>Emisión</th><th>Vto.</th><th class="num">Total</th>${conExc ? '<th>Motivos</th>' : ''}<th>Recibida</th></tr>`;
+  return `<tr><th>Proveedor</th><th>Estado</th><th>Comprobante</th><th>Emisión</th><th>Vto.</th><th class="num">Total</th>${conExc ? '<th>Motivos</th>' : ''}<th>Recibida</th></tr>`;
 }
+function guardarCola(ids) { try { sessionStorage.setItem('cola_ids', JSON.stringify(ids)); } catch { } }
+function leerCola() { try { return JSON.parse(sessionStorage.getItem('cola_ids') || '[]'); } catch { return []; } }
 
 async function vistaBandeja(el) {
-  const cod = sessionStorage.getItem('bandeja_cod') || '';
-  el.innerHTML = `<div class="encabezado"><div><h1>Bandeja de excepciones</h1><p>Facturas que necesitan una persona. Abrí cada una, corregí y guardá: se revalida sola.</p></div>
-    <div class="acciones"><button class="btn" id="b-subir">Subir factura</button>${puede('aprobador') ? '<button class="btn" id="b-reval">Revalidar todas</button>' : ''}</div></div>
-    <div class="panel"><div class="filtros">
-      <div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Proveedor, CUIT, número, #id"></div>
-      <div class="campo"><label>Motivo</label><select id="cod"><option value="">Todos</option>${Object.keys(DESC_EXC).map(k => `<option ${k === cod ? 'selected' : ''} value="${k}">${k}</option>`).join('')}</select></div>
-      <div class="campo"><label>Incluir</label><select id="inc"><option value="excepcion">Solo excepciones</option><option value="excepcion,recibida,leyendo">+ en cola de lectura</option></select></div>
-    </div><div class="tabla-wrap"><table><thead>${encabezadoFacturas()}</thead><tbody id="tb"></tbody></table></div><div class="paginacion" id="pg"></div></div>`;
+  let grupo = sessionStorage.getItem('bandeja_grupo') || 'todas';
+  el.innerHTML = `<div class="encabezado"><div><h1>Para revisar</h1><p>Cada fila dice qué falta. Abrila, resolvé lo marcado y pasá a la siguiente.</p></div>
+    <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-reval">${ICO.refresh}Revalidar todas</button>` : ''}<button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div></div>
+    <div class="seg" role="tablist" id="seg"></div>
+    <div class="panel">
+      <div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Buscar proveedor, CUIT, número o #id" aria-label="Buscar"></label>
+        <div class="teclas"><span><kbd>J</kbd><kbd>K</kbd>moverse</span><span><kbd>Enter</kbd>abrir</span><span><kbd>/</kbd>buscar</span></div></div>
+      <div class="cola" id="cola"><div class="vacio"><span class="cargando"></span></div></div>
+      <div class="paginacion" id="pg"></div></div>`;
+  let todas = [];
+  const pintar = () => {
+    const q = $('#q').value.trim().toLowerCase();
+    const conM = todas.map(f => ({ f, m: motivoPrincipal(f) }));
+    const cuenta = {};
+    conM.forEach(x => { cuenta[x.m.g] = (cuenta[x.m.g] || 0) + 1; });
+    const nExc = conM.filter(x => x.m.g !== 'lectura').length;
+    if (grupo !== 'todas' && !cuenta[grupo]) grupo = 'todas';
+    const segs = [['todas', 'Todas', nExc], ...Object.entries(GRUPOS).filter(([k]) => cuenta[k]).sort((a, b) => a[1].orden - b[1].orden).map(([k, g]) => [k, g.t, cuenta[k]])];
+    $('#seg').innerHTML = segs.map(([k, t, n]) => `<button class="${grupo === k ? 'on' : ''}" data-g="${k}" role="tab" aria-selected="${grupo === k}">${esc(t)}<b>${n}</b></button>`).join('');
+    $$('#seg button').forEach(b => b.onclick = () => { grupo = b.dataset.g; sessionStorage.setItem('bandeja_grupo', grupo); pintar(); });
+    const lista = conM.filter(x => (grupo === 'todas' ? x.m.g !== 'lectura' : x.m.g === grupo))
+      .filter(({ f }) => !q || [nombreProv(f), f.cuit_emisor, String(f.numero ?? ''), '#' + f.id, String(f.id)].some(v => String(v || '').toLowerCase().includes(q.replace(/-/g, ''))));
+    guardarCola(lista.map(x => x.f.id));
+    $('#cola').innerHTML = lista.length ? lista.map(({ f, m }, i) => `<a class="qi ${i === 0 ? 'sel' : ''}" href="#/factura/${f.id}">
+      <span class="sev ${m.tono}"></span>${cuad(nombreProv(f))}
+      <div style="min-width:0"><div class="t">${esc(nombreProv(f))}</div><div class="d mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)} · ${fmtCuit(f.cuit_emisor)}</div></div>
+      <div class="porque"><span class="badge ${TONO_BADGE[m.tono]}">${esc(m.titulo)}${m.extra ? ` +${m.extra}` : ''}</span><small>${esc(m.d)}</small></div>
+      <div class="monto">${f.total != null ? (f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : '') + $$m(f.total) : '—'}<small>${f.fecha_emision ? 'emitida ' + fmtF(f.fecha_emision) : 'recibida ' + fmtFH(f.recibido_at)}</small></div>
+      <span class="btn btn-chico ir">Revisar ${ICO.arrow}</span></a>`).join('')
+      : `<div class="vacio"><span class="grande">${q ? 'Sin resultados' : '¡Bandeja limpia!'}</span>${q ? 'Probá con otro texto.' : 'No hay facturas esperando una persona.'}</div>`;
+    const tot = lista.reduce((a, x) => a + (Number(x.f.total) || 0), 0);
+    $('#pg').innerHTML = `<span>${lista.length} factura(s) · ${$$m(tot)}</span>${cuenta.lectura && grupo !== 'lectura' ? `<span>${cuenta.lectura} todavía leyéndose</span>` : ''}`;
+  };
   const cargar = async () => {
-    const p = new URLSearchParams({ estado: $('#inc').value, limite: 200, orden: 'id' });
-    if ($('#q').value.trim()) p.set('q', $('#q').value.trim());
-    if ($('#cod').value) p.set('codigo', $('#cod').value);
-    sessionStorage.setItem('bandeja_cod', $('#cod').value);
-    const r = await api('/api/facturas?' + p);
-    $('#tb').innerHTML = filasFacturas(r.facturas);
-    $('#pg').innerHTML = `<span>${r.total} factura(s) · ${$$m(r.monto)}</span>`;
-    $$('#tb tr[data-id]').forEach(tr => tr.onclick = () => { location.hash = '#/factura/' + tr.dataset.id; });
+    const r = await api('/api/facturas?' + new URLSearchParams({ estado: 'excepcion,recibida,leyendo', limite: 500, orden: 'id' }));
+    todas = r.facturas;
+    pintar();
   };
   let deb;
-  $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(cargar, 300); };
-  $('#cod').onchange = cargar; $('#inc').onchange = cargar;
+  $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(pintar, 120); };
   $('#b-subir').onclick = modalSubir;
   const br = $('#b-reval');
-  if (br) br.onclick = () => conBoton(br, async () => { const r = await api('/api/facturas/revalidar', { method: 'POST' }); toast(`Revalidadas: ${r.revalidadas}`); cargar(); });
+  if (br) br.onclick = () => conBoton(br, async () => { const r = await api('/api/facturas/revalidar', { method: 'POST' }); toast(`Revalidadas: ${r.revalidadas}`); S.cnt = null; contadores(); await cargar(); });
   await cargar();
 }
 
 async function vistaFacturas(el) {
-  el.innerHTML = `<div class="encabezado"><div><h1>Facturas</h1><p>Todas las facturas recibidas, con su PDF original a un clic.</p></div>
-    <div class="acciones"><button class="btn" id="b-csv">Exportar CSV</button></div></div>
+  const q0 = sessionStorage.getItem('facturas_q') || '', ord0 = sessionStorage.getItem('facturas_orden') || 'id', est0 = sessionStorage.getItem('facturas_estado') || '';
+  ['facturas_q', 'facturas_orden', 'facturas_estado'].forEach(k => sessionStorage.removeItem(k));
+  el.innerHTML = `<div class="encabezado"><div><h1>Todas las facturas</h1><p>Historial completo, con el PDF original a un clic.</p></div>
+    <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button><button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div></div>
     <div class="panel"><div class="filtros">
-      <div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Proveedor, CUIT, número, #id, remitente"></div>
-      <div class="campo"><label>Estado</label><select id="est"><option value="">Todos</option>${Object.entries(ESTADOS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
-      <div class="campo"><label>Emisión desde</label><input type="date" id="desde"></div>
-      <div class="campo"><label>Hasta</label><input type="date" id="hasta"></div>
-      <div class="campo"><label>Orden</label><select id="ord"><option value="id">Más recientes</option><option value="vto">Por vencimiento</option></select></div>
+      <div class="campo ancho"><label for="q">Buscar</label><input id="q" placeholder="Proveedor, CUIT, número, #id, remitente" value="${esc(q0)}"></div>
+      <div class="campo"><label for="est">Estado</label><select id="est"><option value="">Todos</option>${Object.entries(ESTADOS).map(([k, v]) => `<option value="${k}" ${k === est0 ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="campo"><label for="desde">Emisión desde</label><input type="date" id="desde"></div>
+      <div class="campo"><label for="hasta">Hasta</label><input type="date" id="hasta"></div>
+      <div class="campo"><label for="ord">Orden</label><select id="ord"><option value="id">Más recientes</option><option value="vto" ${ord0 === 'vto' ? 'selected' : ''}>Por vencimiento</option></select></div>
     </div><div class="tabla-wrap"><table><thead>${encabezadoFacturas()}</thead><tbody id="tb"></tbody></table></div>
-    <div class="paginacion"><span id="pg-info"></span><span class="acciones"><button class="btn btn-chico" id="ant">← Anterior</button><button class="btn btn-chico" id="sig">Siguiente →</button></span></div></div>`;
-  let pagina = 1, ultimo = null;
+    <div class="paginacion"><span id="pg-info"></span><span class="acciones"><button class="btn btn-chico" id="ant">${ICO.back}Anterior</button><button class="btn btn-chico" id="sig">Siguiente ${ICO.arrow}</button></span></div></div>`;
+  let pagina = 1;
   const params = (lim = 50) => {
     const p = new URLSearchParams({ limite: lim, pagina, orden: $('#ord').value });
     for (const [k, id] of [['q', 'q'], ['estado', 'est'], ['desde', 'desde'], ['hasta', 'hasta']]) if ($('#' + id).value.trim()) p.set(k, $('#' + id).value.trim());
@@ -371,8 +589,8 @@ async function vistaFacturas(el) {
   };
   const cargar = async () => {
     const r = await api('/api/facturas?' + params());
-    ultimo = r;
     $('#tb').innerHTML = filasFacturas(r.facturas);
+    guardarCola(r.facturas.map(f => f.id));
     const hasta = Math.min(r.pagina * r.limite, r.total);
     $('#pg-info').textContent = `${r.total ? (r.pagina - 1) * r.limite + 1 : 0}–${hasta} de ${r.total} · ${$$m(r.monto)}`;
     $('#ant').disabled = r.pagina <= 1; $('#sig').disabled = hasta >= r.total;
@@ -384,6 +602,7 @@ async function vistaFacturas(el) {
   ['est', 'desde', 'hasta', 'ord'].forEach(id => $('#' + id).onchange = reset);
   $('#ant').onclick = () => { pagina--; cargar(); };
   $('#sig').onclick = () => { pagina++; cargar(); };
+  $('#b-subir').onclick = modalSubir;
   $('#b-csv').onclick = () => conBoton($('#b-csv'), async () => {
     const pAnt = pagina; pagina = 1;
     const r = await api('/api/facturas?' + params(500)); pagina = pAnt;
@@ -393,7 +612,6 @@ async function vistaFacturas(el) {
     ]);
     if (r.total > 500) toast('Se exportaron las primeras 500. Filtrá por fechas para el resto.');
   });
-  void ultimo;
   await cargar();
 }
 
@@ -421,35 +639,100 @@ async function cargarPdf(id) {
   }
 }
 
+function posCola(id) {
+  const cola = leerCola(), i = cola.indexOf(Number(id));
+  return { i, n: cola.length, ant: i > 0 ? cola[i - 1] : null, sig: i >= 0 && i < cola.length - 1 ? cola[i + 1] : null };
+}
+const ORIGEN_CUENTA = { regla: 'Regla de imputación', shares: 'La que usa en Shares', proveedor: 'Cuenta habitual del proveedor', ia: 'Sugerida por Gemini', manual: 'Elegida por una persona' };
+
 function pintarFactura(el, r) {
   const f = r.factura, d = r.datos || vacioDatos(), c = d.comprobante || {}, im = d.importes || {};
   const editable = ['recibida', 'excepcion', 'lista', 'error_shares'].includes(f.estado);
   const abiertas = r.excepciones.filter(e => !e.resuelta && e.severidad !== 'aviso');
   const dis = editable ? '' : 'disabled';
   const inp = (name, val, extra = '') => `<input name="${name}" value="${esc(val ?? '')}" ${dis} ${extra}>`;
+  const pc = posCola(f.id);
+  const nombre = d.emisor?.razon_social || f.razon_social_emisor || f.archivo_nombre || 'Factura';
+  const tot = im.total || f.total;
+  const mon = (c.moneda || f.moneda) && (c.moneda || f.moneda) !== 'PES' ? (c.moneda || f.moneda) + ' ' : '';
+  const hay = (cod) => abiertas.some(e => e.codigo === cod);
+  const yAseguir = pc.sig && f.estado === 'excepcion' ? ' y seguir' : '';
+
+  // ---- Qué falta (tarea) ----
+  let tarea = '';
+  if (['recibida', 'leyendo'].includes(f.estado) && !r.datos) {
+    tarea = `<section class="tarea"><div class="panel-titulo"><h2>Se está leyendo</h2><span class="badge b-recibida">En cola</span></div><div class="cuerpo"><p>El lector (QR + configuración del proveedor) la procesa en su próximo ciclo, en 1–2 minutos.${f.error_proceso ? ' Último error: ' + esc(f.error_proceso) : ''}</p></div></section>`;
+  } else if (f.estado === 'rechazada') {
+    tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Rechazada</h2></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'Sin motivo registrado.')}</p></div></section>`;
+  } else if (f.estado === 'error_shares' && r.shares_respuesta) {
+    tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Shares no la aceptó</h2><span class="badge b-critica">HTTP ${esc(r.shares_respuesta.http_status)}</span></div><div class="cuerpo"><p>${esc(r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body).slice(0, 300))}</p></div></section>`;
+  } else if (abiertas.length) {
+    const critica = abiertas.some(e => e.severidad === 'critica');
+    const verSug = hay('IMPUTACION') || hay('PROVEEDOR_NUEVO') || hay('CUENTA_INEXISTENTE') || (d.imputacion?.origen === 'ia' && editable);
+    const cod = d.imputacion?.codigo_concepto;
+    tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Lo único que falta: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `Faltan ${abiertas.length} cosas`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
+      <div class="cuerpo">
+        ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}"><div class="txt"><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(e.mensaje)}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
+          ${editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar igual</button>` : ''}
+          ${e.codigo === 'PROVEEDOR_DESCONOCIDO' && puede('aprobador') ? `<button class="btn btn-chico btn-negro" id="b-alta-prov">Dar de alta</button>` : ''}</div>`; }).join('')}
+        ${verSug ? `<div class="sugerida"><span class="ico">${ICO.sparkle}</span><div style="min-width:0"><div class="cod">${esc(cod || 'Sin cuenta')}</div><div class="small">${esc(r.cuenta?.denominacion || nombreCuenta(cod) || 'Elegí una cuenta del plan')}</div></div>
+          <div class="src">${esc(ORIGEN_CUENTA[d.imputacion?.origen] || 'Sin definir')}${d.imputacion?.detalle ? `<br><b>${esc(d.imputacion.detalle)}</b>` : ''}</div></div>
+          ${editable ? `<button type="button" class="btn btn-ghost btn-chico" id="b-otra-cuenta" style="align-self:flex-start">Elegir otra cuenta</button>` : ''}` : ''}
+      </div></section>`;
+  } else if (f.estado === 'lista') {
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Pasó todos los controles. ${puede('aprobador') ? 'Podés enviarla ahora o junto con las demás desde “Enviar a Shares”.' : 'Un aprobador la envía a Shares.'}</p></div></section>`;
+  } else if (f.estado === 'cargada') {
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>No hay nada más que hacer con esta factura.</p></div></section>`;
+  }
+
+  // ---- Controles (checklist) ----
+  const items = [];
+  if (r.datos) items.push(['ok', ICO.check, 'Leída del PDF', METODOS[f.lector_metodo] || 'Datos cargados']);
+  if (r.qr) items.push(['ok', ICO.check, 'Tiene QR de ARCA', 'CUIT, número, fecha y total para cruzar']);
+  if (r.arca?.resultado === 'A') items.push(['ok', ICO.shield, 'ARCA aprobó el CAE', 'Constatado ' + fmtFH(r.arca.consultado_at)]);
+  for (const e of r.excepciones) {
+    const m = motivo(e.codigo);
+    if (e.resuelta) items.push(['acep', ICO.check, m.t + ' · aceptada', `${e.resuelta_por}: “${e.resolucion}”`]);
+    else if (e.severidad === 'aviso') items.push(['aviso', ICO.info, m.t, e.mensaje]);
+    else if (e.severidad === 'critica') items.push(['mal', ICO.x, m.t, e.mensaje]);
+    else items.push(['falta', ICO[m.ico] || ICO.info, m.t, e.mensaje]);
+  }
+  const nOk = items.filter(x => x[0] === 'ok' || x[0] === 'acep').length;
+
+  // ---- Botones (el principal primero) ----
+  const bots = [];
+  if (editable && hay('PROVEEDOR_NUEVO')) bots.push(['b-conf-prov', `${ICO.check}Confirmar proveedor${yAseguir}`, 1]);
+  else if (editable && hay('FORMATO_CAMBIO')) bots.push(['b-conf-prov', `${ICO.check}Confirmar formato${yAseguir}`, 1]);
+  if (editable && d.imputacion?.origen === 'ia' && !hay('PROVEEDOR_NUEVO')) bots.push(['b-confirmar', `${ICO.check}Confirmar cuenta sugerida${yAseguir}`, 2]);
+  if (f.estado === 'lista' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Enviar a Shares`, 3]);
+  if (f.estado === 'error_shares' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Reintentar envío`, 3]);
+  if (editable) bots.push(['b-guardar', `${ICO.check}Guardar y revalidar${yAseguir}`, 4]);
+  if (editable) bots.push(['b-ia', `${ICO.refresh}Volver a leer`, 9]);
+  if (editable && f.mail_thread_id) bots.push(['b-aclar', `${ICO.mail}Pedir aclaración`, 9]);
+  if (editable) bots.push(['b-rechazar', 'Rechazar', 10, 'btn-rojo']);
+  if (f.estado === 'rechazada' && puede('aprobador')) bots.push(['b-reabrir', `${ICO.refresh}Reabrir`, 1]);
+  bots.sort((a, b) => a[2] - b[2]);
+
   el.innerHTML = `
-  <div class="encabezado">
-    <div><h1>${esc(d.emisor?.razon_social || f.archivo_nombre || 'Factura')} <span class="muted mono" style="font-weight:400">#${f.id}</span></h1>
-      <p>${badgeEstado(f.estado)} ${badgeMetodo(f.lector_metodo)} · ${esc(f.origen === 'mail' ? 'Mail de ' + (f.mail_from || '?') : f.mail_from || 'Carga manual')} · recibida ${fmtFH(f.recibido_at)}${f.shares_ref ? ` · Ref. Shares <span class="mono">${esc(f.shares_ref)}</span>` : ''}</p></div>
-    <div class="acciones"><a class="btn" href="#/bandeja">← Bandeja</a></div>
+  <div class="encabezado" style="margin-bottom:16px">
+    <div class="navfact"><a class="btn btn-ghost btn-chico" href="#/bandeja">${ICO.back}Para revisar</a><span class="tag mono">#${f.id}</span>${pc.i >= 0 ? `<span class="tag">${pc.i + 1} de ${pc.n}</span>` : ''}</div>
+    ${pc.i >= 0 ? `<div class="acciones"><button class="btn btn-chico" id="b-ant" ${pc.ant ? '' : 'disabled'}>${ICO.back}Anterior</button><button class="btn btn-chico" id="b-sig" ${pc.sig ? '' : 'disabled'}>Siguiente ${ICO.arrow}</button></div>` : ''}
   </div>
   <div class="detalle">
-    <div class="visor panel" id="visor"><div class="vacio"><span class="cargando"></span> Cargando PDF…</div></div>
-    <div class="panel" id="lado">
-      ${['recibida', 'leyendo'].includes(f.estado) && !r.datos ? `<div class="seccion"><div class="excepcion"><div class="txt"><div class="cod">EN COLA DE LECTURA</div>El lector (QR + configuración del proveedor) la procesa en su próximo ciclo.${f.error_proceso ? ' Último error: ' + esc(f.error_proceso) : ''}</div></div></div>` : ''}
-      ${f.estado === 'rechazada' ? `<div class="seccion"><div class="excepcion critica"><div class="txt"><div class="cod">RECHAZADA</div>${esc(f.rechazo_motivo)}</div></div></div>` : ''}
-      ${f.estado === 'error_shares' && r.shares_respuesta ? `<div class="seccion"><div class="excepcion critica"><div class="txt"><div class="cod">SHARES HTTP ${esc(r.shares_respuesta.http_status)}</div>${esc(r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body).slice(0, 300))}</div></div></div>` : ''}
-      <div class="seccion">
-        <h3>Controles ${abiertas.length ? `<span class="badge b-normal">${abiertas.length} abiertos</span>` : '<span class="badge b-ok">OK</span>'}</h3>
-        ${r.excepciones.length ? r.excepciones.map(e => `<div class="excepcion ${e.resuelta ? 'aceptada' : e.severidad}">
-          <div class="txt"><div class="cod">${esc(e.codigo)} <span class="badge b-${e.resuelta ? 'ok' : esc(e.severidad)}">${e.resuelta ? 'aceptada' : esc(e.severidad)}</span></div>
-            <div>${esc(e.mensaje)}</div>${e.resuelta ? `<div class="small muted">Aceptada por ${esc(e.resuelta_por)}: “${esc(e.resolucion)}”</div>` : ''}</div>
-          ${!e.resuelta && e.severidad !== 'aviso' && editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar</button>` : ''}
-          ${e.codigo === 'PROVEEDOR_DESCONOCIDO' && !e.resuelta && puede('aprobador') ? `<button class="btn btn-chico" id="b-alta-prov">Dar de alta</button>` : ''}
-        </div>`).join('') : '<p class="muted">Todavía no se validó.</p>'}
-        ${f.error_proceso && !r.datos ? `<p class="small muted">Último error: ${esc(f.error_proceso)}</p>` : ''}
-      </div>
-      <div class="tabs" id="tabs"><button class="activo" data-tab="datos">Datos</button><button data-tab="shares">Shares</button><button data-tab="arca">Lectura / ARCA</button><button data-tab="hist">Historial</button></div>
+    <div class="visor" id="visor" aria-label="PDF de la factura"><div class="vacio"><span><span class="cargando"></span> Cargando PDF…</span></div></div>
+    <div class="lado" id="lado">
+      <section class="panel ficha">
+        <div class="fila1">${badgeEstado(f.estado)}${f.lector_metodo ? `<span class="tag">${ICO.sparkle}${esc(METODOS[f.lector_metodo] || f.lector_metodo)}</span>` : ''}</div>
+        <h2>${esc(nombre)}</h2>
+        <div class="meta"><span class="mono">${fmtCuit(d.emisor?.cuit || f.cuit_emisor)}</span><span>${esc(TIPOS[c.tipo_arca] || 'Comprobante')} ${c.pto_vta != null ? nroCbte({ pto_vta: c.pto_vta, numero: c.numero }) : ''}</span>${c.fecha_emision ? `<span>Emitida ${fmtF(c.fecha_emision)}</span>` : ''}
+          <span>${esc(f.origen === 'mail' ? 'Por mail de ' + (f.mail_from || '?').replace(/<.*>/, '').replace(/"/g, '').trim() : f.mail_from || 'Carga manual')} · ${fmtFH(f.recibido_at)}</span>${f.shares_ref ? `<span>Ref. Shares <b class="mono">${esc(f.shares_ref)}</b></span>` : ''}</div>
+        <div class="total"><b>${tot != null && tot !== '' ? esc(mon) + $$m(tot) : '—'}</b>${c.fecha_vto_pago ? `<span class="tag">${ICO.clock}Vence ${fmtF(c.fecha_vto_pago)}</span>` : ''}</div>
+      </section>
+      ${tarea}
+      ${items.length ? `<section class="panel"><div class="panel-titulo"><h2>Controles</h2><span class="ayuda">${nOk} de ${items.length} bien</span></div>
+        <ul class="controles">${items.map(([k, ic, t, dsc]) => `<li class="${k}"><span class="ck ${k}">${ic}</span><div><div class="t">${esc(t)}</div><div class="d">${esc(dsc || '')}</div></div></li>`).join('')}</ul></section>` : ''}
+      <section class="panel">
+      <div class="tabs" id="tabs"><button class="activo" data-tab="datos">Datos</button><button data-tab="shares">Cómo va a Shares</button><button data-tab="arca">Lectura y ARCA</button><button data-tab="hist">Historial</button></div>
       <form id="f-datos" class="tab" data-tab="datos" autocomplete="off">
         <div class="seccion"><h3>Comprobante</h3>
           <div class="fila">
@@ -480,12 +763,12 @@ function pintarFactura(el, r) {
             <div class="campo"><label>CBU en la factura</label>${inp('pago.cbu', d.pago?.cbu, 'class="mono"')}</div>
             <div class="campo"><label>Alias</label>${inp('pago.alias', d.pago?.alias)}</div>
           </div>
-          ${r.proveedor ? `<p class="small muted">Maestro: ${esc(r.proveedor.razon_social)} · cond. IVA ${esc(r.proveedor.condicion_iva ?? '—')} · CBU ${esc(r.proveedor.cbu || '—')} · cuenta ${esc(r.proveedor.cuenta_default || '—')}</p>` : ''}
+          ${r.proveedor ? `<p class="ayuda">Maestro: ${esc(r.proveedor.razon_social)} · cond. IVA ${esc(r.proveedor.condicion_iva ?? '—')} · CBU ${esc(r.proveedor.cbu || '—')} · cuenta ${esc(r.proveedor.cuenta_default || '—')}</p>` : ''}
         </div>
         <div class="seccion"><h3>Importes</h3>
           <div class="grid-items small muted"><span>Alícuota</span><span>Neto gravado</span><span>IVA</span><span></span></div>
           <div id="gravado">${(im.gravado || []).map(filaGravado).join('')}</div>
-          ${editable ? '<button type="button" class="btn btn-chico" id="add-grav">+ Alícuota</button>' : ''}
+          ${editable ? '<button type="button" class="btn btn-ghost btn-chico" id="add-grav">+ Alícuota</button>' : ''}
           <div class="fila" style="margin-top:12px">
             <div class="campo"><label>Sin IVA discriminado (B/C)</label>${inp('importes.sin_discriminar', im.sin_discriminar || '', 'class="num"')}</div>
             <div class="campo"><label>No gravado</label>${inp('importes.no_gravado', im.no_gravado || '', 'class="num"')}</div>
@@ -495,17 +778,17 @@ function pintarFactura(el, r) {
           <h3 style="margin:8px 0">Percepciones</h3>
           <div class="grid-perc small muted"><span>Tipo</span><span>Jurisdicción</span><span>Importe</span><span></span></div>
           <div id="percepciones">${(d.percepciones || []).map(filaPercepcion).join('')}</div>
-          ${editable ? '<button type="button" class="btn btn-chico" id="add-perc">+ Percepción</button>' : ''}
-          <div class="fila" style="margin-top:12px"><div class="campo"><label>TOTAL del comprobante</label>${inp('importes.total', im.total || '', 'class="num" style="font-weight:600"')}</div></div>
+          ${editable ? '<button type="button" class="btn btn-ghost btn-chico" id="add-perc">+ Percepción</button>' : ''}
+          <div class="fila" style="margin-top:12px"><div class="campo"><label>TOTAL del comprobante</label>${inp('importes.total', im.total || '', 'class="num" style="font-weight:700"')}</div></div>
           <div id="cuadre"></div>
         </div>
-        <div class="seccion"><h3>Imputación</h3>
+        <div class="seccion" id="sec-imputacion"><h3>Imputación</h3>
           ${datalistCuentas()}
           <div class="fila">
             <div class="campo"><label>Cuenta (codigo_concepto)</label><input name="imputacion.codigo_concepto" list="dl-cuentas" class="mono" value="${esc(d.imputacion?.codigo_concepto || '')}" ${dis}></div>
             <div class="campo" style="grid-column: span 2"><label>Denominación</label><input id="den-cuenta" disabled value="${esc(r.cuenta?.denominacion || nombreCuenta(d.imputacion?.codigo_concepto))}"></div>
           </div>
-          <p class="small muted">Origen: <b>${esc({ regla: 'regla de imputación', shares: 'la que usa en Shares', proveedor: 'cuenta por defecto del proveedor', ia: 'sugerida por Gemini — confirmala', manual: 'elegida por una persona' }[d.imputacion?.origen] || 'sin definir')}</b>${d.imputacion?.detalle ? ' · ' + esc(d.imputacion.detalle) : ''}${d.ia?.motivo_cuenta && d.imputacion?.origen === 'ia' ? ' · ' + esc(d.ia.motivo_cuenta) : ''}</p>
+          <p class="ayuda">Origen: <b>${esc({ regla: 'regla de imputación', shares: 'la que usa en Shares', proveedor: 'cuenta por defecto del proveedor', ia: 'sugerida por Gemini — confirmala', manual: 'elegida por una persona' }[d.imputacion?.origen] || 'sin definir')}</b>${d.imputacion?.detalle ? ' · ' + esc(d.imputacion.detalle) : ''}${d.ia?.motivo_cuenta && d.imputacion?.origen === 'ia' ? ' · ' + esc(d.ia.motivo_cuenta) : ''}</p>
           ${d.local_detectado || d.detalle_resumen ? `<p class="small">${d.detalle_resumen ? `<b>Detalle:</b> ${esc(d.detalle_resumen)} ` : ''}${d.local_detectado ? `<b>Local:</b> ${esc(d.local_detectado)}` : ''}</p>` : ''}
           ${editable ? `<label class="check"><input type="checkbox" id="chk-regla"> Guardar como regla para este proveedor</label>
           <div class="campo hidden" id="c-palabra"><label>…solo cuando el detalle/local contenga (opcional)</label><input id="palabra" placeholder="ej. UNICENTER — vacío = siempre"></div>` : ''}
@@ -527,18 +810,8 @@ function pintarFactura(el, r) {
       <div class="tab hidden" data-tab="hist"><div class="tabla-wrap"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Acción</th><th>Campo</th><th>Antes → Después</th></tr></thead><tbody>
         ${r.auditoria.map(a => `<tr><td class="small mono">${fmtFH(a.ts)}</td><td class="small">${esc(a.usuario)}</td><td class="small">${esc(a.accion)}</td><td class="small mono">${esc(a.campo || '')}</td><td class="small mono">${esc(a.valor_anterior ?? '')} → ${esc(a.valor_nuevo ?? '')}</td></tr>`).join('') || '<tr><td colspan="5" class="vacio">Sin movimientos.</td></tr>'}
       </tbody></table></div></div>
-      <div class="barra-acciones">
-        ${editable ? `<button class="btn btn-negro" id="b-guardar">Guardar y revalidar</button>` : ''}
-        ${editable && abiertas.some(e => e.codigo === 'PROVEEDOR_NUEVO') ? `<button class="btn btn-negro" id="b-conf-prov">Confirmar proveedor y activar lectura</button>` : ''}
-        ${editable && abiertas.some(e => e.codigo === 'FORMATO_CAMBIO') && !abiertas.some(e => e.codigo === 'PROVEEDOR_NUEVO') ? `<button class="btn btn-negro" id="b-conf-prov">Confirmar y actualizar configuración</button>` : ''}
-        ${editable && d.imputacion?.origen === 'ia' && !abiertas.some(e => e.codigo === 'PROVEEDOR_NUEVO') ? `<button class="btn" id="b-confirmar">Confirmar cuenta sugerida</button>` : ''}
-        ${f.estado === 'lista' && puede('aprobador') ? `<button class="btn btn-negro" id="b-enviar">Enviar a Shares</button>` : ''}
-        ${f.estado === 'error_shares' && puede('aprobador') ? `<button class="btn btn-negro" id="b-enviar">Reintentar envío</button>` : ''}
-        ${editable ? `<button class="btn" id="b-ia">Volver a leer</button>` : ''}
-        ${editable && f.mail_thread_id ? `<button class="btn" id="b-aclar">Pedir aclaración</button>` : ''}
-        ${editable ? `<button class="btn btn-rojo" id="b-rechazar">Rechazar</button>` : ''}
-        ${f.estado === 'rechazada' && puede('aprobador') ? `<button class="btn" id="b-reabrir">Reabrir</button>` : ''}
-      </div>
+      </section>
+      ${bots.length ? `<div class="barra-acciones">${bots.map(([id, html, , cls], i) => `<button class="btn ${i === 0 && !cls ? 'btn-acento principal' : cls || ''}" id="${id}">${html}</button>`).join('')}</div>` : ''}
     </div>
   </div>`;
   conectarFactura(el, r);
@@ -591,7 +864,18 @@ function actualizarCuadre() {
 
 function conectarFactura(el, r) {
   const id = r.factura.id;
-  const recargar = (nuevo) => { pintarFactura(el, nuevo); if (S.pdfUrl) $('#visor').innerHTML = `<iframe src="${S.pdfUrl}#view=FitH" title="PDF de la factura"></iframe>`; else cargarPdf(id); };
+  const pc = posCola(id);
+  const recargar = (nuevo) => {
+    S.cnt = null;
+    // Si estaba para revisar y quedó resuelta, pasa sola a la siguiente de la cola
+    if (r.factura.estado === 'excepcion' && nuevo.factura.estado !== 'excepcion' && pc.sig) { location.hash = '#/factura/' + pc.sig; return; }
+    pintarFactura(el, nuevo); if (S.pdfUrl) $('#visor').innerHTML = `<iframe src="${S.pdfUrl}#view=FitH" title="PDF de la factura"></iframe>`; else cargarPdf(id);
+  };
+  const bAnt = $('#b-ant'), bSig = $('#b-sig');
+  if (bAnt) bAnt.onclick = () => { if (pc.ant) location.hash = '#/factura/' + pc.ant; };
+  if (bSig) bSig.onclick = () => { if (pc.sig) location.hash = '#/factura/' + pc.sig; };
+  const bOtra = $('#b-otra-cuenta');
+  if (bOtra) bOtra.onclick = () => { $('#tabs button[data-tab=datos]').click(); $('#sec-imputacion').scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => $('[name="imputacion.codigo_concepto"]').focus(), 300); };
   // Tabs
   $$('#tabs button', el).forEach(b => b.onclick = () => {
     $$('#tabs button', el).forEach(x => x.classList.toggle('activo', x === b));
@@ -683,7 +967,7 @@ function conectarFactura(el, r) {
 async function vistaShares(el) {
   const r = await api('/api/facturas?estado=lista,error_shares&limite=500&orden=vto');
   el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que pasaron todos los controles. Nada se carga sin tu aprobación.</p></div>
-    <div class="acciones"><span class="muted" id="sel-info"></span><button class="btn btn-negro" id="b-env" disabled>Aprobar y enviar</button></div></div>
+    <div class="acciones"><span class="muted" id="sel-info"></span><button class="btn btn-acento" id="b-env" disabled>${ICO.send}Aprobar y enviar</button></div></div>
     <div class="panel"><div class="tabla-wrap"><table><thead><tr><th><input type="checkbox" id="todas"></th>${encabezadoFacturas(false).replace('<tr>', '').replace('</tr>', '')}</tr></thead>
     <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay nada listo para enviar.</td></tr>'}</tbody></table></div></div>
     <div id="resultado"></div>`;
@@ -717,13 +1001,13 @@ async function vistaShares(el) {
 async function vistaProveedores(el) {
   await cuentas().catch(() => null);
   el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU, cuenta por defecto y reglas de imputación.</p></div>
-    <div class="acciones">${puede('aprobador') ? '<button class="btn" id="b-nuevo">Nuevo proveedor</button>' : ''}${puede('admin') ? '<button class="btn" id="b-sh">Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">Importar Excel</button>' : ''}</div></div>
+    <div class="acciones">${puede('aprobador') ? '<button class="btn" id="b-nuevo">Nuevo proveedor</button>' : ''}${puede('admin') ? '<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>' : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
     <div class="tabla-wrap"><table><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
   const cargar = async () => {
     const r = await api('/api/proveedores?q=' + encodeURIComponent($('#q').value.trim()));
     $('#tb').innerHTML = r.proveedores.length ? r.proveedores.map(p => `<tr class="click" data-cuit="${p.cuit}">
-      <td>${esc(p.razon_social)}</td><td class="mono">${fmtCuit(p.cuit)}</td><td class="mono">${esc(p.codigo_shares || '—')}</td><td class="mono">${esc(p.condicion_iva ?? '—')}</td>
+      <td><div class="prov">${cuad(p.razon_social)}<div><b>${esc(p.razon_social)}</b></div></div></td><td class="mono">${fmtCuit(p.cuit)}</td><td class="mono">${esc(p.codigo_shares || '—')}</td><td class="mono">${esc(p.condicion_iva ?? '—')}</td>
       <td><span class="mono">${esc(p.cuenta_default || '—')}</span> <span class="small muted">${esc(p.cuenta_denominacion || '')}</span></td>
       <td class="mono small">${p.cbu ? '···' + esc(p.cbu.slice(-6)) : '—'}</td><td>${p.config_version ? `<span class="badge b-ok">config v${p.config_version}</span>` : '<span class="badge b-aviso">sin configurar</span>'}</td><td class="num">${p.facturas}</td>
       <td>${p.activo ? '<span class="badge b-ok">activo</span>' : '<span class="badge b-aviso">inactivo</span>'}</td></tr>`).join('')

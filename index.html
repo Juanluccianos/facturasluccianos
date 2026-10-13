@@ -2,18 +2,24 @@
 <html lang="es-AR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Facturas Proveedores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Facturas Proveedores · Lucciano's</title>
   <meta name="description" content="Lucciano's — recepción, validación y carga a Shares de facturas de proveedores">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111'/%3E%3Cpath d='M10 7h9l4 4v14H10z' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M13 16h7M13 20h7' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111213" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f7a28'/%3E%3Cpath d='M11 7h7l4 4v14H11z' fill='none' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M14 16h5M14 20h5' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    // Tema guardado (claro/oscuro) antes de pintar, para que no parpadee
+    try { var t = localStorage.getItem('facturas_tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script>
-    // URL del Worker. Cambiala por la tuya después de crear el Worker en Cloudflare.
+    // URL del Worker
     window.FACTURAS_API = 'https://facturas-api.lucciano-viaticos.workers.dev';
   </script>
   <script src="app.js" defer></script>
