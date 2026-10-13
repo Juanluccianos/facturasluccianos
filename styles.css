@@ -314,6 +314,11 @@ pre.json { font: 12px/1.5 var(--mono); background: var(--surface-2); padding: 12
 .navfact { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- 7. Login, modal, toast ---------- */
+.clave-caja { position: relative; display: block; }
+.clave-caja input { padding-right: 44px; }
+.clave-ojo { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: var(--r-sm); }
+.clave-ojo:hover { color: var(--text); background: var(--surface-2); }
+.clave-ojo svg.i { width: 18px; height: 18px; }
 .login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
 .login-arte { background: var(--ink); color: var(--paper); padding: 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
 .login-arte img { width: 220px; height: auto; filter: invert(1); }

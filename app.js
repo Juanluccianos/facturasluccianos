@@ -202,6 +202,8 @@ const ICO = {
   info: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>'),
   alert: svgI('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
   coin: svgI('<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2a2.6 2.6 0 0 1-2.5-1.5M12 6.5V8M12 16v1.5"/>'),
+  ojo: svgI('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  ojoNo: svgI('<path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/>'),
   clock: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   calendar: svgI('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>'),
   chart: svgI('<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-8"/>'),
@@ -225,6 +227,31 @@ const $$corto = (n) => { n = Number(n) || 0; return Math.abs(n) >= 1e6 ? '$ ' + 
 const TIEMPOS = { manual: 5, auto: 0.5, revisada: 3 };
 function minutosSistema(pctAuto) { const p = pctAuto == null ? 0.5 : pctAuto / 100; return p * TIEMPOS.auto + (1 - p) * TIEMPOS.revisada; }
 function fmtDuracion(min) { min = Math.round(min); if (min < 60) return min + ' min'; const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + m + ' min' : ''); }
+
+// Ojito para ver la contraseña: se agrega solo a cualquier campo de contraseña que aparezca (login, Mi cuenta, modales)
+function ojosClave(root = document) {
+  $$('input[type="password"]:not([data-ojo])', root).forEach(inp => {
+    inp.dataset.ojo = '1';
+    const caja = document.createElement('span');
+    caja.className = 'clave-caja';
+    inp.parentNode.insertBefore(caja, inp);
+    caja.appendChild(inp);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'clave-ojo'; b.tabIndex = -1;
+    b.setAttribute('aria-label', 'Mostrar contraseña'); b.title = 'Mostrar contraseña';
+    b.innerHTML = ICO.ojo;
+    b.onclick = () => {
+      const ver = inp.type === 'password';
+      inp.type = ver ? 'text' : 'password';
+      b.innerHTML = ver ? ICO.ojoNo : ICO.ojo;
+      const t = ver ? 'Ocultar contraseña' : 'Mostrar contraseña';
+      b.setAttribute('aria-label', t); b.title = t;
+      inp.focus();
+    };
+    caja.appendChild(b);
+  });
+}
+new MutationObserver(() => ojosClave()).observe(document.documentElement, { childList: true, subtree: true });
 
 // Tema claro/oscuro (lo inicializa index.html antes de pintar)
 function temaActual() { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
