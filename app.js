@@ -820,7 +820,7 @@ function pintarFactura(el, r) {
     const cod = d.imputacion?.codigo_concepto;
     tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Lo único que falta: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `Faltan ${abiertas.length} cosas`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
       <div class="cuerpo">
-        ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}"><div class="txt"><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(e.mensaje)}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
+        ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}"><div class="txt"><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(String(e.mensaje || '').replace(/“Confirmar proveedor”/g, '“Confirmar”'))}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
           ${editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar igual</button>` : ''}
           ${e.codigo === 'PROVEEDOR_DESCONOCIDO' && puede('aprobador') ? `<button class="btn btn-chico btn-negro" id="b-alta-prov">Dar de alta</button>` : ''}</div>`; }).join('')}
         ${verSug ? `<div class="sugerida"><span class="ico">${ICO.sparkle}</span><div style="min-width:0"><div class="cod">${esc(cod || 'Sin cuenta')}</div><div class="small">${esc(r.cuenta?.denominacion || nombreCuenta(cod) || 'Elegí una cuenta del plan')}</div></div>
@@ -847,16 +847,12 @@ function pintarFactura(el, r) {
   }
   const nOk = items.filter(x => x[0] === 'ok' || x[0] === 'acep').length;
 
-  // ---- Botones (el principal primero) ----
+  // ---- Botones: solo tres. Confirmar (guarda lo corregido + confirma), Volver a leer, Rechazar ----
   const bots = [];
-  if (editable && hay('PROVEEDOR_NUEVO')) bots.push(['b-conf-prov', `${ICO.check}Confirmar proveedor${yAseguir}`, 1]);
-  else if (editable && hay('FORMATO_CAMBIO')) bots.push(['b-conf-prov', `${ICO.check}Confirmar formato${yAseguir}`, 1]);
-  if (editable && d.imputacion?.origen === 'ia' && !hay('PROVEEDOR_NUEVO')) bots.push(['b-confirmar', `${ICO.check}Confirmar cuenta sugerida${yAseguir}`, 2]);
-  if (f.estado === 'lista' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Enviar a Shares`, 3]);
-  if (f.estado === 'error_shares' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Reintentar envío`, 3]);
-  if (editable) bots.push(['b-guardar', `${ICO.check}Guardar y revalidar${yAseguir}`, 4]);
+  if (editable) bots.push(['b-ok', `${ICO.check}Confirmar${yAseguir}`, 1]);
+  if (f.estado === 'lista' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Enviar a Shares`, 2, 'btn-negro']);
+  if (f.estado === 'error_shares' && puede('aprobador')) bots.push(['b-enviar', `${ICO.send}Reintentar envío`, 2, 'btn-negro']);
   if (editable) bots.push(['b-ia', `${ICO.refresh}Volver a leer`, 9]);
-  if (editable && f.mail_thread_id) bots.push(['b-aclar', `${ICO.mail}Pedir aclaración`, 9]);
   if (editable) bots.push(['b-rechazar', 'Rechazar', 10, 'btn-rojo']);
   if (f.estado === 'rechazada' && puede('aprobador')) bots.push(['b-reabrir', `${ICO.refresh}Reabrir`, 1]);
   bots.sort((a, b) => a[2] - b[2]);
@@ -1053,6 +1049,21 @@ function conectarFactura(el, r) {
   const guardar = (extra = {}) => api('/api/facturas/' + id, {
     method: 'PUT',
     body: { datos: leerFormulario(r.datos), guardar_regla: chk?.checked ? { palabra_clave: $('#palabra').value.trim() || null } : null, ...extra },
+  });
+  // Confirmar: guarda lo que se haya corregido y confirma lo que haga falta (proveedor nuevo / formato / cuenta)
+  const bok = $('#b-ok');
+  if (bok) bok.onclick = () => conBoton(bok, async () => {
+    const abiertas = r.excepciones.filter(e => !e.resuelta && e.severidad !== 'aviso').map(e => e.codigo);
+    let n;
+    if (abiertas.includes('PROVEEDOR_NUEVO') || abiertas.includes('FORMATO_CAMBIO')) {
+      try { n = await guardar({ confirmar_proveedor: true }); }
+      catch (e) { if (!/lectura automática/i.test(e.message)) throw e; n = await guardar({ confirmar_imputacion: true }); }
+    } else n = await guardar({ confirmar_imputacion: true });
+    const quedan = (n.excepciones || []).filter(e => !e.resuelta && e.severidad !== 'aviso');
+    if (n.factura.estado === 'lista') toast('✓ Confirmada: pasó a "Enviar a Shares"');
+    else if (quedan.length) toast(`Guardada. Todavía falta: ${quedan.map(e => motivo(e.codigo).t.toLowerCase()).join(', ')}`, true);
+    else toast('✓ Confirmada');
+    recargar(n);
   });
   const bg = $('#b-guardar');
   if (bg) bg.onclick = () => conBoton(bg, async () => { const n = await guardar(); toast(n.factura.estado === 'lista' ? '✓ Guardada: lista para Shares' : 'Guardada y revalidada'); recargar(n); });
