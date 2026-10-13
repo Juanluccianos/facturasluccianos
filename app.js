@@ -1301,12 +1301,36 @@ async function adminSalud(el) {
     ${fila(s.lector && !!s.lector_ultimo, 'Lector (GitHub Actions)', `${s.lector ? 'LECTOR_SECRET cargado' : 'falta LECTOR_SECRET'} · último contacto ${s.lector_ultimo ? fmtFH(s.lector_ultimo) : 'nunca'} · disparo inmediato ${s.lector_disparo ? 'sí' : 'no (corre cada 15 min)'} · ${s.proveedores_configurados} proveedores configurados`)}
     ${fila(s.shares, 'Shares', esc(s.shares_base), 'shares')}
     <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — qué información se puede consultar</b><div class="small muted">Solo lectura: prueba endpoints de consulta (facturas ya cargadas, proveedores) con un CUIT de proveedor. No carga nada.</div></td><td><button class="btn btn-chico" id="b-consultas">Probar</button></td></tr>
+    <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — ¿tiene órdenes de pago?</b><div class="small muted">Solo lectura: prueba ~20 rutas posibles de pagos y cuenta corriente y mira qué campos trae una factura. Usa unas 22 consultas: no lo corras dos veces seguidas.</div></td><td><button class="btn btn-chico" id="b-descubrir">Buscar</button></td></tr>
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
     ${fila(s.cuentas > 0, 'Plan de cuentas', `${s.cuentas} cuentas`)}
     ${fila(s.proveedores > 0, 'Maestro de proveedores', `${s.proveedores} proveedores`)}
   </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>`;
   $$('[data-probar]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const r = await api('/api/probar/' + b.dataset.probar, { method: 'POST' }); toast(r.mensaje); }));
+  $('#b-descubrir', el).onclick = async () => {
+    const cuit = await pedirTexto({ titulo: 'Buscar órdenes de pago en Shares', ayuda: 'CUIT de un proveedor al que ya se le hayan hecho pagos en Shares (sin guiones). Solo lectura: no carga ni modifica nada.', etiqueta: 'CUIT del proveedor', boton: 'Buscar', minimo: 11, valor: '30709824364' });
+    if (!cuit) return;
+    toast('Probando rutas en Shares… tarda unos 15 segundos');
+    try {
+      const r = await api('/api/probar/shares-descubrir', { method: 'POST', body: { cuit } });
+      const hay = r.resultados.filter(x => /^EXISTE/.test(x.veredicto) && !/control/.test(x.nota));
+      const pago = (r.campos_factura || []).filter(c => /pag|pay|saldo|balance|op_|orden|cancel/i.test(c));
+      modal(`<h2>Órdenes de pago en Shares</h2>
+        <div class="tarea ${hay.length ? 'bien' : ''}" style="margin-bottom:14px"><div class="panel-titulo"><h2>${hay.length ? `Encontré ${hay.length} ruta(s) que existen` : 'No encontré rutas de pagos habilitadas'}</h2></div>
+          <div class="cuerpo"><p>${hay.length ? 'Mandame este resultado (botón Copiar todo) y vemos qué trae cada una.' : 'Con este usuario de API no hay endpoints de pagos: hay que pedírselos a Shares (preguntas 17 a 21).'}
+          ${r.campos_factura ? `<br>Campos de pago en las facturas: <b>${pago.length ? esc(pago.join(', ')) : 'ninguno'}</b>.` : ''}</p></div></div>
+        <div class="tabla-wrap"><table><thead><tr><th>Ruta</th><th>HTTP</th><th>Resultado</th></tr></thead><tbody>
+        ${r.resultados.map(x => `<tr><td class="mono small">${esc(x.metodo)} ${esc(x.ruta.split('?')[0])}${x.nota ? `<small class="sub-celda">${esc(x.nota)}</small>` : ''}</td><td class="mono">${esc(String(x.http ?? '—'))}</td>
+          <td><span class="badge ${/^EXISTE/.test(x.veredicto) ? 'b-ok' : 'b-aviso'}">${esc(x.veredicto)}</span><small class="sub-celda" style="white-space:normal;max-width:380px" title="${esc(x.respuesta)}">${esc(String(x.respuesta).slice(0, 140))}</small></td></tr>`).join('')}
+        </tbody></table></div>
+        ${r.campos_factura ? `<h3 style="margin:14px 0 6px">Campos que trae una factura de Shares</h3><pre class="json">${esc(r.campos_factura.join('\n'))}</pre>` : ''}
+        <div class="acciones" style="margin-top:12px"><button class="btn" id="b-copiar">Copiar todo</button></div>`, {
+        ancho: true,
+        alMontar: (m) => { $('#b-copiar', m).onclick = () => navigator.clipboard.writeText(JSON.stringify(r, null, 2)).then(() => toast('Copiado')); },
+      });
+    } catch (e) { toast(e.message, true); }
+  };
   $('#b-consultas', el).onclick = async () => {
     const cuit = await pedirTexto({ titulo: 'Probar consultas a Shares', ayuda: 'CUIT de un proveedor que tenga facturas cargadas en Shares (sin guiones). Solo lectura.', etiqueta: 'CUIT del proveedor', boton: 'Probar', minimo: 11, valor: '30709824364' });
     if (!cuit) return;
