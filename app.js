@@ -2,7 +2,7 @@
  *  Facturas de Proveedores — Lucciano's (frontend)
  *  Vanilla JS, sin build. Habla con el Worker (window.FACTURAS_API).
  *  Rutas por hash: #/tablero, #/bandeja, #/facturas, #/factura/ID, #/shares,
- *                  #/proveedores, #/admin, #/cuenta
+ *                  #/proveedores, #/admin, #/cuenta, #/propuestas, #/pago/ID
  * ============================================================================= */
 'use strict';
 
@@ -368,6 +368,10 @@ const RUTAS = [
   { re: /^#\/proveedores$/, v: vistaProveedores, nav: 'proveedores', miga: 'Datos / <b>Proveedores</b>' },
   { re: /^#\/proveedor\/(\d{11})$/, v: vistaFicha, nav: 'proveedores', miga: 'Datos / Proveedores / <b>Ficha</b>' },
   { re: /^#\/pagos$/, v: vistaPagos, nav: 'pagos', miga: 'Trabajo / <b>Agenda de pagos</b>' },
+  { re: /^#\/propuestas$/, v: vistaPropuestas, nav: 'propuestas', miga: 'Pagos / <b>Propuestas</b>' },
+  { re: /^#\/propuesta\/nueva$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Nueva propuesta</b>' },
+  { re: /^#\/propuesta\/(\d+)\/editar$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Editar propuesta</b>' },
+  { re: /^#\/pago\/(\d+)$/, v: vistaLote, nav: 'propuestas', miga: 'Pagos / <b>Propuesta</b>' },
   { re: /^#\/analisis$/, v: vistaAnalisis, nav: 'analisis', miga: 'Datos / <b>Análisis de compras</b>' },
   { re: /^#\/guia$/, v: vistaGuia, nav: 'guia', miga: '<b>Guía de uso</b>' },
   { re: /^#\/admin$/, v: vistaAdmin, nav: 'admin', miga: 'Datos / <b>Configuración</b>' },
@@ -377,24 +381,27 @@ const RUTAS = [
 function shell(ruta) {
   const a = ruta.nav;
   const it = (k, ic, t, cnt = '') => `<a href="#/${k}" class="${k === a ? 'activo' : ''}" ${k === a ? 'aria-current="page"' : ''}>${ICO[ic]}<span>${t}</span>${cnt}</a>`;
-  const rol = { admin: 'Administrador', aprobador: 'Aprobador', carga: 'Carga' }[S.user.rol] || S.user.rol;
+  const rol = { admin: 'Administrador', aprobador: 'Aprobador', carga: 'Carga', director: 'Director' }[S.user.rol] || S.user.rol;
+  const dir = esDirector();
   const arcaOk = S.arca && S.arca !== 'off';
   return `<div class="app">
     <aside class="side">
       <a class="brand" href="#/tablero"><img src="logo-negro.png" alt="Lucciano's"><span>Facturas de proveedores</span></a>
       <nav class="nav" aria-label="Secciones">
+        ${dir ? `${it('propuestas', 'coin', 'Aprobar pagos', '<span class="cnt hot" data-cnt="pagos"></span>')}${it('facturas', 'doc', 'Todas las facturas')}<div class="grp-t">Ayuda</div>${it('guia', 'book', 'Cómo aprobar')}` : `
         ${it('tablero', 'home', 'Inicio')}
         <div class="grp-t">Trabajo</div>
         ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
         ${puede('aprobador') ? it('shares', 'send', 'Enviar a Shares', '<span class="cnt" data-cnt="lista"></span>') : ''}
         ${it('facturas', 'doc', 'Todas las facturas')}
         ${it('pagos', 'calendar', 'Agenda de pagos')}
+        ${puede('aprobador') ? it('propuestas', 'coin', 'Propuestas de pago', '<span class="cnt" data-cnt="pagos"></span>') : ''}
         <div class="grp-t">Datos</div>
         ${it('proveedores', 'users', 'Proveedores')}
         ${it('analisis', 'chart', 'Análisis de compras')}
         ${puede('admin') ? it('admin', 'gear', 'Configuración') : ''}
         <div class="grp-t">Ayuda</div>
-        ${it('guia', 'book', 'Guía de uso')}
+        ${it('guia', 'book', 'Guía de uso')}`}
       </nav>
       <div class="me"><a class="av" href="#/cuenta" title="Mi cuenta">${esc(iniciales(S.user.nombre))}</a>
         <a class="who" href="#/cuenta"><b>${esc(S.user.nombre)}</b><small>${esc(rol)}</small></a>
@@ -406,23 +413,33 @@ function shell(ruta) {
         <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div></header>
       <main id="vista" class="entra"><div class="vacio"><span class="cargando"></span></div></main>
     </div></div>
-    <nav class="mnav" aria-label="Secciones">
+    <nav class="mnav" aria-label="Secciones">${dir ? `
+      <a href="#/propuestas" class="${a === 'propuestas' ? 'activo' : ''}">${ICO.coin}Aprobar<span class="cnt hot" data-cnt="pagos"></span></a>
+      <a href="#/facturas" class="${a === 'facturas' ? 'activo' : ''}">${ICO.doc}Facturas</a>
+      <a href="#/guia" class="${a === 'guia' ? 'activo' : ''}">${ICO.book}Ayuda</a>` : `
       <a href="#/tablero" class="${a === 'tablero' ? 'activo' : ''}">${ICO.home}Inicio</a>
       <a href="#/bandeja" class="${a === 'bandeja' ? 'activo' : ''}">${ICO.inbox}Revisar<span class="cnt hot" data-cnt="revisar"></span></a>
       ${puede('aprobador') ? `<a href="#/shares" class="${a === 'shares' ? 'activo' : ''}">${ICO.send}Shares</a>` : ''}
       <a href="#/facturas" class="${a === 'facturas' ? 'activo' : ''}">${ICO.doc}Facturas</a>
-      <a href="#/proveedores" class="${a === 'proveedores' ? 'activo' : ''}">${ICO.users}Proveed.</a>
+      <a href="#/proveedores" class="${a === 'proveedores' ? 'activo' : ''}">${ICO.users}Proveed.</a>`}
     </nav>`;
 }
 
 // Contadores de la barra lateral (se cachean 60 s para no gastar lecturas de D1)
 async function contadores(t = null) {
   try {
+    if (esDirector()) {
+      if (S.cnt && Date.now() - S.cnt.at < 60000) return pintarContadores(S.cnt);
+      const r = await api('/api/pagos/resumen');
+      S.cnt = { at: Date.now(), pagos: r.esperando || 0 };
+      return pintarContadores(S.cnt);
+    }
     if (!t) {
       if (S.cnt && Date.now() - S.cnt.at < 60000) return pintarContadores(S.cnt);
       t = await api('/api/tablero');
     }
-    S.cnt = { at: Date.now(), revisar: t.por_estado?.excepcion?.n || 0, lista: (t.por_estado?.lista?.n || 0) + (t.por_estado?.error_shares?.n || 0) };
+    const rp = puede('aprobador') ? await api('/api/pagos/resumen').catch(() => ({})) : {};
+    S.cnt = { at: Date.now(), revisar: t.por_estado?.excepcion?.n || 0, lista: (t.por_estado?.lista?.n || 0) + (t.por_estado?.error_shares?.n || 0), pagos: rp.por_pagar || 0 };
     pintarContadores(S.cnt);
   } catch { /* no es crítico */ }
 }
@@ -431,8 +448,11 @@ function pintarContadores(c) { $$('[data-cnt]').forEach(x => { const n = c[x.dat
 async function router() {
   if (!S.token) return vistaLogin();
   if (S.pdfUrl) { URL.revokeObjectURL(S.pdfUrl); S.pdfUrl = null; S.pdfBytes = null; }
-  const h = location.hash || '#/tablero';
+  const h = location.hash || (esDirector() ? '#/propuestas' : '#/tablero');
   const r = RUTAS.find(x => x.re.test(h)) || RUTAS[0];
+  // El Director solo ve aprobación de pagos, facturas (lectura), la guía y su cuenta
+  if (esDirector() && !['propuestas', 'facturas', 'bandeja', 'guia', ''].includes(r.nav)) { location.replace('#/propuestas'); return; }
+  if (esDirector() && r.nav === 'bandeja' && !/^#\/factura\//.test(h)) { location.replace('#/propuestas'); return; }
   const m = h.match(r.re) || [];
   $('#app').innerHTML = shell(r);
   $('#b-salir').onclick = () => salir();
@@ -447,7 +467,7 @@ async function router() {
   };
   S.vista = h;
   window.scrollTo(0, 0);
-  if (r.nav !== 'tablero') contadores();
+  if (r.nav !== 'tablero' || esDirector()) contadores();
   try { await r.v($('#vista'), ...m.slice(1)); }
   catch (e) { if (S.token && $('#vista')) { $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p><button class="btn btn-acento" id="b-reint">${ICO.refresh}Reintentar</button></div>`; $('#b-reint').onclick = router; } }
 }
@@ -460,7 +480,7 @@ async function iniciar() {
   } catch { return vistaLogin(); }
   cuentas().catch(() => null);
   await router();
-  bienvenida();
+  if (!esDirector()) bienvenida();
 }
 window.addEventListener('hashchange', router);
 let _pdfResize;
@@ -552,6 +572,11 @@ async function vistaTablero(el) {
           <div class="r"><b>${f.total != null ? $$m(f.total) : '—'}</b>${badgeEstado(f.estado)}</div></li>`).join('')}</ul>` : '<div class="vacio">Todavía no entró ninguna factura.</div>'}</div>
     </div>`;
   $('#b-subir').onclick = modalSubir;
+  if (puede('aprobador')) api('/api/pagos/resumen').then(rp => {
+    const txt = [rp.esperando ? `${rp.esperando} propuesta(s) esperando al Director` : '', rp.por_pagar ? `${rp.por_pagar} pago(s) aprobados para hacer` : '', rp.borradores ? `${rp.borradores} borrador(es)` : ''].filter(Boolean);
+    const hero = $('.hero', el);
+    if (txt.length && hero && !$('.aviso-pagos', el)) hero.insertAdjacentHTML('afterend', `<a class="panel panel-pad aviso-pagos" href="#/propuestas">${ICO.coin}<span><b>Pagos:</b> ${esc(txt.join(' · '))}</span>${ICO.arrow}</a>`);
+  }).catch(() => null);
   const bp = $('#b-procesar');
   bp.onclick = () => conBoton(bp, async () => { const r = await api('/api/lector/disparar', { method: 'POST' }); toast(r.mensaje, !r.ok); if (r.nuevas) { S.cnt = null; setTimeout(() => { if (location.hash === '#/tablero' || !location.hash) router(); }, 1500); } });
   $$('.traba li', el).forEach(li => li.onclick = li.onkeydown = (e) => { if (e.type === 'keydown' && e.key !== 'Enter') return; sessionStorage.setItem('bandeja_grupo', li.dataset.grupo); location.hash = '#/bandeja'; });
@@ -829,7 +854,7 @@ function bloqueCuenta(r, d, editable) {
 
 function pintarFactura(el, r) {
   const f = r.factura, d = r.datos || vacioDatos(), c = d.comprobante || {}, im = d.importes || {};
-  const editable = ['recibida', 'excepcion', 'lista', 'error_shares'].includes(f.estado);
+  const editable = !esDirector() && ['recibida', 'excepcion', 'lista', 'error_shares'].includes(f.estado);
   const abiertas = r.excepciones.filter(e => !e.resuelta && e.severidad !== 'aviso');
   const dis = editable ? '' : 'disabled';
   const inp = (name, val, extra = '') => `<input name="${name}" value="${esc(val ?? '')}" ${dis} ${extra}>`;
@@ -1509,8 +1534,8 @@ function modalImportar(tipo, alTerminar) {
 // ---------------------------------------------------------------------------
 async function vistaAdmin(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, usuarios, empresas, plan de cuentas, configuración fiscal y auditoría.</p></div></div>
-    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Empresas', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
-  const tabs = [adminSalud, adminUsuarios, adminEmpresas, adminCuentas, adminConfig, adminAuditoria];
+    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Empresas', 'Cuentas', 'Categorías de pago', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
+  const tabs = [adminSalud, adminUsuarios, adminEmpresas, adminCuentas, adminCategorias, adminConfig, adminAuditoria];
   const ir = async (i) => {
     $$('#atabs button').forEach(b => b.classList.toggle('activo', b.dataset.t === String(i)));
     $('#acont').innerHTML = '<span class="cargando"></span>';
@@ -1585,11 +1610,11 @@ async function adminUsuarios(el) {
   el.innerHTML = `<div class="acciones" style="margin-bottom:12px"><button class="btn btn-negro" id="b-nu">Nuevo usuario</button></div>
     <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>2FA</th><th>Estado</th><th></th></tr></thead><tbody>
     ${r.usuarios.map(u => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.email)}</td>
-      <td><select data-rol="${u.id}">${['carga', 'aprobador', 'admin'].map(x => `<option ${u.rol === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
+      <td><select data-rol="${u.id}">${['carga', 'aprobador', 'admin', 'director'].map(x => `<option ${u.rol === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
       <td>${u.totp_activo ? '<span class="badge b-ok">activo</span>' : '<span class="badge b-aviso">no</span>'}</td>
       <td>${u.activo ? 'Activo' : '<span class="muted">Inactivo</span>'}</td>
       <td class="acciones"><button class="btn btn-chico" data-pass="${u.id}">Resetear clave</button>${u.totp_activo ? `<button class="btn btn-chico" data-totp="${u.id}">Resetear 2FA</button>` : ''}<button class="btn btn-chico" data-act="${u.id}" data-v="${u.activo ? 0 : 1}">${u.activo ? 'Desactivar' : 'Activar'}</button></td></tr>`).join('')}
-    </tbody></table><p class="small muted">Roles: <b>carga</b> resuelve excepciones · <b>aprobador</b> además envía a Shares y edita proveedores · <b>admin</b> todo, incluido CBU y configuración.</p>`;
+    </tbody></table><p class="small muted">Roles: <b>carga</b> resuelve excepciones · <b>aprobador</b> además envía a Shares y edita proveedores · <b>admin</b> todo, incluido CBU y configuración · <b>director</b> solo aprueba pagos y consulta facturas (no puede aprobar propuestas que arme él).</p>`;
   const put = (id, body) => api('/api/usuarios/' + id, { method: 'PUT', body }).then(() => { toast('Guardado'); adminUsuarios(el); }).catch(e => toast(e.message, true));
   $$('[data-rol]', el).forEach(s => s.onchange = () => put(s.dataset.rol, { rol: s.value }));
   $$('[data-act]', el).forEach(b => b.onclick = () => put(b.dataset.act, { activo: b.dataset.v === '1' }));
@@ -1598,7 +1623,7 @@ async function adminUsuarios(el) {
   $('#b-nu', el).onclick = () => modal(`<h2>Nuevo usuario</h2><form id="f-nu">
       <div class="campo"><label>Nombre</label><input name="nombre" required></div>
       <div class="campo"><label>Email</label><input name="email" type="email" required></div>
-      <div class="campo"><label>Rol</label><select name="rol"><option>carga</option><option>aprobador</option><option>admin</option></select></div>
+      <div class="campo"><label>Rol</label><select name="rol"><option>carga</option><option>aprobador</option><option>admin</option><option>director</option></select></div>
       <div class="campo"><label>Contraseña inicial</label><input name="password" type="text" minlength="10" required><div class="ayuda">Pasásela por un canal seguro; la puede cambiar en “Mi cuenta”.</div></div>
       <button class="btn btn-negro" type="submit">Crear</button></form>`, {
     alMontar: (m, cerrar) => { $('#f-nu', m).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/usuarios', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); cerrar(); toast('Usuario creado'); adminUsuarios(el); }); }; },
@@ -1637,6 +1662,8 @@ const AYUDA_CFG = {
   arca_bloqueante: 'true = si ARCA está activo y no se pudo constatar, la factura no pasa.',
   fecha_contable: '"emision" o "recepcion".',
   max_cuentas_prompt: 'Cuántas cuentas se le pasan a Gemini para sugerir imputación (solo proveedores nuevos).',
+  dia_pago: 'Día fijo de pagos: 0 domingo, 1 lunes … 5 viernes. La propuesta nueva sugiere el próximo.',
+  director_whatsapp: 'Celular del Director para el botón de WhatsApp, con código de país y sin espacios (ej. "5492235123456"). Vacío = elegís el contacto en WhatsApp.',
 };
 async function adminConfig(el) {
   const r = await api('/api/config');
@@ -1785,7 +1812,7 @@ async function vistaPagos(el) {
   const RANGOS = { vencidas: ['Vencidas (30 días)', -30, -1], semana: ['Esta semana', 0, 6], quince: ['Próximos 15 días', 0, 15], mes: ['Próximos 30 días', 0, 30], todo: ['−30 a +60 días', -30, 60] };
   let rango = sessionStorage.getItem('pagos_rango') || 'quince';
   let incluirCargadas = sessionStorage.getItem('pagos_cargadas') !== '0';
-  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que vence, agrupado por semana, con el CBU a mano. La app no sabe qué ya se pagó: es una guía para planificar.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que vence, agrupado por semana, con el CBU a mano. Lo ya pagado desde “Propuestas de pago” no aparece; lo que está en una propuesta lo indica.</p></div>
     <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
     <div class="seg" id="seg">${Object.entries(RANGOS).map(([k, r]) => `<button data-r="${k}" class="${k === rango ? 'on' : ''}">${r[0]}</button>`).join('')}</div>
     <div class="kpis" id="kp"></div>
@@ -1817,7 +1844,7 @@ async function vistaPagos(el) {
         <div class="tabla-wrap"><table><tbody>${sem[k].map(f => { const cbu = f.cbu_maestro || f.cbu_factura, alias = f.alias_maestro || f.alias_factura, difCbu = f.cbu_maestro && f.cbu_factura && f.cbu_maestro !== f.cbu_factura;
           return `<tr class="click" data-id="${f.id}"><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
           <td><div class="prov">${cuad(f.razon_social_emisor || '?')}<div><b>${esc(f.razon_social_emisor || 'Sin identificar')}</b><small class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</small></div></div></td>
-          <td>${badgeEstado(f.estado)}</td>
+          <td>${badgeEstado(f.estado)}${f.pago_estado && EST_PAGO_F[f.pago_estado] ? `<br><span class="badge ${EST_PAGO_F[f.pago_estado][1]}" style="margin-top:4px">${EST_PAGO_F[f.pago_estado][0]}</span>` : ''}</td>
           <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? '<small class="sub-celda txt-neg">⚠ distinto al de la factura</small>' : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
           <td class="num"><b>${$$m(f.pesos)}</b>${f.moneda && f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.total)}</small>` : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro rango.</div>';
@@ -1835,12 +1862,426 @@ async function vistaPagos(el) {
   $('#q').oninput = () => datos && pintar();
   $('#chk-carg').onchange = (e) => { incluirCargadas = e.target.checked; sessionStorage.setItem('pagos_cargadas', incluirCargadas ? '1' : '0'); pintar(); };
   $('#b-csv').onclick = () => descargarCsv(`agenda_pagos_${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'CBU', 'Alias', 'Moneda', 'Total original', 'Total en pesos', 'ID'],
-    ...(pintar.filas || []).map(f => [f.fecha_vto, f.cuit_emisor, f.razon_social_emisor, `${TIPOS[f.tipo_cbte_arca] || ''} ${nroCbte(f)}`, ESTADOS[f.estado] || f.estado, f.cbu_maestro || f.cbu_factura || '', f.alias_maestro || f.alias_factura || '', f.moneda || 'PES', String(f.total ?? '').replace('.', ','), String(Math.round(f.pesos * 100) / 100).replace('.', ','), f.id]),
+    ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'Pago', 'CBU', 'Alias', 'Moneda', 'Total original', 'Total en pesos', 'ID'],
+    ...(pintar.filas || []).map(f => [f.fecha_vto, f.cuit_emisor, f.razon_social_emisor, `${TIPOS[f.tipo_cbte_arca] || ''} ${nroCbte(f)}`, ESTADOS[f.estado] || f.estado, (EST_PAGO_F[f.pago_estado] || [''])[0], f.cbu_maestro || f.cbu_factura || '', f.alias_maestro || f.alias_factura || '', f.moneda || 'PES', String(f.total ?? '').replace('.', ','), String(Math.round(f.pesos * 100) / 100).replace('.', ','), f.id]),
   ]);
   await cargar();
 }
 const TIPOS_NC_F = [3, 8, 13, 53, 203, 208, 213];
+
+// ---------------------------------------------------------------------------
+//  Aprobación de pagos
+//  Pili arma la propuesta (facturas cargadas en Shares + NC + pagos manuales)
+//  por sociedad y fecha de pago → el Director aprueba u observa cada pago →
+//  se exporta lo aprobado y se marca pagado.
+// ---------------------------------------------------------------------------
+const CAT_PAGO = { materia_prima: ['Materia prima', 'var(--accent)'], gasto: ['Gastos', 'var(--info)'], inversion: ['Inversión', 'var(--warn)'] };
+const EST_LOTE = {
+  borrador: ['Borrador', 'b-aviso'], enviado: ['Esperando aprobación', 'b-warn'], aprobado: ['Aprobada', 'b-ok'],
+  parcial: ['Aprobada en parte', 'b-ok'], rechazado: ['Observada', 'b-critica'], cerrado: ['Pagada', 'b-cargada'],
+};
+const EST_PAGO_F = { propuesta: ['En propuesta', 'b-aviso'], en_aprobacion: ['En aprobación', 'b-warn'], aprobada: ['Pago aprobado', 'b-ok'], pagada: ['Pagada', 'b-cargada'] };
+const MEDIOS_PAGO = ['Transferencia', 'E-cheq', 'Cheque', 'Efectivo', 'Débito automático', 'Otro'];
+const esDirector = () => S.user?.rol === 'director';
+const badgeLote = (e) => `<span class="badge ${(EST_LOTE[e] || [])[1] || ''}">${esc((EST_LOTE[e] || [e])[0])}</span>`;
+const dotCat = (k) => `<i class="cat-dot" style="background:${(CAT_PAGO[k] || CAT_PAGO.gasto)[1]}"></i>`;
+const nomCat = (k) => (CAT_PAGO[k] || [k])[0];
+const fechaLarga = (iso) => { if (!iso) return '—'; const d = new Date(iso + 'T12:00:00'); return Number.isNaN(d.getTime()) ? fmtF(iso) : d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }); };
+const appUrl = () => location.href.split('#')[0];
+
+// Próximo día fijo de pago (hoy cuenta si hoy es ese día)
+function proximoDiaPago(dia = 5) {
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  const falta = (Number(dia) - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + falta);
+  return d.toLocaleDateString('sv-SE');
+}
+
+// Barra apilada por categoría
+function barraCategorias(por, total) {
+  const t = Object.keys(CAT_PAGO).reduce((a, k) => a + Math.max(0, Number(por?.[k]?.total ?? por?.[k] ?? 0)), 0) || Math.abs(total) || 1;
+  return `<div class="medidor cat-barra">${Object.keys(CAT_PAGO).map(k => { const v = Math.max(0, Number(por?.[k]?.total ?? por?.[k] ?? 0)); return v ? `<i style="width:${(v / t * 100).toFixed(2)}%;background:${CAT_PAGO[k][1]}" title="${esc(nomCat(k))}: ${esc($$m(v))}"></i>` : ''; }).join('')}</div>`;
+}
+function kpisCategorias(por, total) {
+  return Object.keys(CAT_PAGO).map(k => {
+    const c = por?.[k] || { total: 0, n: 0 };
+    const pct = total ? Math.round(c.total / total * 100) : 0;
+    return `<div class="kpi"><div class="et">${dotCat(k)}${esc(nomCat(k))}</div><div class="val">${$$corto(c.total)}</div><div class="sub">${c.n} pago(s) · ${pct}% del total</div></div>`;
+  }).join('');
+}
+const chipsAlertas = (al) => (al || []).map(a => `<span class="badge ${a.grave ? 'b-critica' : a.tipo === 'manual' ? 'b-acc' : 'b-warn'}">${esc(a.texto)}</span>`).join(' ');
+
+// Abre el PDF de una factura en otra pestaña (sirve en el celular)
+async function abrirPdfFactura(id) {
+  const w = window.open('', '_blank');
+  try {
+    const res = await api(`/api/facturas/${id}/pdf`, { raw: true });
+    const url = URL.createObjectURL(await res.blob());
+    if (w) w.location = url; else location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  } catch (e) { if (w) w.close(); toast(e.message, true); }
+}
+
+function linkWhatsapp(d) {
+  const nro = d.config?.director_whatsapp || '';
+  const txt = `Hola! Te dejé para aprobar la propuesta de pagos de ${d.lote.empresa || fmtCuit(d.lote.cuit_empresa)} para el ${fmtF(d.lote.fecha_pago)} (${d.items.length} pagos). Entrá acá: ${appUrl()}#/pago/${d.lote.id}`;
+  return `https://wa.me/${nro}?text=${encodeURIComponent(txt)}`;
+}
+function modalAvisoEnviado(d, aviso) {
+  modal(`<h2>Propuesta enviada</h2>
+    <p class="muted">${aviso ? esc(aviso) : 'Le llegó un mail al Director (sin importes). Si querés apurarlo, avisale por WhatsApp: el mensaje tampoco lleva importes, solo el link.'}</p>
+    <div class="acciones"><a class="btn btn-acento" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.send}Avisar por WhatsApp</a><button class="btn" id="b-cerrar-av">Listo</button></div>
+    ${d.config?.director_whatsapp ? '' : '<p class="small muted" style="margin-top:12px">Tip: cargá el celular del Director en Configuración → <span class="mono">director_whatsapp</span> y el mensaje le va directo.</p>'}`,
+  { alMontar: (m, cerrar) => { $('#b-cerrar-av', m).onclick = cerrar; } });
+}
+
+// ---- Lista de propuestas (para el Director: "Aprobar pagos") ----
+async function vistaPropuestas(el) {
+  const dir = esDirector();
+  let filtro = sessionStorage.getItem('prop_filtro') || 'activas';
+  el.innerHTML = `<div class="encabezado"><div><h1>${dir ? 'Aprobar pagos' : 'Propuestas de pago'}</h1>
+      <p>${dir ? 'Las propuestas que te mandaron para aprobar. Tocá una para ver el detalle por Gastos, Inversión y Materia prima.' : 'Armá la propuesta por sociedad y fecha de pago con las facturas ya cargadas en Shares, mandala al Director y, cuando vuelva aprobada, marcá lo pagado.'}</p></div>
+    ${dir ? '' : `<div class="acciones"><a class="btn btn-negro" href="#/propuesta/nueva">${ICO.coin}Nueva propuesta</a></div>`}</div>
+    <div class="seg" id="seg"><button data-f="activas">Activas</button><button data-f="todas">Todas</button></div>
+    <div id="lista"><div class="vacio"><span class="cargando"></span></div></div>`;
+  const r = await api('/api/pagos/lotes');
+  const pintar = () => {
+    $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.f === filtro));
+    const ls = r.lotes.filter(l => filtro === 'todas' || ['borrador', 'enviado', 'aprobado', 'parcial'].includes(l.estado));
+    const esperando = r.lotes.filter(l => l.estado === 'enviado');
+    const aviso = dir && esperando.length ? `<div class="tarea lista-vivo" style="margin-bottom:16px"><div class="panel-titulo"><h2>Tenés ${esperando.length} propuesta(s) esperando tu aprobación</h2><span class="badge b-warn">${$$m(esperando.reduce((a, l) => a + (l.total || 0), 0))}</span></div></div>` : '';
+    $('#lista').innerHTML = aviso + (ls.length ? `<div class="lotes">${ls.map(l => {
+      const por = { gasto: l.t_gasto || 0, inversion: l.t_inversion || 0, materia_prima: l.t_materia_prima || 0 };
+      return `<a class="lote-card ${l.estado === 'enviado' ? 'pend' : ''}" href="#/pago/${l.id}">
+        <div class="lc-top"><div><b>${esc(l.empresa || fmtCuit(l.cuit_empresa))}</b><small>Pago del ${esc(fechaLarga(l.fecha_pago))} · #${l.id}</small></div>${badgeLote(l.estado)}</div>
+        <div class="lc-monto">${$$m(l.total)}<small>${l.n} pago(s)${l.aprobado != null && ['aprobado', 'parcial', 'cerrado'].includes(l.estado) ? ` · aprobado ${$$m(l.aprobado)}` : ''}${l.por_pagar ? ` · <b>${l.por_pagar} por pagar</b>` : ''}</small></div>
+        ${barraCategorias(por, l.total)}
+        <div class="lc-cats">${Object.keys(CAT_PAGO).map(k => `<span>${dotCat(k)}${esc(nomCat(k))} <b>${$$corto(por[k])}</b></span>`).join('')}</div></a>`;
+    }).join('')}</div>` : `<div class="panel"><div class="vacio"><span class="grande">${dir ? 'No hay nada para aprobar' : 'Todavía no hay propuestas'}</span>${dir ? 'Cuando te manden una propuesta te llega un mail.' : 'Tocá “Nueva propuesta” para armar la primera.'}</div></div>`);
+  };
+  $$('#seg button').forEach(b => b.onclick = () => { filtro = b.dataset.f; sessionStorage.setItem('prop_filtro', filtro); pintar(); });
+  pintar();
+}
+
+// ---- Armar / editar propuesta ----
+async function vistaPropuestaEditar(el, id) {
+  if (!puede('aprobador')) throw new Error('Necesitás rol aprobador para armar propuestas de pago.');
+  id = id ? Number(id) : null;
+  const [emps, lotes, previo] = await Promise.all([api('/api/empresas'), api('/api/pagos/lotes?estado=enviado'), id ? api('/api/pagos/lotes/' + id) : null]);
+  if (previo && !previo.puede.editar) throw new Error('Esta propuesta ya no se puede editar (está ' + (EST_LOTE[previo.lote.estado] || [previo.lote.estado])[0].toLowerCase() + ').');
+  const empresas = (emps.empresas || []).filter(e => e.activa !== 0);
+  if (!empresas.length) throw new Error('No hay sociedades cargadas: agregalas en Configuración → Empresas.');
+  const cfg = lotes.config || { dia_pago: 5 };
+  // Estado del editor
+  const st = {
+    empresa: previo?.lote.cuit_empresa || sessionStorage.getItem('prop_empresa') || empresas[0].cuit,
+    fecha: previo?.lote.fecha_pago || proximoDiaPago(cfg.dia_pago),
+    nota: previo?.lote.nota || '',
+    sel: new Map((previo?.items || []).filter(i => i.factura_id).map(i => [i.factura_id, i.categoria])), // factura_id → categoría
+    manuales: (previo?.items || []).filter(i => !i.factura_id).map(i => ({ proveedor: i.proveedor, cuit_proveedor: i.cuit_proveedor || '', concepto: String(i.concepto || '').replace(/^Pago manual: /, ''), importe: i.importe, categoria: i.categoria, cbu: i.cbu || '' })),
+    cand: [], primera: !previo,
+  };
+  const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  el.innerHTML = `<div class="encabezado"><div><h1>${id ? `Editar propuesta #${id}` : 'Nueva propuesta de pagos'}</h1>
+      <p>Solo aparecen facturas <b>cargadas en Shares</b> de la sociedad elegida que no estén en otra propuesta. Vienen tildadas las que vencen hasta la fecha de pago (y sus notas de crédito).</p></div></div>
+    <div class="panel panel-pad"><div class="fila" style="align-items:end">
+      <div class="campo"><label>Sociedad</label><select id="p-emp">${empresas.map(e => `<option value="${esc(e.cuit)}" ${e.cuit === st.empresa ? 'selected' : ''}>${esc(e.razon_social)} (${fmtCuit(e.cuit)})</option>`).join('')}</select></div>
+      <div class="campo"><label>Fecha de pago</label><input type="date" id="p-fecha" value="${esc(st.fecha)}"><div class="ayuda">Día fijo: ${dias[cfg.dia_pago] || '—'}. Cambiala si es una excepción.</div></div>
+      <div class="campo" style="flex:2"><label>Nota para el Director (opcional)</label><input id="p-nota" maxlength="500" value="${esc(st.nota)}" placeholder="Ej.: adelantamos Lácteos por el aumento"></div></div></div>
+    <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor, CUIT o cuenta" aria-label="Filtrar"></label>
+      <span class="acciones"><button class="btn btn-chico" id="b-sug">Tildar sugeridas</button><button class="btn btn-chico" id="b-todas">Todas</button><button class="btn btn-chico btn-ghost" id="b-ning">Ninguna</button></span></div>
+      <div id="cand"><div class="vacio"><span class="cargando"></span></div></div></div>
+    <div class="panel"><div class="panel-titulo"><h2>Pagos sin factura en la app</h2><span class="ayuda">anticipos, impuestos, sueldos, etc. También los aprueba el Director.</span></div>
+      <div id="manuales" class="panel-pad"></div></div>
+    <div class="barra-acciones" id="barra"></div>`;
+
+  const catSel = (val, attr) => `<select ${attr} class="sel-cat">${Object.entries(CAT_PAGO).map(([k, v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>`;
+  const totales = () => {
+    const por = { gasto: { total: 0, n: 0 }, inversion: { total: 0, n: 0 }, materia_prima: { total: 0, n: 0 } };
+    const netos = {};
+    for (const c of st.cand) if (st.sel.has(c.factura_id)) {
+      const k = st.sel.get(c.factura_id) || c.categoria; por[k].total += c.importe; por[k].n++;
+      netos[c.cuit_proveedor] = (netos[c.cuit_proveedor] || 0) + c.importe;
+    }
+    for (const m of st.manuales) { const k = m.categoria || 'gasto'; por[k].total += Number(m.importe) || 0; por[k].n++; }
+    const total = Object.values(por).reduce((a, c) => a + c.total, 0);
+    const neg = Object.entries(netos).filter(([, v]) => v < -0.009).map(([c]) => st.cand.find(x => x.cuit_proveedor === c)?.proveedor);
+    return { por, total, n: Object.values(por).reduce((a, c) => a + c.n, 0), neg };
+  };
+  // Los botones se pintan una sola vez: si se re-pintaran al escribir un importe, el "change" del
+  // campo (que dispara al tocar el botón) los reemplazaría en medio del clic y el clic se perdería.
+  $('#barra').innerHTML = `<div class="principal" id="barra-tot"></div>
+    <button class="btn" id="b-guardar">Guardar borrador</button><button class="btn btn-acento" id="b-enviar">${ICO.send}Guardar y enviar al Director</button>`;
+  $('#b-guardar').onclick = () => conBoton($('#b-guardar'), () => guardar(false));
+  $('#b-enviar').onclick = () => conBoton($('#b-enviar'), () => guardar(true));
+  const pintarBarra = () => {
+    const t = totales();
+    $('#barra-tot').innerHTML = `<div class="small muted">${t.n} pago(s) · ${Object.keys(CAT_PAGO).map(k => `${dotCat(k)}${esc(nomCat(k))} ${$$corto(t.por[k].total)}`).join(' · ')}</div>
+        <div style="font:800 22px var(--display)">${$$m(t.total)}</div>${t.neg.length ? `<div class="small txt-neg">⚠ Las NC de ${esc(t.neg.join(', '))} superan sus facturas</div>` : ''}`;
+  };
+  const pintarCand = () => {
+    const q = ($('#q').value || '').trim().toLowerCase();
+    const grupos = new Map();
+    for (const c of st.cand) {
+      if (q && !`${c.proveedor} ${c.cuit_proveedor} ${c.cuenta_den || ''} ${c.cuenta || ''}`.toLowerCase().includes(q.replace(/-/g, ''))) continue;
+      if (!grupos.has(c.cuit_proveedor)) grupos.set(c.cuit_proveedor, []);
+      grupos.get(c.cuit_proveedor).push(c);
+    }
+    if (!st.cand.length) { $('#cand').innerHTML = '<div class="vacio"><span class="grande">No hay facturas para proponer</span>No hay facturas cargadas en Shares de esta sociedad que estén libres. Podés agregar pagos manuales abajo.</div>'; return; }
+    $('#cand').innerHTML = `<div class="tabla-wrap"><table class="tabla-cand"><thead><tr><th style="width:32px"></th><th>Comprobante</th><th>Vence</th><th>Cuenta</th><th>Categoría</th><th class="num">Importe</th></tr></thead><tbody>
+      ${[...grupos.entries()].map(([cuit, fs]) => {
+        const f0 = fs[0];
+        const selN = fs.filter(f => st.sel.has(f.factura_id));
+        const sub = selN.reduce((a, f) => a + f.importe, 0);
+        const todas = selN.length === fs.length;
+        return `<tr class="grupo-prov"><td><input type="checkbox" data-prov="${esc(cuit)}" ${todas ? 'checked' : ''} ${selN.length && !todas ? 'data-mixto="1"' : ''} aria-label="Tildar todo el proveedor"></td>
+          <td colspan="3"><div class="prov">${cuad(f0.proveedor)}<div><b>${esc(f0.proveedor)}</b><small class="mono">${fmtCuit(cuit)} · ${f0.cbu ? esc(f0.cbu) : 'sin CBU'}${f0.alias ? ' · ' + esc(f0.alias) : ''}</small></div></div>${f0.alertas?.length ? `<div class="chips" style="margin-top:6px">${chipsAlertas(f0.alertas)}</div>` : ''}</td>
+          <td class="small muted">${selN.length}/${fs.length}</td><td class="num"><b>${selN.length ? $$m(sub) : '—'}</b></td></tr>
+          ${fs.map(f => `<tr class="${st.sel.has(f.factura_id) ? '' : 'apagada'}"><td><input type="checkbox" data-fid="${f.factura_id}" ${st.sel.has(f.factura_id) ? 'checked' : ''} aria-label="Incluir"></td>
+            <td><a href="#/factura/${f.factura_id}" target="_blank" class="mono">${esc(f.comprobante)}</a>${f.es_nc ? ' <span class="badge b-acc">NC</span>' : ''}<small class="sub-celda">Emitida ${fmtF(f.fecha_emision)}${f.shares_ref ? ' · Shares ' + esc(f.shares_ref) : ''}</small></td>
+            <td class="mono ${f.vencida ? 'txt-neg' : ''}">${fmtF(f.fecha_vto)}</td>
+            <td class="small">${f.cuenta ? `<span class="mono">${esc(f.cuenta)}</span> ${esc(f.cuenta_den || '')}` : '<span class="muted">sin cuenta</span>'}</td>
+            <td>${catSel(st.sel.get(f.factura_id) || f.categoria, `data-cat="${f.factura_id}"`)}</td>
+            <td class="num"><b class="${f.importe < 0 ? 'txt-neg' : ''}">${$$m(f.importe)}</b>${f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.importe_original)} × ${fmtNum.format(f.cotizacion)}</small>` : ''}</td></tr>`).join('')}`;
+      }).join('') || '<tr><td colspan="6" class="muted">Nada coincide con el filtro.</td></tr>'}</tbody></table></div>`;
+    $$('[data-mixto]', $('#cand')).forEach(c => { c.indeterminate = true; });
+    $$('[data-fid]', $('#cand')).forEach(c => c.onchange = () => {
+      const f = st.cand.find(x => x.factura_id === Number(c.dataset.fid));
+      if (c.checked) st.sel.set(f.factura_id, $(`[data-cat="${f.factura_id}"]`).value); else st.sel.delete(f.factura_id);
+      pintarCand(); pintarBarra();
+    });
+    $$('[data-prov]', $('#cand')).forEach(c => c.onchange = () => {
+      for (const f of st.cand.filter(x => x.cuit_proveedor === c.dataset.prov)) { if (c.checked) st.sel.set(f.factura_id, st.sel.get(f.factura_id) || f.categoria); else st.sel.delete(f.factura_id); }
+      pintarCand(); pintarBarra();
+    });
+    $$('[data-cat]', $('#cand')).forEach(s => s.onchange = () => {
+      const fid = Number(s.dataset.cat); const f = st.cand.find(x => x.factura_id === fid); f.categoria = s.value;
+      if (st.sel.has(fid)) st.sel.set(fid, s.value);
+      pintarBarra();
+    });
+  };
+  const pintarManuales = () => {
+    $('#manuales').innerHTML = (st.manuales.length ? `<div class="tabla-wrap"><table><thead><tr><th>Proveedor / beneficiario</th><th>CUIT</th><th>Motivo</th><th>Categoría</th><th>CBU</th><th class="num">Importe $</th><th></th></tr></thead><tbody>
+      ${st.manuales.map((m, i) => `<tr><td><input data-m="${i}" data-k="proveedor" value="${esc(m.proveedor)}" placeholder="Ej.: ARCA"></td>
+        <td><input data-m="${i}" data-k="cuit_proveedor" class="mono" value="${esc(m.cuit_proveedor)}" placeholder="opcional" style="width:130px"></td>
+        <td><input data-m="${i}" data-k="concepto" value="${esc(m.concepto)}" placeholder="Ej.: Plan de pagos cuota 3"></td>
+        <td>${catSel(m.categoria || 'gasto', `data-m="${i}" data-k="categoria"`)}</td>
+        <td><input data-m="${i}" data-k="cbu" class="mono" value="${esc(m.cbu)}" placeholder="opcional" style="width:200px"></td>
+        <td><input data-m="${i}" data-k="importe" type="number" step="0.01" min="0" class="num" value="${esc(m.importe ?? '')}" style="width:130px"></td>
+        <td><button class="btn btn-chico btn-rojo" data-mdel="${i}" aria-label="Quitar">${ICO.x}</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small" style="margin:0 0 10px">No hay pagos manuales.</p>')
+      + '<button class="btn btn-chico" id="b-addm">+ Agregar pago manual</button>';
+    $$('[data-m]', $('#manuales')).forEach(inp => inp.oninput = inp.onchange = () => { const m = st.manuales[inp.dataset.m]; m[inp.dataset.k] = inp.dataset.k === 'importe' ? Number(inp.value) || 0 : inp.value; pintarBarra(); });
+    $$('[data-mdel]', $('#manuales')).forEach(b => b.onclick = () => { st.manuales.splice(Number(b.dataset.mdel), 1); pintarManuales(); pintarBarra(); });
+    $('#b-addm').onclick = () => { st.manuales.push({ proveedor: '', cuit_proveedor: '', concepto: '', importe: '', categoria: 'gasto', cbu: '' }); pintarManuales(); $(`[data-m="${st.manuales.length - 1}"][data-k="proveedor"]`)?.focus(); };
+  };
+  const cargarCand = async () => {
+    $('#cand').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
+    const r = await api(`/api/pagos/candidatas?empresa=${encodeURIComponent(st.empresa)}&fecha=${encodeURIComponent(st.fecha)}${id ? '&lote=' + id : ''}`);
+    st.cand = r.candidatas;
+    const ids = new Set(st.cand.map(c => c.factura_id));
+    for (const fid of [...st.sel.keys()]) if (!ids.has(fid)) st.sel.delete(fid);   // cambió la sociedad o ya no está libre
+    if (st.primera) { for (const c of st.cand) if (c.sugerida) st.sel.set(c.factura_id, c.categoria); st.primera = false; }
+    pintarCand(); pintarBarra();
+  };
+  const guardar = async (enviar) => {
+    const t = totales();
+    if (!t.n) throw new Error('La propuesta está vacía.');
+    if (t.neg.length) throw new Error(`Las notas de crédito de ${t.neg.join(', ')} superan sus facturas: tildá las facturas o sacá la NC.`);
+    const body = { cuit_empresa: st.empresa, fecha_pago: st.fecha, nota: $('#p-nota').value.trim(),
+      facturas: [...st.sel.entries()].map(([factura_id, categoria]) => ({ factura_id, categoria })),
+      manuales: st.manuales.filter(m => m.proveedor || m.concepto || m.importe) };
+    if (enviar && !confirm(`¿Enviar al Director ${t.n} pago(s) por ${$$m(t.total)}?\n\nDespués de enviarla no se puede editar (la podés retirar mientras no la resuelva).`)) return;
+    const d = await api(id ? '/api/pagos/lotes/' + id : '/api/pagos/lotes', { method: id ? 'PUT' : 'POST', body });
+    sessionStorage.setItem('prop_empresa', st.empresa);
+    if (!enviar) { toast('Borrador guardado'); location.hash = '#/pago/' + d.lote.id; return; }
+    const e = await api(`/api/pagos/lotes/${d.lote.id}/enviar`, { method: 'POST', body: { app_url: appUrl() } });
+    location.hash = '#/pago/' + d.lote.id;
+    setTimeout(() => modalAvisoEnviado(e, e.aviso), 300);
+  };
+  $('#p-emp').onchange = (e) => { st.empresa = e.target.value; st.sel.clear(); st.primera = true; cargarCand().catch(err => toast(err.message, true)); };
+  $('#p-fecha').onchange = (e) => { if (!e.target.value) return; st.fecha = e.target.value; cargarCand().catch(err => toast(err.message, true)); };
+  $('#q').oninput = pintarCand;
+  $('#b-sug').onclick = () => { st.sel.clear(); for (const c of st.cand) if (c.sugerida) st.sel.set(c.factura_id, c.categoria); pintarCand(); pintarBarra(); };
+  $('#b-todas').onclick = () => { for (const c of st.cand) if (!st.sel.has(c.factura_id)) st.sel.set(c.factura_id, c.categoria); pintarCand(); pintarBarra(); };
+  $('#b-ning').onclick = () => { st.sel.clear(); pintarCand(); pintarBarra(); };
+  pintarManuales();
+  await cargarCand();
+}
+
+// ---- Detalle de una propuesta (y aprobación del Director) ----
+async function vistaLote(el, id) {
+  const d = await api('/api/pagos/lotes/' + id);
+  const L = d.lote, R = d.resumen;
+  const aprobando = d.puede.resolver;
+  const porCat = {};
+  for (const it of d.items) (porCat[it.categoria] = porCat[it.categoria] || []).push(it);
+  const quien = (e) => esc(String(e || '').split('@')[0]);
+  const historialTxt = { crear_propuesta: 'armó la propuesta', editar_propuesta: 'la editó', enviar_a_aprobar: 'la envió al Director', retirar_propuesta: 'la retiró para editarla', resolver: 'la resolvió', marcar_pagado: 'marcó pagos', borrar_propuesta: 'la borró' };
+
+  // Estado de la aprobación (solo Director)
+  const ap = { sel: new Set(d.items.map(i => i.id)), coment: {}, general: '' };
+  const nombreCats = Object.keys(CAT_PAGO).filter(k => porCat[k]).concat(Object.keys(porCat).filter(k => !CAT_PAGO[k]));
+
+  const filaItem = (it) => {
+    const sel = ap.sel.has(it.id);
+    const decision = it.decision ? `<span class="badge ${it.decision === 'aprobado' ? 'b-ok' : 'b-critica'}">${it.decision === 'aprobado' ? 'Aprobado' : 'Observado'}</span>` : '';
+    const pagado = it.pagado_at ? `<span class="badge b-cargada">Pagado ${fmtF(it.pagado_at)}</span><small class="sub-celda">${esc(it.pago_medio || '')}${it.pago_ref ? ' · ' + esc(it.pago_ref) : ''}</small>` : '';
+    const puedePagar = d.puede.pagar && it.decision === 'aprobado' && !it.pagado_at;
+    return `<div class="ip ${aprobando && !sel ? 'apagada' : ''} ${it.alertas?.some(a => a.grave) ? 'grave' : ''}" data-item="${it.id}">
+      ${aprobando ? `<input type="checkbox" data-ap="${it.id}" ${sel ? 'checked' : ''} aria-label="Aprobar">` : puedePagar ? `<input type="checkbox" data-pg="${it.id}" aria-label="Marcar pagado">` : '<span></span>'}
+      <div class="ip-info"><b>${esc(it.proveedor)}</b>
+        <small>${esc(it.concepto || '')}${it.fecha_vto ? ` · vence ${fmtF(it.fecha_vto)}` : ''}${it.cbu ? ` · <span class="mono">${esc(it.cbu)}</span>` : ''}</small>
+        ${it.alertas?.length ? `<div class="chips">${chipsAlertas(it.alertas)}</div>` : ''}
+        ${it.comentario ? `<div class="small" style="margin-top:4px">💬 ${esc(it.comentario)}</div>` : ''}
+        ${aprobando ? `<input class="ip-coment" data-com="${it.id}" placeholder="${sel ? 'Comentario (opcional)' : 'Por qué no lo aprobás (obligatorio)'}" value="${esc(ap.coment[it.id] || '')}" ${sel ? 'hidden' : ''}>` : ''}
+        <div class="chips" style="margin-top:4px">${decision}${pagado}${it.factura_id ? `<button class="btn-link small" data-pdf="${it.factura_id}">Ver factura</button>` : ''}</div></div>
+      <div class="ip-monto ${it.importe < 0 ? 'txt-neg' : ''}">${$$m(it.importe)}${it.moneda && it.moneda !== 'PES' ? `<small>${esc(it.moneda)} ${fmtNum.format(it.importe_original)}</small>` : ''}</div></div>`;
+  };
+  const seccion = (k) => {
+    const its = porCat[k];
+    const tot = its.reduce((a, i) => a + i.importe, 0);
+    const selT = its.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
+    return `<section class="panel cat-sec"><div class="panel-titulo"><h2>${aprobando ? `<input type="checkbox" data-apcat="${k}" ${its.every(i => ap.sel.has(i.id)) ? 'checked' : ''} aria-label="Aprobar toda la categoría"> ` : ''}${dotCat(k)}${esc(nomCat(k))} <span class="muted small">${its.length}</span></h2>
+      <b>${aprobando && selT !== tot ? `<span class="muted small">${$$m(selT)} de </span>` : ''}${$$m(tot)}</b></div>
+      <div class="ips">${its.map(filaItem).join('')}</div></section>`;
+  };
+  const totalSel = () => d.items.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
+
+  const acciones = [];
+  if (d.puede.editar) acciones.push(`<a class="btn" href="#/propuesta/${L.id}/editar">Editar</a>`);
+  if (d.puede.enviar) acciones.push(`<button class="btn btn-acento" id="b-env">${ICO.send}Enviar al Director</button>`);
+  if (d.puede.retirar) acciones.push(`<a class="btn" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.send}Avisar por WhatsApp</a><button class="btn" id="b-ret">Retirar para editar</button>`);
+  if (d.puede.editar) acciones.push(`<button class="btn btn-rojo" id="b-del">Borrar</button>`);
+  if (!esDirector() && R.aprobado) acciones.push(`<button class="btn" id="b-csv">${ICO.doc}Exportar aprobados</button>`);
+
+  el.innerHTML = `<div class="encabezado"><div><div class="acciones" style="margin-bottom:6px"><a class="btn btn-ghost btn-chico" href="#/propuestas">${ICO.back}${esDirector() ? 'Aprobar pagos' : 'Propuestas'}</a></div>
+      <h1>${esc(L.empresa || fmtCuit(L.cuit_empresa))} · ${esc(fechaLarga(L.fecha_pago))}</h1>
+      <p>${badgeLote(L.estado)} &nbsp;Propuesta #${L.id} · armada por ${quien(L.creado_por)}${L.enviado_at ? ` · enviada ${fmtFH(L.enviado_at)}` : ''}${L.resuelto_at ? ` · resuelta por ${quien(L.resuelto_por)} ${fmtFH(L.resuelto_at)}` : ''}</p></div>
+      ${acciones.length ? `<div class="acciones">${acciones.join('')}</div>` : ''}</div>
+    ${L.nota ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Nota:</b> ${esc(L.nota)}</div>` : ''}
+    ${L.comentario_director ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Comentario del Director:</b> ${esc(L.comentario_director)}</div>` : ''}
+    <div class="kpis"><div class="kpi"><div class="et">Total propuesto</div><div class="val">${$$corto(R.total)}</div><div class="sub">${R.items} pago(s)${R.alertas_graves ? ` · <b class="txt-neg">${R.alertas_graves} con alerta</b>` : ''}</div>${barraCategorias(R.por_categoria, R.total)}</div>
+      ${kpisCategorias(R.por_categoria, R.total)}</div>
+    ${['aprobado', 'parcial', 'cerrado', 'rechazado'].includes(L.estado) ? `<div class="kpis"><div class="kpi ok"><div class="et">Aprobado</div><div class="val">${$$corto(R.aprobado)}</div></div><div class="kpi ${R.observado ? 'alerta' : ''}"><div class="et">Observado</div><div class="val">${$$corto(R.observado)}</div></div><div class="kpi"><div class="et">Pagado</div><div class="val">${$$corto(R.pagado)}</div><div class="sub">${R.aprobado - R.pagado > 0.009 ? `falta ${$$m(R.aprobado - R.pagado)}` : 'completo'}</div></div></div>` : ''}
+    ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y vuelve a Pili con tu comentario (es obligatorio). Las alertas en rojo son de CBU: revisalas antes de aprobar.</p>' : ''}
+    <div id="secs">${nombreCats.map(seccion).join('')}</div>
+    ${aprobando ? `<div class="barra-acciones" id="barra-ap"></div>` : ''}
+    ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Tildá los pagos que ya hiciste y marcálos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
+    <div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Historial</h2></div><div class="panel-pad"><ul class="hist">${d.historial.map(h => `<li><span class="small mono muted">${fmtFH(h.ts)}</span> <b>${quien(h.usuario)}</b> ${esc(historialTxt[h.accion] || h.accion)}${h.accion === 'resolver' && h.valor_nuevo ? (() => { const v = safeParse(h.valor_nuevo); return v ? ` · ${v.aprobados} de ${v.de} aprobados (${$$m(v.total_aprobado)})` : ''; })() : ''}</li>`).join('') || '<li class="muted">Sin movimientos.</li>'}</ul></div></div>`;
+
+  // PDFs
+  $$('[data-pdf]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.pdf));
+
+  // Aprobación
+  const pintarBarraAp = () => {
+    const n = ap.sel.size, tot = totalSel();
+    if (!$('#b-resolver')) {
+      $('#barra-ap').innerHTML = `<div class="principal"><div id="ap-tot"></div><input id="ap-gral" placeholder="Comentario general (opcional)" style="margin-top:6px"></div><button class="btn btn-grande" id="b-resolver"></button>`;
+      $('#ap-gral').oninput = (e) => { ap.general = e.target.value; };
+      $('#b-resolver').onclick = () => resolver();
+    }
+    $('#ap-tot').innerHTML = `<div class="small muted">Aprobás ${n} de ${d.items.length} pago(s)</div><div style="font:800 22px var(--display)">${$$m(tot)} <span class="small muted" style="font-weight:500">de ${$$m(R.total)}</span></div>`;
+    const br = $('#b-resolver');
+    br.className = `btn ${n ? 'btn-acento' : 'btn-rojo'} btn-grande`;
+    br.innerHTML = n ? `${ICO.check}${n === d.items.length ? 'Aprobar todo' : 'Aprobar seleccionados'}` : 'Observar todo';
+  };
+  const resolver = () => conBoton($('#b-resolver'), async () => {
+      const sinCom = d.items.filter(i => !ap.sel.has(i.id) && !String(ap.coment[i.id] || ap.general || '').trim());
+      if (sinCom.length) { const c = $(`[data-com="${sinCom[0].id}"]`); c?.focus(); c?.scrollIntoView({ block: 'center' }); throw new Error(`Escribí por qué no aprobás el pago a ${sinCom[0].proveedor}.`); }
+      const graves = d.items.filter(i => ap.sel.has(i.id) && i.alertas?.some(a => a.grave));
+      const msg = `¿Confirmás?\n\nAprobás ${ap.sel.size} pago(s) por ${$$m(totalSel())}${ap.sel.size < d.items.length ? ` y observás ${d.items.length - ap.sel.size}` : ''}.` + (graves.length ? `\n\n⚠ ${graves.length} de los aprobados tienen alerta de CBU.` : '');
+      if (!confirm(msg)) return;
+      const r = await api(`/api/pagos/lotes/${L.id}/resolver`, { method: 'POST', body: { aprobados: [...ap.sel], comentarios: ap.coment, comentario: ap.general.trim(), app_url: appUrl() } });
+      toast(r.aviso || 'Listo, quedó resuelta. Le avisamos por mail.', !!r.aviso);
+      router();
+    });
+  const conectarAp = () => {
+    $$('[data-ap]', el).forEach(c => c.onchange = () => {
+      const iid = Number(c.dataset.ap);
+      if (c.checked) ap.sel.add(iid); else ap.sel.delete(iid);
+      repintarAp(iid);
+    });
+    $$('[data-apcat]', el).forEach(c => c.onchange = () => { for (const it of porCat[c.dataset.apcat]) c.checked ? ap.sel.add(it.id) : ap.sel.delete(it.id); repintarAp(); });
+    $$('[data-com]', el).forEach(i => i.oninput = () => { ap.coment[i.dataset.com] = i.value; });
+  };
+  const repintarAp = (foco) => {
+    $('#secs').innerHTML = nombreCats.map(seccion).join('');
+    $$('[data-pdf]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.pdf));
+    conectarAp(); pintarBarraAp();
+    if (foco && !ap.sel.has(foco)) $(`[data-com="${foco}"]`)?.focus();
+  };
+  if (aprobando) { conectarAp(); pintarBarraAp(); }
+
+  // Acciones de Pili
+  const b = (sel, fn) => { const x = $(sel, el); if (x) x.onclick = () => conBoton(x, fn); };
+  b('#b-env', async () => {
+    if (!confirm(`¿Enviar al Director ${R.items} pago(s) por ${$$m(R.total)}?`)) return;
+    const e = await api(`/api/pagos/lotes/${L.id}/enviar`, { method: 'POST', body: { app_url: appUrl() } });
+    await router(); modalAvisoEnviado(e, e.aviso);
+  });
+  b('#b-ret', async () => { if (!confirm('¿Retirar la propuesta? Vuelve a borrador y el Director deja de verla hasta que la reenvíes.')) return; await api(`/api/pagos/lotes/${L.id}/retirar`, { method: 'POST' }); toast('Propuesta retirada'); location.hash = `#/propuesta/${L.id}/editar`; });
+  b('#b-del', async () => { if (!confirm('¿Borrar este borrador?')) return; await api(`/api/pagos/lotes/${L.id}`, { method: 'DELETE' }); toast('Borrador eliminado'); location.hash = '#/propuestas'; });
+  const csv = $('#b-csv', el);
+  if (csv) csv.onclick = () => descargarCsv(`pagos_aprobados_${L.id}_${L.fecha_pago}.csv`, [
+    ['Propuesta', 'Sociedad', 'Fecha de pago', 'Categoría', 'CUIT', 'Proveedor', 'Concepto', 'Vencimiento', 'CBU', 'Alias', 'Importe $', 'Moneda', 'Importe original', 'Estado', 'Pagado', 'Medio', 'Referencia', 'Factura ID'],
+    ...d.items.filter(i => i.decision === 'aprobado').map(i => [L.id, L.empresa || L.cuit_empresa, L.fecha_pago, nomCat(i.categoria), i.cuit_proveedor || '', i.proveedor, i.concepto || '', i.fecha_vto || '', i.cbu || '', i.alias || '',
+      String(i.importe).replace('.', ','), i.moneda || 'PES', String(i.importe_original ?? '').replace('.', ','), i.pagado_at ? 'Pagado' : 'Por pagar', i.pagado_at || '', i.pago_medio || '', i.pago_ref || '', i.factura_id || '']),
+  ]);
+  const pt = $('#b-pg-todos', el);
+  if (pt) pt.onclick = () => $$('[data-pg]', el).forEach(c => { c.checked = true; });
+  const pg = $('#b-pagar', el);
+  if (pg) pg.onclick = () => {
+    const ids = $$('[data-pg]:checked', el).map(c => Number(c.dataset.pg));
+    if (!ids.length) return toast('Tildá los pagos que ya hiciste.', true);
+    const tot = d.items.filter(i => ids.includes(i.id)).reduce((a, i) => a + i.importe, 0);
+    modal(`<h2>Marcar ${ids.length} pago(s) como pagados</h2><p class="muted">Total ${$$m(tot)}</p><form id="f-pg">
+      <div class="fila"><div class="campo"><label>Fecha</label><input type="date" name="fecha" value="${new Date().toLocaleDateString('sv-SE')}" required></div>
+      <div class="campo"><label>Medio</label><select name="medio">${MEDIOS_PAGO.map(m => `<option>${m}</option>`).join('')}</select></div></div>
+      <div class="campo"><label>Referencia (opcional)</label><input name="referencia" placeholder="Nº de OP, transferencia o cheque"></div>
+      <button class="btn btn-negro" type="submit">${ICO.check}Confirmar</button></form>`, {
+      alMontar: (m, cerrar) => { $('#f-pg', m).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api(`/api/pagos/lotes/${L.id}/pagar`, { method: 'POST', body: { ...Object.fromEntries(new FormData(e.target)), items: ids } }); cerrar(); toast('Pagos registrados'); router(); }); }; },
+    });
+  };
+}
+const safeParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+
+// ---- Guía para el Director ----
+function guiaDirector(el) {
+  el.innerHTML = `<div class="encabezado"><div><h1>Cómo aprobar pagos</h1><p>Tres pasos, desde el celular o la compu.</p></div></div>
+    <div class="panel panel-pad guia-txt">
+      <p><b>1. Te llega un aviso</b> (mail o WhatsApp) sin importes, solo con el link. Por seguridad, los pagos se aprueban únicamente dentro de la app.</p>
+      <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su factura (tocá “Ver factura”) y las alertas: en rojo, si el CBU del proveedor cambió hace poco o no coincide con el de la factura.</p>
+      <p><b>3. Tildá lo que aprobás</b> y tocá “Aprobar seleccionados”. Lo que destildes queda observado: escribí por qué y le vuelve a Pili. Lo observado se puede volver a proponer más adelante.</p>
+      <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta. Desde “Todas las facturas” podés consultar cualquier factura (solo lectura).</p></div>`;
+}
+
+// ---- Admin: categoría de pago por cuenta ----
+async function adminCategorias(el) {
+  const r = await api('/api/pagos/cuentas');
+  let q = '';
+  el.innerHTML = `<p class="muted">Cada cuenta del plan define si el pago es <b>Gastos</b>, <b>Inversión</b> o <b>Materia prima</b> en la aprobación del Director. Si no la elegís, se sugiere por el nombre de la cuenta (ej. “Rodados” → Inversión, “Materias primas” → Materia prima). En cada propuesta se puede cambiar factura por factura.</p>
+    <div class="acciones" style="margin-bottom:12px"><input id="qc" placeholder="Filtrar cuentas…" style="max-width:260px">
+      <select id="bulk-cat" style="max-width:200px"><option value="">Automática</option>${Object.entries(CAT_PAGO).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('')}</select>
+      <button class="btn btn-negro" id="b-bulk">Aplicar a las filtradas</button></div>
+    <div class="tabla-wrap" style="max-height:60vh"><table><thead><tr><th>Código</th><th>Denominación</th><th>Categoría de pago</th></tr></thead><tbody id="tbcat"></tbody></table></div>`;
+  const pintar = () => {
+    const fs = r.cuentas.filter(c => !q || `${c.codigo_concepto} ${c.denominacion}`.toLowerCase().includes(q));
+    $('#tbcat', el).innerHTML = fs.map(c => `<tr><td class="mono">${c.codigo_concepto}</td><td>${esc(c.denominacion)}${c.usable_gasto ? '' : ' <span class="muted small">(no usable)</span>'}</td>
+      <td><select data-ccat="${c.codigo_concepto}" style="max-width:240px"><option value="" ${c.categoria ? '' : 'selected'}>Automática (${esc(nomCat(c.sugerida))})</option>${Object.entries(CAT_PAGO).map(([k, v]) => `<option value="${k}" ${c.categoria === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></td></tr>`).join('') || '<tr><td colspan="3" class="muted">Sin cuentas.</td></tr>';
+    $$('[data-ccat]', el).forEach(s => s.onchange = () => api('/api/pagos/cuentas', { method: 'PUT', body: { codigos: [Number(s.dataset.ccat)], categoria: s.value || null } })
+      .then(() => { const c = r.cuentas.find(x => String(x.codigo_concepto) === s.dataset.ccat); c.categoria = s.value || null; toast('Guardado'); }).catch(e => toast(e.message, true)));
+    pintar.filtradas = fs;
+  };
+  $('#qc', el).oninput = (e) => { q = e.target.value.trim().toLowerCase(); pintar(); };
+  $('#b-bulk', el).onclick = () => {
+    const fs = pintar.filtradas || [];
+    const cat = $('#bulk-cat', el).value;
+    if (!fs.length) return toast('No hay cuentas filtradas.', true);
+    if (!confirm(`¿Poner ${fs.length} cuenta(s) en “${cat ? nomCat(cat) : 'Automática'}”?`)) return;
+    conBoton($('#b-bulk', el), async () => { await api('/api/pagos/cuentas', { method: 'PUT', body: { codigos: fs.map(c => c.codigo_concepto), categoria: cat || null } }); fs.forEach(c => { c.categoria = cat || null; }); pintar(); toast('Listo'); });
+  };
+  pintar();
+}
 
 // ---------------------------------------------------------------------------
 //  Análisis de compras
@@ -1939,6 +2380,7 @@ const PASOS_GUIA = [
   ['send', 'Va a Shares', 'Las que pasan todo quedan en “Enviar a Shares”. Un aprobador las manda en lote. Nada se carga sin aprobación.'],
 ];
 async function vistaGuia(el) {
+  if (esDirector()) return guiaDirector(el);
   const grupos = Object.entries(GRUPOS).filter(([k]) => k !== 'lectura').sort((a, b) => a[1].orden - b[1].orden);
   el.innerHTML = `<div class="encabezado"><div><h1>Guía de uso</h1><p>Cómo funciona la app, qué significa cada motivo y los atajos para ir más rápido.</p></div>
     <div class="acciones"><button class="btn" id="b-bienv">${ICO.sparkle}Ver la bienvenida otra vez</button></div></div>
@@ -1955,7 +2397,7 @@ async function vistaGuia(el) {
         <dl class="kv atajos"><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Buscar desde cualquier pantalla. Un número abre esa factura (ej. 14).</dd>
           <dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>Bajar / subir en “Para revisar”.</dd><dt><kbd>Enter</kbd></dt><dd>Abrir la factura marcada.</dd><dt><kbd>/</kbd></dt><dd>Ir al buscador de la cola.</dd></dl>
         <h3 style="margin:18px 0 8px">Otras pantallas</h3>
-        <div class="guia-txt"><p><b>Agenda de pagos:</b> qué vence por semana con el CBU para copiar. <b>Análisis de compras:</b> cuánto se compró por cuenta, proveedor y local. <b>Ficha del proveedor:</b> tocá cualquier proveedor para ver sus compras, cómo se carga y su historial en Shares.</p></div></div></div>
+        <div class="guia-txt"><p><b>Propuestas de pago:</b> elegís sociedad y fecha de pago, tildás las facturas cargadas en Shares (vienen sugeridas las que vencen) y la mandás al Director. Él aprueba u observa cada pago, separado en Gastos, Inversión y Materia prima. Lo aprobado se exporta y se marca pagado.</p><p><b>Agenda de pagos:</b> qué vence por semana con el CBU para copiar. <b>Análisis de compras:</b> cuánto se compró por cuenta, proveedor y local. <b>Ficha del proveedor:</b> tocá cualquier proveedor para ver sus compras, cómo se carga y su historial en Shares.</p></div></div></div>
     </div>
     <div class="panel"><div class="panel-titulo"><h2>Qué significa cada motivo</h2><span class="ayuda">los mismos que ves en “Para revisar”</span></div>
       <div class="motivos-guia">${grupos.map(([k, g]) => { const [bg, fg] = g.tono === 'acc' ? ['accent-soft', 'accent-ink'] : [g.tono + '-bg', g.tono];
