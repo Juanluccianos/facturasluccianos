@@ -1658,7 +1658,6 @@ async function adminCuentas(el) {
 //  Lo técnico (mapeos de Shares en JSON) queda abajo, en "Avanzado".
 // ---------------------------------------------------------------------------
 const DIAS_SEMANA = [['1', 'Lun'], ['2', 'Mar'], ['3', 'Mié'], ['4', 'Jue'], ['5', 'Vie'], ['6', 'Sáb'], ['0', 'Dom']];
-const COND_IVA_OPS = [[73, 'Responsable inscripto'], [77, 'Monotributo'], [69, 'Exento'], [67, 'Consumidor final'], [78, 'Resp. no inscripto'], [65, 'No responsable'], [84, 'No categorizado']];
 const CFG_UI = [
   { t: 'Envío a Shares', ico: 'send', items: [
     { k: 'shares_envio_habilitado', tipo: 'switch', t: 'Enviar facturas a Shares', d: 'Apagado es el modo prueba: la app lee y controla todo, pero no carga nada en Shares.',
@@ -1680,12 +1679,6 @@ const CFG_UI = [
     { k: 'max_cuentas_prompt', tipo: 'numero', t: 'Cuentas que se le muestran a la IA', d: 'Para sugerir la cuenta de un proveedor nuevo. Más cuentas = más opciones, pero más lento.', suf: 'cuentas', step: 10 },
   ] },
 ];
-const CFG_AVANZADO = [
-  { k: 'condicion_iva_por_letra', tipo: 'letras', t: 'Condición IVA si el proveedor no la tiene cargada', d: 'Según la letra del comprobante. Si un proveedor “C” es exento, cargalo en su ficha.' },
-  { k: 'tipos_shares', tipo: 'json', t: 'Tipo de comprobante en Shares', d: 'Código ARCA → F (factura), D (nota de débito) o R (nota de crédito).' },
-  { k: 'fiscal', tipo: 'json', t: 'Percepciones → columnas y cuentas de Shares', d: 'id_concepto_fc, codigo_concepto y total_key de cada percepción. Tocar solo con el plan de cuentas a mano.' },
-];
-
 async function adminConfig(el) {
   const r = await api('/api/config');
   const cfg = r.config, def = r.defaults;
@@ -1707,20 +1700,8 @@ async function adminConfig(el) {
   };
   const fila = (it) => `<div class="cfg-row" data-fila="${it.k}"><div><div class="t">${esc(it.t)} ${igual(it.k) || it.tipo === 'switch' ? '' : `<button class="btn-link small" data-reset="${it.k}">volver al original</button>`}</div><div class="d">${esc(it.d)}</div></div>
     <div class="cfg-ctrl">${control(it)}</div></div>`;
-  const filaAv = (it) => {
-    if (it.tipo === 'letras') {
-      const v = cfg[it.k] || {};
-      return `<div class="cfg-row cfg-col"><div><div class="t">${esc(it.t)} ${igual(it.k) ? '' : `<button class="btn-link small" data-reset="${it.k}">volver al original</button>`}</div><div class="d">${esc(it.d)}</div></div>
-        <div class="letras">${['A', 'M', 'B', 'C'].map(l => `<label><span>Letra ${l}</span><select data-letra="${l}">${COND_IVA_OPS.map(([c, t]) => `<option value="${c}" ${Number(v[l]) === c ? 'selected' : ''}>${t}</option>`).join('')}<option value="" ${v[l] == null ? 'selected' : ''}>Obligar a cargarla</option></select></label>`).join('')}</div></div>`;
-    }
-    return `<div class="cfg-row cfg-col"><div><div class="t">${esc(it.t)}</div><div class="d">${esc(it.d)}</div></div>
-      <textarea data-json="${it.k}" class="mono" spellcheck="false" style="min-height:160px;font-size:12px">${esc(JSON.stringify(cfg[it.k], null, 2))}</textarea>
-      <div class="acciones"><button class="btn btn-chico btn-negro" data-json-ok="${it.k}">Guardar</button>${igual(it.k) ? '' : `<button class="btn btn-chico" data-reset="${it.k}">Volver al original</button>`}</div></div>`;
-  };
   el.innerHTML = `${CFG_UI.map(sec => `<section class="cfg-sec"><h3 class="cfg-h">${ICO[sec.ico]}${esc(sec.t)}</h3><div class="panel">${sec.items.map(fila).join('')}</div></section>`).join('')}
-    <details class="avanzado"><summary>${ICO.gear}Avanzado — mapeos técnicos de Shares</summary><p class="muted small">Solo si Shares cambia algo o se agrega una percepción nueva. Un error acá puede hacer que los comprobantes se carguen mal.</p>
-      <div class="panel">${CFG_AVANZADO.map(filaAv).join('')}</div></details>
-    <p class="small muted" style="margin-top:14px">Los cambios se guardan solos y quedan en Auditoría. Para aplicarlos a facturas que ya están en revisión, usá “Revalidar todas” en Para revisar.</p>`;
+    <p class="small muted" style="margin-top:14px">Los cambios se guardan solos y quedan en Auditoría. Los mapeos técnicos de Shares (tipos de comprobante, condición IVA y percepciones) no se tocan desde acá: se cambian con una versión nueva de la app. Para aplicarlos a facturas que ya están en revisión, usá “Revalidar todas” en Para revisar.</p>`;
   const recargar = () => adminConfig(el);
 
   $$('[data-sw]', el).forEach(c => c.onchange = async () => {
@@ -1740,15 +1721,6 @@ async function adminConfig(el) {
     catch (e) { toast(e.message, true); }
   }));
   $$('[data-tel-ok]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const i = $(`[data-tel="${b.dataset.telOk}"]`, el); const x = await guardar(b.dataset.telOk, i.value); i.value = x.config[b.dataset.telOk] || ''; }));
-  $$('[data-letra]', el).forEach(sel => sel.onchange = async () => {
-    const v = { ...(cfg.condicion_iva_por_letra || {}) };
-    v[sel.dataset.letra] = sel.value === '' ? null : Number(sel.value);
-    try { await guardar('condicion_iva_por_letra', v); } catch (e) { toast(e.message, true); recargar(); }
-  });
-  $$('[data-json-ok]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-    let v; try { v = JSON.parse($(`[data-json="${b.dataset.jsonOk}"]`, el).value); } catch { throw new Error('El formato no es válido: revisá comas y llaves.'); }
-    await guardar(b.dataset.jsonOk, v); recargar();
-  }));
   $$('[data-reset]', el).forEach(b => b.onclick = () => confirm('¿Volver al valor original?') && conBoton(b, async () => { await guardar(b.dataset.reset, null); recargar(); }));
 }
 
