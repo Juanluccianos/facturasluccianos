@@ -488,7 +488,8 @@ document.addEventListener('keydown', (e) => {
 //  Inicio
 // ---------------------------------------------------------------------------
 async function vistaTablero(el) {
-  const [t, ult] = await Promise.all([api('/api/tablero'), api('/api/facturas?limite=6&orden=id').catch(() => ({ facturas: [] }))]);
+  const [t, ult, exc] = await Promise.all([api('/api/tablero'), api('/api/facturas?limite=6&orden=id').catch(() => ({ facturas: [] })),
+    api('/api/facturas?estado=excepcion&limite=500&orden=id').catch(() => ({ facturas: [] }))]);
   contadores(t);
   const pe = (k) => t.por_estado[k] || { n: 0, monto: 0 };
   const pct = t.automatico_mes.pct;
@@ -496,9 +497,16 @@ async function vistaTablero(el) {
   const hora = new Date().getHours();
   const saludo = hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
   const hoyTxt = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-  // Motivos agrupados en criollo
+  // Motivos agrupados en criollo: cada factura cuenta UNA vez, por su motivo principal (igual que en "Para revisar")
   const grupos = {};
-  for (const x of t.top_excepciones) { const m = motivo(x.codigo); grupos[m.g] = grupos[m.g] || { ...m, t: m.grupoT, n: 0, cods: [] }; grupos[m.g].n += x.n; grupos[m.g].cods.push(x.codigo); }
+  for (const f of exc.facturas || []) {
+    const m = motivoPrincipal(f);
+    if (m.g === 'lectura') continue;
+    const g = grupos[m.g] = grupos[m.g] || { ...m, t: m.grupoT || GRUPOS[m.g]?.t || m.t, n: 0, cods: [] };
+    g.n++;
+    const c = (m.codigos || [])[0];
+    if (c && !g.cods.includes(c)) g.cods.push(c);
+  }
   const lg = Object.entries(grupos).sort((a, b) => b[1].n - a[1].n);
   const maxG = Math.max(1, ...lg.map(([, g]) => g.n));
   const lect = t.lectura_mes || {};
@@ -1941,7 +1949,7 @@ async function vistaGuia(el) {
         <p><b>1. Mirá el recuadro verde.</b> Dice exactamente qué falta. Si es un proveedor nuevo, revisá el desglose contra el PDF y la cuenta sugerida (si viene de Shares, es la que usa siempre).</p>
         <p><b>2. Corregí lo que haga falta</b> en la pestaña Datos. Abajo te dice si los importes cierran al centavo.</p>
         <p><b>3. Tocá el botón verde.</b> Se guarda, se revalida y pasás a la siguiente de la cola.</p>
-        <p><b>¿Algo no corresponde?</b> “Pedir aclaración” responde el mail del proveedor. “Rechazar” la saca del circuito (queda registrada y se puede reabrir). “Aceptar igual” deja pasar un control con un comentario que queda en el historial.</p>
+        <p><b>¿Algo no corresponde?</b> “Rechazar” la saca del circuito (queda registrada y se puede reabrir). “Aceptar igual” deja pasar un control con un comentario que queda en el historial.</p>
         <p><b>Proveedor nuevo:</b> al confirmarlo, la app aprende dónde está cada dato y sus próximas facturas se leen solas, sin IA.</p></div></div>
       <div class="panel"><div class="panel-titulo"><h2>Atajos</h2></div><div class="panel-pad">
         <dl class="kv atajos"><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Buscar desde cualquier pantalla. Un número abre esa factura (ej. 14).</dd>
