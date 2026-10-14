@@ -296,6 +296,7 @@ const MOTIVOS = {
   ARCA_ERROR: ['arca', 'ARCA no respondió', 'Se reintenta sola cada 15 minutos.'],
   ARCA_PENDIENTE: ['arca', 'Falta constatar en ARCA', 'Se reintenta sola cada 15 minutos.'],
   ARCA_OFF: ['arca', 'ARCA apagado', 'La constatación está desactivada.'],
+  PROVEEDOR_NO_EN_SHARES: ['nuevo', 'Falta darlo de alta en Shares', 'Shares no crea proveedores: hay que darlo de alta allá antes de enviar.'],
   ARCA_NO_APLICA: ['arca', 'Servicio público (C.E.S.P.)', 'Luz, gas o agua: ARCA no permite constatarla por web service.'],
   LECTURA: ['manual', 'No se pudo leer', 'Completá los datos mirando el PDF.'],
   NO_ES_FACTURA: ['manual', 'No parece una factura', 'Puede ser un remito, un resumen o publicidad.'],
