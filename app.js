@@ -284,7 +284,7 @@ const MOTIVOS = {
   FORMATO_CAMBIO: ['nuevo', 'Cambió el formato', 'El proveedor cambió su factura: confirmá que se leyó bien.'],
   PROVEEDOR_DESCONOCIDO: ['nuevo', 'No está en el maestro', 'Dalo de alta para poder cargarla en Shares.'],
   PROVEEDOR_COND_IVA: ['nuevo', 'Falta condición de IVA', 'Completala en la ficha del proveedor.'],
-  YA_EN_SHARES: ['duplicado', 'Ya está en Shares', 'Alguien la cargó antes: rechazala como duplicada.'],
+  YA_EN_SHARES: ['duplicado', 'Ya está en Shares', 'Alguien la cargó antes: la app la rechaza sola como duplicada.'],
   DUPLICADO: ['duplicado', 'Posible duplicado', 'Ya entró otra igual por la casilla.'],
   IMPUTACION: ['cuenta', 'Confirmar la cuenta', 'Elegí o confirmá la cuenta contable.'],
   CUENTA_INEXISTENTE: ['cuenta', 'Cuenta fuera del plan', 'La cuenta no existe en el plan de Shares.'],
@@ -674,7 +674,7 @@ function filasFacturas(lista, { conExc = true } = {}) {
     <td class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</td>
     <td class="mono">${fmtF(f.fecha_emision)}${f.fecha_vto ? `<small class="sub-celda">vence ${fmtF(f.fecha_vto)}</small>` : ''}</td>
     <td class="num"><b>${f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : ''}${$$m(f.total)}</b></td>
-    ${conExc ? `<td class="celda-motivos">${chipsExc(f.excepciones)}${!f.excepciones && f.error_proceso && !['lista', 'cargada'].includes(f.estado) ? `<div class="small muted" title="${esc(f.error_proceso)}">${esc(String(f.error_proceso).slice(0, 60))}…</div>` : ''}</td>` : ''}
+    ${conExc ? `<td class="celda-motivos">${f.estado === 'rechazada' && f.rechazo_motivo ? `<div class="small muted con-ico motivo-rech">${ICO.info}${esc(f.rechazo_motivo)}</div>` : chipsExc(f.excepciones)}${!f.excepciones && f.error_proceso && !['lista', 'cargada'].includes(f.estado) ? `<div class="small muted" title="${esc(f.error_proceso)}">${esc(String(f.error_proceso).slice(0, 60))}…</div>` : ''}</td>` : ''}
   </tr>`).join('');
 }
 function encabezadoFacturas(conExc = true) {
@@ -1575,9 +1575,9 @@ function modalImportar(tipo, alTerminar) {
 //  Admin
 // ---------------------------------------------------------------------------
 async function vistaAdmin(el) {
-  el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, usuarios, empresas, plan de cuentas, configuración fiscal y auditoría.</p></div></div>
-    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Empresas', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
-  const tabs = [adminSalud, adminUsuarios, adminEmpresas, adminCuentas, adminConfig, adminAuditoria];
+  el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, usuarios, plan de cuentas, configuración y auditoría.</p></div></div>
+    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
+  const tabs = [adminSalud, adminUsuarios, adminCuentas, adminConfig, adminAuditoria];
   const ir = async (i) => {
     $$('#atabs button').forEach(b => b.classList.toggle('activo', b.dataset.t === String(i)));
     $('#acont').innerHTML = '<span class="cargando"></span>';
@@ -2043,11 +2043,11 @@ async function vistaPropuestaEditar(el, id) {
   const [emps, lotes, previo] = await Promise.all([api('/api/empresas'), api('/api/pagos/lotes?estado=enviado'), id ? api('/api/pagos/lotes/' + id) : null]);
   if (previo && !previo.puede.editar) throw new Error('Esta propuesta ya no se puede editar (está ' + (EST_LOTE[previo.lote.estado] || [previo.lote.estado])[0].toLowerCase() + ').');
   const empresas = (emps.empresas || []).filter(e => e.activa !== 0);
-  if (!empresas.length) throw new Error('No hay sociedades cargadas: agregalas en Configuración → Empresas.');
+  if (!empresas.length) throw new Error('No hay ninguna sociedad cargada.');
   const cfg = lotes.config || { dia_pago: 5 };
   // Estado del editor
   const st = {
-    empresa: previo?.lote.cuit_empresa || sessionStorage.getItem('prop_empresa') || empresas[0].cuit,
+    empresa: previo?.lote.cuit_empresa || (empresas.some(e => e.cuit === sessionStorage.getItem('prop_empresa')) ? sessionStorage.getItem('prop_empresa') : empresas[0].cuit),
     fecha: previo?.lote.fecha_pago || proximoDiaPago(cfg.dia_pago),
     nota: previo?.lote.nota || '',
     sel: new Map((previo?.items || []).filter(i => i.factura_id).map(i => [i.factura_id, i.categoria])), // factura_id → categoría
@@ -2058,7 +2058,7 @@ async function vistaPropuestaEditar(el, id) {
   el.innerHTML = `<div class="encabezado"><div><h1>${id ? `Editar propuesta #${id}` : 'Nueva propuesta de pagos'}</h1>
       <p>Solo aparecen facturas <b>cargadas en Shares</b> de la sociedad elegida que no estén en otra propuesta. Vienen tildadas las que vencen hasta la fecha de pago (y sus notas de crédito).</p></div></div>
     <div class="panel panel-pad"><div class="fila" style="align-items:end">
-      <div class="campo"><label>Sociedad</label><select id="p-emp">${empresas.map(e => `<option value="${esc(e.cuit)}" ${e.cuit === st.empresa ? 'selected' : ''}>${esc(e.razon_social)} (${fmtCuit(e.cuit)})</option>`).join('')}</select></div>
+      <div class="campo"><label>Sociedad</label>${empresas.length === 1 ? `<div class="campo-fijo">${esc(empresas[0].razon_social)} <span class="mono muted small">${fmtCuit(empresas[0].cuit)}</span></div>` : `<select id="p-emp">${empresas.map(e => `<option value="${esc(e.cuit)}" ${e.cuit === st.empresa ? 'selected' : ''}>${esc(e.razon_social)} (${fmtCuit(e.cuit)})</option>`).join('')}</select>`}</div>
       <div class="campo"><label>Fecha de pago</label><input type="date" id="p-fecha" value="${esc(st.fecha)}"><div class="ayuda">Día fijo: ${dias[cfg.dia_pago] || '—'}. Cambiala si es una excepción.</div></div>
       <div class="campo" style="flex:2"><label>Nota para el Director (opcional)</label><input id="p-nota" maxlength="500" value="${esc(st.nota)}" placeholder="Ej.: adelantamos Lácteos por el aumento"></div></div></div>
     <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor, CUIT o cuenta" aria-label="Filtrar"></label>
@@ -2171,7 +2171,7 @@ async function vistaPropuestaEditar(el, id) {
     location.hash = '#/pago/' + d.lote.id;
     setTimeout(() => modalAvisoEnviado(e, e.aviso), 300);
   };
-  $('#p-emp').onchange = (e) => { st.empresa = e.target.value; st.sel.clear(); st.primera = true; cargarCand().catch(err => toast(err.message, true)); };
+  if ($('#p-emp')) $('#p-emp').onchange = (e) => { st.empresa = e.target.value; st.sel.clear(); st.primera = true; cargarCand().catch(err => toast(err.message, true)); };
   $('#p-fecha').onchange = (e) => { if (!e.target.value) return; st.fecha = e.target.value; cargarCand().catch(err => toast(err.message, true)); };
   $('#q').oninput = pintarCand;
   $('#b-sug').onclick = () => { st.sel.clear(); for (const c of st.cand) if (c.sugerida) st.sel.set(c.factura_id, c.categoria); pintarCand(); pintarBarra(); };

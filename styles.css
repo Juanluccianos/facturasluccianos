@@ -579,3 +579,5 @@ div.linea-res { display: flex; margin: 4px 0; }
 .aviso-instalar img { border-radius: 10px; }
 .aviso-instalar p { margin: 4px 0 8px; font-size: 13.5px; }
 .aviso-instalar .cerrar { position: absolute; top: 8px; right: 8px; }
+.campo-fijo { padding: 8px 0; font-weight: 600; }
+.motivo-rech { max-width: 340px; white-space: normal; line-height: 1.35; }
