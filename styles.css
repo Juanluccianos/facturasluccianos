@@ -571,3 +571,11 @@ div.linea-res { display: flex; margin: 4px 0; }
   .cfg-row { grid-template-columns: minmax(0, 1fr); }
   .cfg-ctrl { justify-content: flex-start; }
 }
+
+/* ---------- Actualizar / instalar ---------- */
+.ibtn.girando svg { animation: girar .8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.aviso-instalar { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; margin-bottom: 16px; padding-right: 44px; }
+.aviso-instalar img { border-radius: 10px; }
+.aviso-instalar p { margin: 4px 0 8px; font-size: 13.5px; }
+.aviso-instalar .cerrar { position: absolute; top: 8px; right: 8px; }

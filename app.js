@@ -414,7 +414,7 @@ function shell(ruta) {
     <div style="min-width:0">
       <header class="top"><img class="marca-m" src="logo-negro.png" alt="Lucciano's"><div class="crumbs">${ruta.miga}</div>
         ${dir ? '<span style="flex:1"></span>' : `<label class="buscar">${ICO.search}<input id="buscar-global" placeholder="Buscar factura, proveedor o CUIT…" aria-label="Buscar"><kbd>Ctrl K</kbd></label>
-        <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div>`}</header>
+        <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div>`}<button class="ibtn" id="b-actualizar" title="Actualizar" aria-label="Actualizar">${ICO.refresh}</button></header>
       <main id="vista" class="entra"><div class="vacio"><span class="cargando"></span></div></main>
     </div></div>
     <nav class="mnav" aria-label="Secciones">${dir ? `
@@ -458,6 +458,7 @@ async function router() {
   const m = h.match(r.re) || [];
   $('#app').innerHTML = shell(r);
   $('#b-salir').onclick = () => salir();
+  $('#b-actualizar').onclick = actualizar;
   $('#b-tema').onclick = alternarTema;
   const bg = $('#buscar-global');
   if (bg) bg.onkeydown = (e) => {
@@ -473,6 +474,45 @@ async function router() {
   try { await r.v($('#vista'), ...m.slice(1)); }
   catch (e) { if (S.token && $('#vista')) { $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p><button class="btn btn-acento" id="b-reint">${ICO.refresh}Reintentar</button></div>`; $('#b-reint').onclick = router; } }
 }
+
+// ---- Actualizar: trae datos frescos y, si hay una versión nueva de la app, la carga ----
+async function actualizar() {
+  const b = $('#b-actualizar');
+  if (b) b.classList.add('girando');
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg) {
+      await reg.update().catch(() => null);
+      if (reg.waiting || reg.installing) { location.reload(); return; }
+    }
+    S.cnt = null; S.cuentas = null;
+    await router();
+    toast('Actualizado');
+  } finally { const x = $('#b-actualizar'); if (x) x.classList.remove('girando'); }
+}
+
+// ---- App instalable (celular) ----
+const esStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.instalar = e; $$('[data-instalar]').forEach(x => pintarInstalar(x)); });
+window.addEventListener('appinstalled', () => { S.instalar = null; toast('Listo: la app quedó en tu pantalla de inicio'); });
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => null));
+}
+// Tarjeta "Instalar en el celular" (Mi cuenta, guía y aviso del Director)
+function pintarInstalar(el) {
+  if (esStandalone()) { el.innerHTML = `<p class="con-ico">${ICO.check}Ya la estás usando como app instalada.</p>`; return; }
+  if (S.instalar) {
+    el.innerHTML = `<p class="muted">Queda con el logo de Lucciano's en tu pantalla de inicio y abre directo, sin el navegador.</p><button class="btn btn-acento" data-btn-instalar>${ICO.phone}Instalar la app</button>`;
+    $('[data-btn-instalar]', el).onclick = async () => { const p = S.instalar; S.instalar = null; p.prompt(); await p.userChoice.catch(() => null); pintarInstalar(el); };
+    return;
+  }
+  el.innerHTML = esIOS()
+    ? `<p class="muted">En el iPhone, abrí la app en <b>Safari</b>, tocá el botón <b>Compartir</b> (el cuadrado con la flecha para arriba) y elegí <b>“Agregar a inicio”</b>.</p>`
+    : `<p class="muted">Abrí la app en <b>Chrome</b> desde el celular, tocá el menú <b>⋮</b> y elegí <b>“Instalar app”</b> o <b>“Agregar a la pantalla principal”</b>.</p>`;
+}
+const bloqueInstalar = () => `<div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:8px">Instalar en el celular</h2><div data-instalar></div></div>`;
+function montarInstalar(root = document) { $$('[data-instalar]', root).forEach(x => pintarInstalar(x)); }
 
 async function iniciar() {
   if (!S.token) return vistaLogin();
@@ -1554,8 +1594,6 @@ async function adminSalud(el) {
     ${fila(s.apps_script, 'Apps Script (Gmail + Drive)', 'APPS_SCRIPT_URL y APPS_SCRIPT_SECRET', 'apps-script')}
     ${fila(s.lector && !!s.lector_ultimo, 'Lector (GitHub Actions)', `${s.lector ? 'LECTOR_SECRET cargado' : 'falta LECTOR_SECRET'} · último contacto ${s.lector_ultimo ? fmtFH(s.lector_ultimo) : 'nunca'} · disparo inmediato ${s.lector_disparo ? 'sí' : 'no (corre cada 15 min)'} · ${s.proveedores_configurados} proveedores configurados`)}
     ${fila(s.shares, 'Shares', esc(s.shares_base), 'shares')}
-    <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — qué información se puede consultar</b><div class="small muted">Solo lectura: prueba endpoints de consulta (facturas ya cargadas, proveedores) con un CUIT de proveedor. No carga nada.</div></td><td><button class="btn btn-chico" id="b-consultas">Probar</button></td></tr>
-    <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — ¿tiene órdenes de pago?</b><div class="small muted">Solo lectura: prueba ~20 rutas posibles de pagos y cuenta corriente y mira qué campos trae una factura. Usa unas 22 consultas: no lo corras dos veces seguidas.</div></td><td><button class="btn btn-chico" id="b-descubrir">Buscar</button></td></tr>
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
     ${s.arca_cert && s.arca_modo !== 'off' ? fila(true, 'Padrón ARCA (razón social por CUIT)', 'Requiere autorizar el servicio ws_sr_constancia_inscripcion para el certificado en ARCA', 'padron') : ''}
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
@@ -1563,48 +1601,6 @@ async function adminSalud(el) {
     ${fila(s.proveedores > 0, 'Maestro de proveedores', `${s.proveedores} proveedores`)}
   </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>`;
   $$('[data-probar]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const r = await api('/api/probar/' + b.dataset.probar, { method: 'POST' }); toast(r.mensaje); }));
-  $('#b-descubrir', el).onclick = async () => {
-    const cuit = await pedirTexto({ titulo: 'Buscar órdenes de pago en Shares', ayuda: 'CUIT de un proveedor al que ya se le hayan hecho pagos en Shares (sin guiones). Solo lectura: no carga ni modifica nada.', etiqueta: 'CUIT del proveedor', boton: 'Buscar', minimo: 11, valor: '30709824364' });
-    if (!cuit) return;
-    toast('Probando rutas en Shares… tarda unos 15 segundos');
-    try {
-      const r = await api('/api/probar/shares-descubrir', { method: 'POST', body: { cuit } });
-      const hay = r.resultados.filter(x => /^EXISTE/.test(x.veredicto) && !/control/.test(x.nota));
-      const pago = (r.campos_factura || []).filter(c => /pag|pay|saldo|balance|op_|orden|cancel/i.test(c));
-      modal(`<h2>Órdenes de pago en Shares</h2>
-        <div class="tarea ${hay.length ? 'bien' : ''}" style="margin-bottom:14px"><div class="panel-titulo"><h2>${hay.length ? `Encontré ${hay.length} ruta(s) que existen` : 'No encontré rutas de pagos habilitadas'}</h2></div>
-          <div class="cuerpo"><p>${hay.length ? 'Mandame este resultado (botón Copiar todo) y vemos qué trae cada una.' : 'Con este usuario de API no hay endpoints de pagos: hay que pedírselos a Shares (preguntas 17 a 21).'}
-          ${r.campos_factura ? `<br>Campos de pago en las facturas: <b>${pago.length ? esc(pago.join(', ')) : 'ninguno'}</b>.` : ''}</p></div></div>
-        <div class="tabla-wrap"><table><thead><tr><th>Ruta</th><th>HTTP</th><th>Resultado</th></tr></thead><tbody>
-        ${r.resultados.map(x => `<tr><td class="mono small">${esc(x.metodo)} ${esc(x.ruta.split('?')[0])}${x.nota ? `<small class="sub-celda">${esc(x.nota)}</small>` : ''}</td><td class="mono">${esc(String(x.http ?? '—'))}</td>
-          <td><span class="badge ${/^EXISTE/.test(x.veredicto) ? 'b-ok' : 'b-aviso'}">${esc(x.veredicto)}</span><small class="sub-celda" style="white-space:normal;max-width:380px" title="${esc(x.respuesta)}">${esc(String(x.respuesta).slice(0, 140))}</small></td></tr>`).join('')}
-        </tbody></table></div>
-        ${r.campos_factura ? `<h3 style="margin:14px 0 6px">Campos que trae una factura de Shares</h3><pre class="json">${esc(r.campos_factura.join('\n'))}</pre>` : ''}
-        <div class="acciones" style="margin-top:12px"><button class="btn" id="b-copiar">Copiar todo</button></div>`, {
-        ancho: true,
-        alMontar: (m) => { $('#b-copiar', m).onclick = () => navigator.clipboard.writeText(JSON.stringify(r, null, 2)).then(() => toast('Copiado')); },
-      });
-    } catch (e) { toast(e.message, true); }
-  };
-  $('#b-consultas', el).onclick = async () => {
-    const cuit = await pedirTexto({ titulo: 'Probar consultas a Shares', ayuda: 'CUIT de un proveedor que tenga facturas cargadas en Shares (sin guiones). Solo lectura.', etiqueta: 'CUIT del proveedor', boton: 'Probar', minimo: 11, valor: '30709824364' });
-    if (!cuit) return;
-    toast('Consultando Shares…');
-    try {
-      const r = await api('/api/probar/shares-consultas', { method: 'POST', body: { cuit } });
-      const ok = r.resultados.filter(x => x.http && x.http < 400);
-      modal(`<h2>Consultas a Shares</h2>
-        <p class="muted">Empresa ${esc(r.cuit_empresa)} · proveedor ${esc(r.cuit_proveedor)} ${esc(r.razon_social || '')} · ${ok.length} de ${r.resultados.length} respondieron OK.</p>
-        ${r.resultados.map(x => `<div style="margin:10px 0"><b class="linea-res ${x.http && x.http < 400 ? 'bien' : 'mal'}">${x.http && x.http < 400 ? ICO.check : ICO.x}${esc(x.metodo)} ${esc(x.ruta)}</b> <span class="small muted">HTTP ${esc(String(x.http ?? '—'))}</span>
-          ${x.body ? `<div class="small muted mono">body ${esc(JSON.stringify(x.body))}</div>` : ''}
-          <pre class="small" style="white-space:pre-wrap;max-height:180px;overflow:auto">${esc(x.respuesta)}</pre></div>`).join('')}
-        ${r.permisos_token ? `<h3>Permisos del token</h3><pre class="small" style="white-space:pre-wrap">${esc(JSON.stringify(r.permisos_token, null, 2))}</pre>` : ''}
-        <div class="acciones"><button class="btn" id="b-copiar">Copiar todo</button></div>`, {
-        ancho: true,
-        alMontar: (m) => { $('#b-copiar', m).onclick = () => navigator.clipboard.writeText(JSON.stringify(r, null, 2)).then(() => toast('Copiado')); },
-      });
-    } catch (e) { toast(e.message, true); }
-  };
 }
 
 async function adminUsuarios(el) {
@@ -1757,6 +1753,7 @@ async function adminAuditoria(el) {
 // ---------------------------------------------------------------------------
 async function vistaMiCuenta(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Mi cuenta</h1><p>${esc(S.user.email)} · rol ${esc(S.user.rol)}</p></div></div>
+    ${bloqueInstalar()}
     <div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:12px">Doble factor</h2>
       ${S.user.totp_activo ? '<p><span class="badge b-ok">Activo</span> Te vamos a pedir el código de tu app autenticadora al ingresar.</p>'
       : '<p class="muted">Usá Google Authenticator, Microsoft Authenticator o similar.</p><button class="btn btn-negro" id="b-2fa">Activar doble factor</button><div id="c-2fa"></div>'}
@@ -1766,6 +1763,7 @@ async function vistaMiCuenta(el) {
       <div class="campo"><label>Nueva (mínimo 10 caracteres)</label><input type="password" name="nueva" minlength="10" required autocomplete="new-password"></div>
       <button class="btn btn-negro" type="submit">Cambiar</button></form>`;
   $('#f-pass').onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/yo/password', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); e.target.reset(); toast('Contraseña cambiada'); }); };
+  montarInstalar(el);
   const b = $('#b-2fa');
   if (b) b.onclick = () => conBoton(b, async () => {
     const r = await api('/api/yo/totp/iniciar', { method: 'POST' });
@@ -2028,6 +2026,13 @@ async function vistaPropuestas(el) {
     }).join('')}</div>` : `<div class="panel"><div class="vacio"><span class="grande">${dir ? 'No hay nada para aprobar' : 'Todavía no hay propuestas'}</span>${dir ? 'Cuando te manden una propuesta te llega un mail.' : 'Tocá “Nueva propuesta” para armar la primera.'}</div></div>`);
   };
   $$('#seg button').forEach(b => b.onclick = () => { filtro = b.dataset.f; sessionStorage.setItem('prop_filtro', filtro); pintar(); });
+  let oculto = false; try { oculto = !!localStorage.getItem('instalar_oculto'); } catch { /* sin storage */ }
+  if (dir && !esStandalone() && !oculto && matchMedia('(max-width: 860px)').matches) {
+    $('#seg').insertAdjacentHTML('beforebegin', `<div class="panel panel-pad aviso-instalar"><button class="ibtn cerrar" aria-label="No mostrar más">${ICO.x}</button>
+      <img src="icons/icon-192.png" alt="" width="44" height="44"><div><b>Tenela a mano como app</b><div data-instalar></div></div></div>`);
+    montarInstalar(el);
+    $('.aviso-instalar .cerrar', el).onclick = () => { try { localStorage.setItem('instalar_oculto', '1'); } catch { /* */ } $('.aviso-instalar', el).remove(); };
+  }
   pintar();
 }
 
@@ -2321,7 +2326,9 @@ function guiaDirector(el) {
       <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su factura (tocá “Ver factura”) y las alertas: en rojo, si el CBU del proveedor cambió hace poco o no coincide con el de la factura.</p>
       <p><b>3. Tildá lo que aprobás</b> y tocá “Aprobar seleccionados”. Lo que destildes queda observado: escribí por qué y le vuelve a Pili. Lo observado se puede volver a proponer más adelante.</p>
       <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta.</p>
-      <p class="muted">Solo ves las propuestas que te enviaron y las facturas que están en ellas.</p></div>`;
+      <p class="muted">Solo ves las propuestas que te enviaron y las facturas que están en ellas.</p></div>
+    <div style="margin-top:16px">${bloqueInstalar()}</div>`;
+  montarInstalar(el);
 }
 
 // ---- Admin: categoría de pago por cuenta ----
