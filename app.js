@@ -326,6 +326,11 @@ function motivoPrincipal(f) {
 // ---------------------------------------------------------------------------
 //  Login
 // ---------------------------------------------------------------------------
+// Color de la barra del navegador en el celu (pistacho en el login, el normal adentro)
+function colorBarra(c) {
+  $$('meta[name="theme-color"]').forEach(m => { if (!m.dataset.orig) m.dataset.orig = m.content; m.content = c || m.dataset.orig; });
+}
+
 async function vistaLogin() {
   let setup = false;
   try { setup = (await api('/api/estado')).setup_requerido; } catch (e) {
@@ -334,8 +339,8 @@ async function vistaLogin() {
     return;
   }
   $('#app').innerHTML = `<div class="login">
-    <div class="login-arte"><img src="logo-negro.png" alt="Lucciano's">
-      <div><h2>Las facturas de proveedores, sin tipear.</h2><p>Llegan por mail, se leen solas, se validan contra ARCA y quedan listas para Shares. Vos solo mirás lo que necesita una persona.</p></div>
+    <div class="login-arte"><img src="logo-negro.png" alt="Lucciano's"><p class="login-sub">Facturas de proveedores</p>
+      <div class="login-txt"><h2>Las facturas de proveedores, sin tipear.</h2><p>Llegan por mail, se leen solas, se validan contra ARCA y quedan listas para Shares. Vos solo mirás lo que necesita una persona.</p></div>
       <div class="pasos"><span>${ICO.mail}Llega por mail</span><span>${ICO.sparkle}Se lee sola</span><span>${ICO.shield}ARCA la valida</span><span>${ICO.send}Va a Shares</span></div></div>
     <div class="login-form"><form id="f-login">
       <h1>${setup ? 'Primer ingreso' : 'Ingresar'}</h1>
@@ -346,13 +351,14 @@ async function vistaLogin() {
       <div class="campo hidden" id="c-totp"><label for="lg-t">Código de verificación</label><input id="lg-t" name="totp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="mono"></div>
       <button class="btn btn-acento btn-grande" type="submit">${setup ? 'Crear y entrar' : 'Entrar'} ${ICO.arrow}</button>
     </form></div></div>`;
+  colorBarra('#A8C686');
   $('#f-login').onsubmit = async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target));
     await conBoton($('button[type=submit]', e.target), async () => {
       const r = await api(setup ? '/api/setup' : '/api/login', { method: 'POST', body: fd });
       if (r.requiere_totp) { $('#c-totp').classList.remove('hidden'); $('#c-totp input').focus(); toast('Ingresá el código de tu app autenticadora.'); return; }
-      guardarToken(r.token); S.user = r.usuario;
+      colorBarra(null); guardarToken(r.token); S.user = r.usuario;
       if (!location.hash) location.hash = '#/tablero';
       iniciar();
     });

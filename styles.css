@@ -581,3 +581,33 @@ div.linea-res { display: flex; margin: 4px 0; }
 .aviso-instalar .cerrar { position: absolute; top: 8px; right: 8px; }
 .campo-fijo { padding: 8px 0; font-weight: 600; }
 .motivo-rech { max-width: 340px; white-space: normal; line-height: 1.35; }
+
+/* Logo: imagen blanca ya hecha para el modo oscuro (el filtro invert en iPhone se ve borroso) */
+:root { --logo-img: url(logo-negro.png); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --logo-img: url(logo-blanco.png); } }
+:root[data-theme="dark"] { --logo-img: url(logo-blanco.png); }
+.brand img, .top .marca-m { content: var(--logo-img); filter: none; }
+
+/* ---- Login en el celu: banda pistacho con el logo y el formulario abajo, simple ---- */
+.login-sub { display: none; }
+@media (max-width: 720px) {
+  .login { display: flex; flex-direction: column; min-height: 100dvh; background: var(--paper); }
+  .login-arte { background: #A8C686; color: #14180f; align-items: center; justify-content: center; text-align: center; gap: 10px;
+    padding: calc(env(safe-area-inset-top, 0px) + 44px) 24px 40px; border-radius: 0 0 32px 32px; }
+  .login-arte img, :root[data-theme="dark"] .login-arte img { width: 190px; filter: none !important; content: url(logo-negro.png); }
+  .login-arte .login-sub { display: block; margin: 0; max-width: none; font: 700 14px var(--display); letter-spacing: .4px; text-transform: uppercase; color: #2e3d1c; }
+  .login-txt, .login-arte .pasos { display: none; }
+  .login-form { flex: 1; place-items: start center; padding: 32px 22px calc(env(safe-area-inset-bottom, 0px) + 28px); }
+  .login-form form, .login-form .caja { max-width: 420px; gap: 6px; }
+  .login-form h1 { font-size: 28px; }
+  .login-form p { margin-bottom: 20px; }
+  .login-form input { font-size: 16px; padding: 14px; border-radius: 14px; }   /* 16px: el iPhone no hace zoom al tocar */
+  .login-form .btn-grande { width: 100%; justify-content: center; padding: 15px; font-size: 16px; border-radius: 14px; margin-top: 10px; }
+}
+
+/* Barra de arriba en el celu: deja lugar para la hora/batería del iPhone y no queda difuminada */
+@media (max-width: 860px) {
+  .top { height: calc(var(--top-h) + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .top .marca-m { height: 32px; }
+  input, select, textarea { font-size: 16px; }
+}
