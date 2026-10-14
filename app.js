@@ -651,7 +651,22 @@ async function vistaBandeja(el) {
   $('#q').oninput = () => { clearTimeout(deb); deb = setTimeout(pintar, 120); };
   $('#b-subir').onclick = modalSubir;
   const br = $('#b-reval');
-  if (br) br.onclick = () => conBoton(br, async () => { const r = await api('/api/facturas/revalidar', { method: 'POST' }); toast(`Revalidadas: ${r.revalidadas}`); S.cnt = null; contadores(); await cargar(); });
+  if (br) br.onclick = () => conBoton(br, async () => {
+    // De a 4 facturas por pedido, mostrando el avance (cada una consulta ARCA y Shares)
+    let desde = 0, hechas = 0, total = null;
+    const txt = br.innerHTML;
+    try {
+      for (;;) {
+        const r = await api('/api/facturas/revalidar', { method: 'POST', body: { desde_id: desde, lote: 4 } });
+        hechas += r.revalidadas; desde = r.siguiente_id;
+        total = total ?? hechas + r.quedan;
+        br.innerHTML = `${ICO.refresh}Revalidando ${hechas} de ${total}…`;
+        if (!r.quedan || !r.revalidadas) break;
+      }
+      toast(`✓ Revalidadas: ${hechas}`);
+    } finally { br.innerHTML = txt; }
+    S.cnt = null; contadores(); await cargar();
+  });
   await cargar();
 }
 
@@ -1507,7 +1522,7 @@ async function adminSalud(el) {
     <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — qué información se puede consultar</b><div class="small muted">Solo lectura: prueba endpoints de consulta (facturas ya cargadas, proveedores) con un CUIT de proveedor. No carga nada.</div></td><td><button class="btn btn-chico" id="b-consultas">Probar</button></td></tr>
     <tr><td><span class="badge b-aviso">Prueba</span></td><td><b>Shares — ¿tiene órdenes de pago?</b><div class="small muted">Solo lectura: prueba ~20 rutas posibles de pagos y cuenta corriente y mira qué campos trae una factura. Usa unas 22 consultas: no lo corras dos veces seguidas.</div></td><td><button class="btn btn-chico" id="b-descubrir">Buscar</button></td></tr>
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
-    ${s.arca_cert && s.arca_modo !== 'off' ? fila(true, 'Padrón ARCA (razón social por CUIT)', 'Requiere autorizar el servicio ws_sr_padron_a13 para el certificado en ARCA', 'padron') : ''}
+    ${s.arca_cert && s.arca_modo !== 'off' ? fila(true, 'Padrón ARCA (razón social por CUIT)', 'Requiere autorizar el servicio ws_sr_constancia_inscripcion para el certificado en ARCA', 'padron') : ''}
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
     ${fila(s.cuentas > 0, 'Plan de cuentas', `${s.cuentas} cuentas`)}
     ${fila(s.proveedores > 0, 'Maestro de proveedores', `${s.proveedores} proveedores`)}
