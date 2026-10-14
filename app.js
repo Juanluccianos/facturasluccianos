@@ -207,6 +207,9 @@ const ICO = {
   clock: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   calendar: svgI('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>'),
   chart: svgI('<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-8"/>'),
+  chat: svgI('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>'),
+  phone: svgI('<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'),
+  sliders: svgI('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
   book: svgI('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>'),
 };
 const COLORES_AV = ['#b0254a', '#2d5bba', '#1f7a45', '#a85a07', '#6b4bb8', '#0f7d86', '#7a4a2e', '#c0392b'];
@@ -371,6 +374,7 @@ const RUTAS = [
   { re: /^#\/propuestas$/, v: vistaPropuestas, nav: 'propuestas', miga: 'Pagos / <b>Propuestas</b>' },
   { re: /^#\/propuesta\/nueva$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Nueva propuesta</b>' },
   { re: /^#\/propuesta\/(\d+)\/editar$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Editar propuesta</b>' },
+  { re: /^#\/pagos-ajustes$/, v: vistaAjustesPagos, nav: 'propuestas', miga: 'Pagos / <b>Ajustes</b>' },
   { re: /^#\/pago\/(\d+)$/, v: vistaLote, nav: 'propuestas', miga: 'Pagos / <b>Propuesta</b>' },
   { re: /^#\/analisis$/, v: vistaAnalisis, nav: 'analisis', miga: 'Datos / <b>Análisis de compras</b>' },
   { re: /^#\/guia$/, v: vistaGuia, nav: 'guia', miga: '<b>Guía de uso</b>' },
@@ -388,7 +392,7 @@ function shell(ruta) {
     <aside class="side">
       <a class="brand" href="#/tablero"><img src="logo-negro.png" alt="Lucciano's"><span>Facturas de proveedores</span></a>
       <nav class="nav" aria-label="Secciones">
-        ${dir ? `${it('propuestas', 'coin', 'Aprobar pagos', '<span class="cnt hot" data-cnt="pagos"></span>')}${it('facturas', 'doc', 'Todas las facturas')}<div class="grp-t">Ayuda</div>${it('guia', 'book', 'Cómo aprobar')}` : `
+        ${dir ? `${it('propuestas', 'coin', 'Aprobar pagos', '<span class="cnt hot" data-cnt="pagos"></span>')}<div class="grp-t">Ayuda</div>${it('guia', 'book', 'Cómo aprobar')}` : `
         ${it('tablero', 'home', 'Inicio')}
         <div class="grp-t">Trabajo</div>
         ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
@@ -409,13 +413,12 @@ function shell(ruta) {
     </aside>
     <div style="min-width:0">
       <header class="top"><img class="marca-m" src="logo-negro.png" alt="Lucciano's"><div class="crumbs">${ruta.miga}</div>
-        <label class="buscar">${ICO.search}<input id="buscar-global" placeholder="Buscar factura, proveedor o CUIT…" aria-label="Buscar"><kbd>Ctrl K</kbd></label>
-        <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div></header>
+        ${dir ? '<span style="flex:1"></span>' : `<label class="buscar">${ICO.search}<input id="buscar-global" placeholder="Buscar factura, proveedor o CUIT…" aria-label="Buscar"><kbd>Ctrl K</kbd></label>
+        <div class="estado-sis" title="Constatación de ARCA"><i style="${arcaOk ? '' : 'background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)'}"></i>${arcaOk ? 'ARCA ' + esc(S.arca === 'produccion' ? 'en producción' : S.arca) : 'ARCA apagado'}</div>`}</header>
       <main id="vista" class="entra"><div class="vacio"><span class="cargando"></span></div></main>
     </div></div>
     <nav class="mnav" aria-label="Secciones">${dir ? `
       <a href="#/propuestas" class="${a === 'propuestas' ? 'activo' : ''}">${ICO.coin}Aprobar<span class="cnt hot" data-cnt="pagos"></span></a>
-      <a href="#/facturas" class="${a === 'facturas' ? 'activo' : ''}">${ICO.doc}Facturas</a>
       <a href="#/guia" class="${a === 'guia' ? 'activo' : ''}">${ICO.book}Ayuda</a>` : `
       <a href="#/tablero" class="${a === 'tablero' ? 'activo' : ''}">${ICO.home}Inicio</a>
       <a href="#/bandeja" class="${a === 'bandeja' ? 'activo' : ''}">${ICO.inbox}Revisar<span class="cnt hot" data-cnt="revisar"></span></a>
@@ -451,14 +454,13 @@ async function router() {
   const h = location.hash || (esDirector() ? '#/propuestas' : '#/tablero');
   const r = RUTAS.find(x => x.re.test(h)) || RUTAS[0];
   // El Director solo ve aprobación de pagos, facturas (lectura), la guía y su cuenta
-  if (esDirector() && !['propuestas', 'facturas', 'bandeja', 'guia', ''].includes(r.nav)) { location.replace('#/propuestas'); return; }
-  if (esDirector() && r.nav === 'bandeja' && !/^#\/factura\//.test(h)) { location.replace('#/propuestas'); return; }
+  if (esDirector() && (!['propuestas', 'guia', ''].includes(r.nav) || /^#\/(propuesta\/|pagos-ajustes)/.test(h))) { location.replace('#/propuestas'); return; }
   const m = h.match(r.re) || [];
   $('#app').innerHTML = shell(r);
   $('#b-salir').onclick = () => salir();
   $('#b-tema').onclick = alternarTema;
   const bg = $('#buscar-global');
-  bg.onkeydown = (e) => {
+  if (bg) bg.onkeydown = (e) => {
     if (e.key !== 'Enter' || !bg.value.trim()) return;
     const q = bg.value.trim();
     if (/^#?\d{1,6}$/.test(q)) { location.hash = '#/factura/' + q.replace('#', ''); return; }
@@ -593,16 +595,16 @@ function modalSubir() {
       const drop = $('#drop', el), inp = $('#f-pdf', el), res = $('#sub-res', el);
       const subir = async (files) => {
         for (const file of files) {
-          if (file.type !== 'application/pdf') { res.insertAdjacentHTML('beforeend', `<div>✗ ${esc(file.name)}: no es PDF</div>`); continue; }
-          if (file.size > 15e6) { res.insertAdjacentHTML('beforeend', `<div>✗ ${esc(file.name)}: supera 15 MB</div>`); continue; }
+          if (file.type !== 'application/pdf') { res.insertAdjacentHTML('beforeend', `<div class="linea-res mal">${ICO.x}${esc(file.name)}: no es PDF</div>`); continue; }
+          if (file.size > 15e6) { res.insertAdjacentHTML('beforeend', `<div class="linea-res mal">${ICO.x}${esc(file.name)}: supera 15 MB</div>`); continue; }
           const linea = document.createElement('div');
           linea.innerHTML = `<span class="cargando"></span> ${esc(file.name)} — subiendo…`;
           res.appendChild(linea);
           try {
             const b64 = await new Promise((ok, err) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = err; fr.readAsDataURL(file); });
             const r = await api('/api/facturas/subir', { method: 'POST', body: { archivo_nombre: file.name, pdf_base64: b64 } });
-            linea.innerHTML = `✓ ${esc(file.name)} → <a href="#/factura/${r.id}">#${r.id}</a> ${badgeEstado(r.estado)} <span class="muted">${esc(r.lector?.ok ? 'el lector ya arrancó' : 'se lee en el próximo ciclo del lector')}</span>`;
-          } catch (e) { linea.innerHTML = `✗ ${esc(file.name)}: ${esc(e.message)}`; }
+            linea.className = 'linea-res bien'; linea.innerHTML = `${ICO.check}${esc(file.name)} → <a href="#/factura/${r.id}">#${r.id}</a> ${badgeEstado(r.estado)} <span class="muted">${esc(r.lector?.ok ? 'el lector ya arrancó' : 'se lee en el próximo ciclo del lector')}</span>`;
+          } catch (e) { linea.className = 'linea-res mal'; linea.innerHTML = `${ICO.x}${esc(file.name)}: ${esc(e.message)}`; }
         }
       };
       inp.onchange = () => subir([...inp.files]);
@@ -696,7 +698,7 @@ async function vistaBandeja(el) {
         br.innerHTML = `${ICO.refresh}Revalidando ${hechas} de ${total}…`;
         if (!r.quedan || !r.revalidadas) break;
       }
-      toast(`✓ Revalidadas: ${hechas}`);
+      toast(`Revalidadas: ${hechas}`);
     } finally { br.innerHTML = txt; }
     S.cnt = null; contadores(); await cargar();
   });
@@ -1159,9 +1161,9 @@ function conectarFactura(el, r) {
       catch (e) { if (!/lectura automática/i.test(e.message)) throw e; n = await guardar({ confirmar_imputacion: true }); }
     } else n = await guardar({ confirmar_imputacion: true });
     const quedan = (n.excepciones || []).filter(e => !e.resuelta && e.severidad !== 'aviso');
-    if (n.factura.estado === 'lista') toast('✓ Confirmada: pasó a "Enviar a Shares"');
+    if (n.factura.estado === 'lista') toast('Confirmada: pasó a "Enviar a Shares"');
     else if (quedan.length) toast(`Guardada. Todavía falta: ${quedan.map(e => motivo(e.codigo).t.toLowerCase()).join(', ')}`, true);
-    else toast('✓ Confirmada');
+    else toast('Confirmada');
     recargar(n);
   });
   const bg = $('#b-guardar');
@@ -1184,7 +1186,7 @@ function conectarFactura(el, r) {
     if (!confirm('Confirmás que el desglose y la cuenta están bien? Con esta factura se guarda cómo leer las próximas de este proveedor.')) return;
     const n = await guardar({ confirmar_proveedor: true });
     const av = n.confirmacion?.avisos || [];
-    toast(`✓ Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se leen solas.'}`);
+    toast(`Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se leen solas.'}`);
     recargar(n);
   });
   const brz = $('#b-rechazar');
@@ -1534,8 +1536,8 @@ function modalImportar(tipo, alTerminar) {
 // ---------------------------------------------------------------------------
 async function vistaAdmin(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, usuarios, empresas, plan de cuentas, configuración fiscal y auditoría.</p></div></div>
-    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Empresas', 'Cuentas', 'Categorías de pago', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
-  const tabs = [adminSalud, adminUsuarios, adminEmpresas, adminCuentas, adminCategorias, adminConfig, adminAuditoria];
+    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Empresas', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
+  const tabs = [adminSalud, adminUsuarios, adminEmpresas, adminCuentas, adminConfig, adminAuditoria];
   const ir = async (i) => {
     $$('#atabs button').forEach(b => b.classList.toggle('activo', b.dataset.t === String(i)));
     $('#acont').innerHTML = '<span class="cargando"></span>';
@@ -1593,7 +1595,7 @@ async function adminSalud(el) {
       const ok = r.resultados.filter(x => x.http && x.http < 400);
       modal(`<h2>Consultas a Shares</h2>
         <p class="muted">Empresa ${esc(r.cuit_empresa)} · proveedor ${esc(r.cuit_proveedor)} ${esc(r.razon_social || '')} · ${ok.length} de ${r.resultados.length} respondieron OK.</p>
-        ${r.resultados.map(x => `<div style="margin:10px 0"><b>${x.http && x.http < 400 ? '✅' : '❌'} ${esc(x.metodo)} ${esc(x.ruta)}</b> <span class="small muted">HTTP ${esc(String(x.http ?? '—'))}</span>
+        ${r.resultados.map(x => `<div style="margin:10px 0"><b class="linea-res ${x.http && x.http < 400 ? 'bien' : 'mal'}">${x.http && x.http < 400 ? ICO.check : ICO.x}${esc(x.metodo)} ${esc(x.ruta)}</b> <span class="small muted">HTTP ${esc(String(x.http ?? '—'))}</span>
           ${x.body ? `<div class="small muted mono">body ${esc(JSON.stringify(x.body))}</div>` : ''}
           <pre class="small" style="white-space:pre-wrap;max-height:180px;overflow:auto">${esc(x.respuesta)}</pre></div>`).join('')}
         ${r.permisos_token ? `<h3>Permisos del token</h3><pre class="small" style="white-space:pre-wrap">${esc(JSON.stringify(r.permisos_token, null, 2))}</pre>` : ''}
@@ -1651,30 +1653,124 @@ async function adminCuentas(el) {
   $('#b-imp', el).onclick = () => modalImportar('cuentas', () => adminCuentas(el));
 }
 
-const AYUDA_CFG = {
-  shares_envio_habilitado: 'CANDADO. false = no se envía nada a Shares (modo prueba). Poné true recién cuando validen todo.',
-  tipos_shares: 'Tipo de comprobante ARCA → tipo_comprobante de Shares. "F" está probado; NC/ND a confirmar con Shares.',
-  condicion_iva_por_letra: 'Condición IVA (código Shares) a usar según la letra si el proveedor no la tiene en el maestro. null = obligar a cargarla.',
-  fiscal: 'Percepciones → ítem Shares (id_concepto_fc, codigo_concepto, total_key). Confirmá las cuentas de percepción IIBB con el plan de cuentas.',
-  tolerancia_total: 'Diferencia máxima en $ entre la suma de componentes y el total.',
-  dias_antiguedad_aviso: 'Facturas más viejas que esto generan un aviso.',
-  ia_imputacion_requiere_ok: 'true = cuando la cuenta la sugiere Gemini, una persona la confirma.',
-  arca_bloqueante: 'true = si ARCA está activo y no se pudo constatar, la factura no pasa.',
-  fecha_contable: '"emision" o "recepcion".',
-  max_cuentas_prompt: 'Cuántas cuentas se le pasan a Gemini para sugerir imputación (solo proveedores nuevos).',
-  dia_pago: 'Día fijo de pagos: 0 domingo, 1 lunes … 5 viernes. La propuesta nueva sugiere el próximo.',
-  director_whatsapp: 'Celular del Director para el botón de WhatsApp, con código de país y sin espacios (ej. "5492235123456"). Vacío = elegís el contacto en WhatsApp.',
-};
+// ---------------------------------------------------------------------------
+//  Configuración (admin): en criollo, con interruptores y campos simples.
+//  Lo técnico (mapeos de Shares en JSON) queda abajo, en "Avanzado".
+// ---------------------------------------------------------------------------
+const DIAS_SEMANA = [['1', 'Lun'], ['2', 'Mar'], ['3', 'Mié'], ['4', 'Jue'], ['5', 'Vie'], ['6', 'Sáb'], ['0', 'Dom']];
+const COND_IVA_OPS = [[73, 'Responsable inscripto'], [77, 'Monotributo'], [69, 'Exento'], [67, 'Consumidor final'], [78, 'Resp. no inscripto'], [65, 'No responsable'], [84, 'No categorizado']];
+const CFG_UI = [
+  { t: 'Envío a Shares', ico: 'send', items: [
+    { k: 'shares_envio_habilitado', tipo: 'switch', t: 'Enviar facturas a Shares', d: 'Apagado es el modo prueba: la app lee y controla todo, pero no carga nada en Shares.',
+      si: 'Activado: “Enviar a Shares” carga los comprobantes de verdad', no: 'Apagado: modo prueba',
+      confirmarSi: '¿Habilitar el envío real a Shares?\n\nDesde ahora “Enviar a Shares” carga los comprobantes en Shares.', confirmarNo: '¿Apagar el envío a Shares? Nadie va a poder cargar comprobantes hasta que lo vuelvas a prender.' },
+  ] },
+  { t: 'Controles de cada factura', ico: 'shield', items: [
+    { k: 'arca_bloqueante', tipo: 'switch', t: 'Exigir la constatación de ARCA', d: 'Si ARCA está conectado y no se pudo constatar el comprobante, la factura queda para revisar.' },
+    { k: 'ia_imputacion_requiere_ok', tipo: 'switch', t: 'Revisar las cuentas que sugiere la IA', d: 'Cuando la cuenta contable la sugiere Gemini, una persona la confirma antes de enviarla.' },
+    { k: 'tolerancia_total', tipo: 'numero', t: 'Diferencia aceptada en el total', d: 'Si neto + IVA + percepciones no da el total por más que esto, la factura va a revisión.', pre: '$', step: 0.01 },
+    { k: 'dias_antiguedad_aviso', tipo: 'numero', t: 'Aviso por factura vieja', d: 'Las facturas emitidas hace más días que esto muestran un aviso.', suf: 'días', step: 1 },
+    { k: 'fecha_contable', tipo: 'opciones', t: 'Fecha contable en Shares', d: 'Con qué fecha se registra el comprobante.', ops: [['emision', 'Emisión'], ['recepcion', 'Recepción']] },
+  ] },
+  { t: 'Pagos', ico: 'coin', items: [
+    { k: 'dia_pago', tipo: 'dia', t: 'Día fijo de pago', d: 'Cada propuesta nueva sugiere el próximo. Pili también lo puede cambiar desde Propuestas de pago → Ajustes.' },
+    { k: 'director_whatsapp', tipo: 'tel', t: 'WhatsApp del Director', d: 'Para el botón “Avisar por WhatsApp”. Con código de país y área, sin 0 ni 15 (ej. 54 9 223 512 3456).' },
+  ] },
+  { t: 'Inteligencia artificial', ico: 'sparkle', items: [
+    { k: 'max_cuentas_prompt', tipo: 'numero', t: 'Cuentas que se le muestran a la IA', d: 'Para sugerir la cuenta de un proveedor nuevo. Más cuentas = más opciones, pero más lento.', suf: 'cuentas', step: 10 },
+  ] },
+];
+const CFG_AVANZADO = [
+  { k: 'condicion_iva_por_letra', tipo: 'letras', t: 'Condición IVA si el proveedor no la tiene cargada', d: 'Según la letra del comprobante. Si un proveedor “C” es exento, cargalo en su ficha.' },
+  { k: 'tipos_shares', tipo: 'json', t: 'Tipo de comprobante en Shares', d: 'Código ARCA → F (factura), D (nota de débito) o R (nota de crédito).' },
+  { k: 'fiscal', tipo: 'json', t: 'Percepciones → columnas y cuentas de Shares', d: 'id_concepto_fc, codigo_concepto y total_key de cada percepción. Tocar solo con el plan de cuentas a mano.' },
+];
+
 async function adminConfig(el) {
   const r = await api('/api/config');
-  el.innerHTML = Object.keys(r.defaults).map(k => `<div class="campo" style="margin-bottom:20px"><label class="mono">${k}</label><div class="ayuda" style="margin:0 0 6px">${esc(AYUDA_CFG[k] || '')}</div>
-    <textarea data-cfg="${k}" class="mono" style="min-height:${typeof r.config[k] === 'object' ? 160 : 40}px;font-size:12px">${esc(JSON.stringify(r.config[k], null, 2))}</textarea>
-    <div class="acciones" style="margin-top:6px"><button class="btn btn-chico btn-negro" data-guardar="${k}">Guardar</button><button class="btn btn-chico" data-def="${k}">Volver al default</button></div></div>`).join('');
-  $$('[data-guardar]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-    let v; try { v = JSON.parse($(`[data-cfg="${b.dataset.guardar}"]`, el).value); } catch { throw new Error('JSON inválido.'); }
-    await api('/api/config', { method: 'PUT', body: { clave: b.dataset.guardar, valor: v } }); toast('Configuración guardada. Usá “Revalidar todas” en la bandeja para aplicarla.');
+  const cfg = r.config, def = r.defaults;
+  const igual = (k) => JSON.stringify(cfg[k]) === JSON.stringify(def[k]);
+  const guardar = async (k, valor, { silencio = false } = {}) => {
+    const x = await api('/api/config', { method: 'PUT', body: { clave: k, valor } });
+    Object.assign(cfg, x.config);
+    if (!silencio) toast(valor === null ? 'Volvió al valor original' : 'Guardado');
+    return x;
+  };
+  const control = (it) => {
+    const v = cfg[it.k];
+    if (it.tipo === 'switch') return `<label class="switch"><input type="checkbox" data-sw="${it.k}" ${v ? 'checked' : ''} aria-label="${esc(it.t)}"><span></span></label><span class="sw-txt" data-swtxt="${it.k}">${esc(v ? (it.si || 'Activado') : (it.no || 'Apagado'))}</span>`;
+    if (it.tipo === 'numero') return `${it.pre ? `<span class="muted">${it.pre}</span>` : ''}<input type="number" data-num="${it.k}" value="${esc(v)}" min="0" step="${it.step || 1}" inputmode="decimal">${it.suf ? `<span class="muted">${it.suf}</span>` : ''}`;
+    if (it.tipo === 'opciones') return `<div class="seg" data-op="${it.k}">${it.ops.map(([val, txt]) => `<button type="button" data-v="${val}" class="${v === val ? 'on' : ''}">${txt}</button>`).join('')}</div>`;
+    if (it.tipo === 'dia') return `<div class="seg" data-op="${it.k}" data-numerico="1">${DIAS_SEMANA.map(([val, txt]) => `<button type="button" data-v="${val}" class="${String(v) === val ? 'on' : ''}">${txt}</button>`).join('')}</div>`;
+    if (it.tipo === 'tel') return `<span class="muted">${ICO.phone}</span><input data-tel="${it.k}" value="${esc(v || '')}" placeholder="5492235123456" inputmode="tel" style="width:190px"><button class="btn btn-chico" data-tel-ok="${it.k}">Guardar</button>`;
+    return '';
+  };
+  const fila = (it) => `<div class="cfg-row" data-fila="${it.k}"><div><div class="t">${esc(it.t)} ${igual(it.k) || it.tipo === 'switch' ? '' : `<button class="btn-link small" data-reset="${it.k}">volver al original</button>`}</div><div class="d">${esc(it.d)}</div></div>
+    <div class="cfg-ctrl">${control(it)}</div></div>`;
+  const filaAv = (it) => {
+    if (it.tipo === 'letras') {
+      const v = cfg[it.k] || {};
+      return `<div class="cfg-row cfg-col"><div><div class="t">${esc(it.t)} ${igual(it.k) ? '' : `<button class="btn-link small" data-reset="${it.k}">volver al original</button>`}</div><div class="d">${esc(it.d)}</div></div>
+        <div class="letras">${['A', 'M', 'B', 'C'].map(l => `<label><span>Letra ${l}</span><select data-letra="${l}">${COND_IVA_OPS.map(([c, t]) => `<option value="${c}" ${Number(v[l]) === c ? 'selected' : ''}>${t}</option>`).join('')}<option value="" ${v[l] == null ? 'selected' : ''}>Obligar a cargarla</option></select></label>`).join('')}</div></div>`;
+    }
+    return `<div class="cfg-row cfg-col"><div><div class="t">${esc(it.t)}</div><div class="d">${esc(it.d)}</div></div>
+      <textarea data-json="${it.k}" class="mono" spellcheck="false" style="min-height:160px;font-size:12px">${esc(JSON.stringify(cfg[it.k], null, 2))}</textarea>
+      <div class="acciones"><button class="btn btn-chico btn-negro" data-json-ok="${it.k}">Guardar</button>${igual(it.k) ? '' : `<button class="btn btn-chico" data-reset="${it.k}">Volver al original</button>`}</div></div>`;
+  };
+  el.innerHTML = `${CFG_UI.map(sec => `<section class="cfg-sec"><h3 class="cfg-h">${ICO[sec.ico]}${esc(sec.t)}</h3><div class="panel">${sec.items.map(fila).join('')}</div></section>`).join('')}
+    <details class="avanzado"><summary>${ICO.gear}Avanzado — mapeos técnicos de Shares</summary><p class="muted small">Solo si Shares cambia algo o se agrega una percepción nueva. Un error acá puede hacer que los comprobantes se carguen mal.</p>
+      <div class="panel">${CFG_AVANZADO.map(filaAv).join('')}</div></details>
+    <p class="small muted" style="margin-top:14px">Los cambios se guardan solos y quedan en Auditoría. Para aplicarlos a facturas que ya están en revisión, usá “Revalidar todas” en Para revisar.</p>`;
+  const recargar = () => adminConfig(el);
+
+  $$('[data-sw]', el).forEach(c => c.onchange = async () => {
+    const it = CFG_UI.flatMap(x => x.items).find(x => x.k === c.dataset.sw);
+    const msg = c.checked ? it.confirmarSi : it.confirmarNo;
+    if (msg && !confirm(msg)) { c.checked = !c.checked; return; }
+    try { await guardar(it.k, c.checked); $(`[data-swtxt="${it.k}"]`, el).textContent = c.checked ? (it.si || 'Activado') : (it.no || 'Apagado'); }
+    catch (e) { c.checked = !c.checked; toast(e.message, true); }
+  });
+  $$('[data-num]', el).forEach(i => i.onchange = async () => {
+    try { await guardar(i.dataset.num, Number(String(i.value).replace(',', '.'))); }
+    catch (e) { i.value = cfg[i.dataset.num]; toast(e.message, true); }
+  });
+  $$('[data-op]', el).forEach(g => $$('button', g).forEach(b => b.onclick = async () => {
+    const val = g.dataset.numerico ? Number(b.dataset.v) : b.dataset.v;
+    try { await guardar(g.dataset.op, val); $$('button', g).forEach(x => x.classList.toggle('on', x === b)); }
+    catch (e) { toast(e.message, true); }
   }));
-  $$('[data-def]', el).forEach(b => b.onclick = () => confirm('¿Volver al valor por defecto?') && conBoton(b, async () => { await api('/api/config', { method: 'PUT', body: { clave: b.dataset.def, valor: null } }); adminConfig(el); }));
+  $$('[data-tel-ok]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const i = $(`[data-tel="${b.dataset.telOk}"]`, el); const x = await guardar(b.dataset.telOk, i.value); i.value = x.config[b.dataset.telOk] || ''; }));
+  $$('[data-letra]', el).forEach(sel => sel.onchange = async () => {
+    const v = { ...(cfg.condicion_iva_por_letra || {}) };
+    v[sel.dataset.letra] = sel.value === '' ? null : Number(sel.value);
+    try { await guardar('condicion_iva_por_letra', v); } catch (e) { toast(e.message, true); recargar(); }
+  });
+  $$('[data-json-ok]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
+    let v; try { v = JSON.parse($(`[data-json="${b.dataset.jsonOk}"]`, el).value); } catch { throw new Error('El formato no es válido: revisá comas y llaves.'); }
+    await guardar(b.dataset.jsonOk, v); recargar();
+  }));
+  $$('[data-reset]', el).forEach(b => b.onclick = () => confirm('¿Volver al valor original?') && conBoton(b, async () => { await guardar(b.dataset.reset, null); recargar(); }));
+}
+
+// ---- Pagos → Ajustes (Pili): aviso al Director, día de pago y categoría de cada cuenta ----
+async function vistaAjustesPagos(el) {
+  if (!puede('aprobador')) throw new Error('Necesitás rol aprobador.');
+  const c = await api('/api/pagos/config');
+  el.innerHTML = `<div class="encabezado"><div><div class="acciones" style="margin-bottom:6px"><a class="btn btn-ghost btn-chico" href="#/propuestas">${ICO.back}Propuestas</a></div>
+      <h1>Ajustes de pagos</h1><p>A quién se avisa, qué día se paga y cómo se agrupa cada cuenta en la aprobación del Director.</p></div></div>
+    <section class="cfg-sec"><h3 class="cfg-h">${ICO.chat}Aviso al Director</h3><div class="panel">
+      <div class="cfg-row"><div><div class="t">WhatsApp del Director</div><div class="d">El botón “Avisar por WhatsApp” abre el chat con él y el mensaje armado (sin importes, solo el link). Con código de país y área, sin 0 ni 15.</div></div>
+        <div class="cfg-ctrl"><span class="muted">${ICO.phone}</span><input id="aj-wsp" value="${esc(c.director_whatsapp || '')}" placeholder="5492235123456" inputmode="tel" style="width:190px"><button class="btn btn-chico btn-negro" id="aj-wsp-ok">Guardar</button></div></div>
+      <div class="cfg-row"><div><div class="t">Día fijo de pago</div><div class="d">Cada propuesta nueva sugiere el próximo; si es una excepción, cambiás la fecha en la propuesta.</div></div>
+        <div class="cfg-ctrl"><div class="seg" id="aj-dia">${DIAS_SEMANA.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(c.dia_pago) === v ? 'on' : ''}">${t}</button>`).join('')}</div></div></div>
+    </div></section>
+    <section class="cfg-sec"><h3 class="cfg-h">${ICO.chart}Gastos, Inversión o Materia prima</h3><div class="panel panel-pad" id="aj-cat"><span class="cargando"></span></div></section>`;
+  $('#aj-wsp-ok').onclick = () => conBoton($('#aj-wsp-ok'), async () => { const x = await api('/api/pagos/config', { method: 'PUT', body: { director_whatsapp: $('#aj-wsp').value } }); $('#aj-wsp').value = x.director_whatsapp || ''; toast('Guardado'); });
+  $$('#aj-dia button').forEach(b => b.onclick = async () => {
+    try { await api('/api/pagos/config', { method: 'PUT', body: { dia_pago: Number(b.dataset.v) } }); $$('#aj-dia button').forEach(x => x.classList.toggle('on', x === b)); toast('Guardado'); }
+    catch (e) { toast(e.message, true); }
+  });
+  await adminCategorias($('#aj-cat'));
 }
 
 async function adminAuditoria(el) {
@@ -1845,7 +1941,7 @@ async function vistaPagos(el) {
           return `<tr class="click" data-id="${f.id}"><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
           <td><div class="prov">${cuad(f.razon_social_emisor || '?')}<div><b>${esc(f.razon_social_emisor || 'Sin identificar')}</b><small class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</small></div></div></td>
           <td>${badgeEstado(f.estado)}${f.pago_estado && EST_PAGO_F[f.pago_estado] ? `<br><span class="badge ${EST_PAGO_F[f.pago_estado][1]}" style="margin-top:4px">${EST_PAGO_F[f.pago_estado][0]}</span>` : ''}</td>
-          <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? '<small class="sub-celda txt-neg">⚠ distinto al de la factura</small>' : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
+          <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? `<small class="sub-celda txt-neg con-ico">${ICO.alert}distinto al de la factura</small>` : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
           <td class="num"><b>${$$m(f.pesos)}</b>${f.moneda && f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.total)}</small>` : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro rango.</div>';
     $$('#lista tr[data-id]').forEach(tr => tr.onclick = (e) => { if (e.target.closest('[data-copiar]')) return; location.hash = '#/factura/' + tr.dataset.id; });
@@ -1930,8 +2026,8 @@ function linkWhatsapp(d) {
 function modalAvisoEnviado(d, aviso) {
   modal(`<h2>Propuesta enviada</h2>
     <p class="muted">${aviso ? esc(aviso) : 'Le llegó un mail al Director (sin importes). Si querés apurarlo, avisale por WhatsApp: el mensaje tampoco lleva importes, solo el link.'}</p>
-    <div class="acciones"><a class="btn btn-acento" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.send}Avisar por WhatsApp</a><button class="btn" id="b-cerrar-av">Listo</button></div>
-    ${d.config?.director_whatsapp ? '' : '<p class="small muted" style="margin-top:12px">Tip: cargá el celular del Director en Configuración → <span class="mono">director_whatsapp</span> y el mensaje le va directo.</p>'}`,
+    <div class="acciones"><a class="btn btn-acento" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.chat}Avisar por WhatsApp</a><button class="btn" id="b-cerrar-av">Listo</button></div>
+    ${d.config?.director_whatsapp ? '' : '<p class="small muted" style="margin-top:12px">Tip: cargá el celular del Director en Propuestas de pago → Ajustes y el mensaje le llega directo.</p>'}`,
   { alMontar: (m, cerrar) => { $('#b-cerrar-av', m).onclick = cerrar; } });
 }
 
@@ -1941,7 +2037,7 @@ async function vistaPropuestas(el) {
   let filtro = sessionStorage.getItem('prop_filtro') || 'activas';
   el.innerHTML = `<div class="encabezado"><div><h1>${dir ? 'Aprobar pagos' : 'Propuestas de pago'}</h1>
       <p>${dir ? 'Las propuestas que te mandaron para aprobar. Tocá una para ver el detalle por Gastos, Inversión y Materia prima.' : 'Armá la propuesta por sociedad y fecha de pago con las facturas ya cargadas en Shares, mandala al Director y, cuando vuelva aprobada, marcá lo pagado.'}</p></div>
-    ${dir ? '' : `<div class="acciones"><a class="btn btn-negro" href="#/propuesta/nueva">${ICO.coin}Nueva propuesta</a></div>`}</div>
+    ${dir ? '' : `<div class="acciones"><a class="btn" href="#/pagos-ajustes">${ICO.sliders}Ajustes</a><a class="btn btn-negro" href="#/propuesta/nueva">${ICO.coin}Nueva propuesta</a></div>`}</div>
     <div class="seg" id="seg"><button data-f="activas">Activas</button><button data-f="todas">Todas</button></div>
     <div id="lista"><div class="vacio"><span class="cargando"></span></div></div>`;
   const r = await api('/api/pagos/lotes');
@@ -1949,7 +2045,7 @@ async function vistaPropuestas(el) {
     $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.f === filtro));
     const ls = r.lotes.filter(l => filtro === 'todas' || ['borrador', 'enviado', 'aprobado', 'parcial'].includes(l.estado));
     const esperando = r.lotes.filter(l => l.estado === 'enviado');
-    const aviso = dir && esperando.length ? `<div class="tarea lista-vivo" style="margin-bottom:16px"><div class="panel-titulo"><h2>Tenés ${esperando.length} propuesta(s) esperando tu aprobación</h2><span class="badge b-warn">${$$m(esperando.reduce((a, l) => a + (l.total || 0), 0))}</span></div></div>` : '';
+    const aviso = dir && esperando.length ? `<div class="tarea lista-vivo" style="margin-bottom:16px"><div class="panel-titulo"><h2>${esperando.length === 1 ? 'Tenés 1 propuesta esperando' : `Tenés ${esperando.length} propuestas esperando`} tu aprobación</h2><span class="badge b-warn">${$$m(esperando.reduce((a, l) => a + (l.total || 0), 0))}</span></div></div>` : '';
     $('#lista').innerHTML = aviso + (ls.length ? `<div class="lotes">${ls.map(l => {
       const por = { gasto: l.t_gasto || 0, inversion: l.t_inversion || 0, materia_prima: l.t_materia_prima || 0 };
       return `<a class="lote-card ${l.estado === 'enviado' ? 'pend' : ''}" href="#/pago/${l.id}">
@@ -2017,7 +2113,7 @@ async function vistaPropuestaEditar(el, id) {
   const pintarBarra = () => {
     const t = totales();
     $('#barra-tot').innerHTML = `<div class="small muted">${t.n} pago(s) · ${Object.keys(CAT_PAGO).map(k => `${dotCat(k)}${esc(nomCat(k))} ${$$corto(t.por[k].total)}`).join(' · ')}</div>
-        <div style="font:800 22px var(--display)">${$$m(t.total)}</div>${t.neg.length ? `<div class="small txt-neg">⚠ Las NC de ${esc(t.neg.join(', '))} superan sus facturas</div>` : ''}`;
+        <div style="font:800 22px var(--display)">${$$m(t.total)}</div>${t.neg.length ? `<div class="small txt-neg con-ico">${ICO.alert}Las NC de ${esc(t.neg.join(', '))} superan sus facturas</div>` : ''}`;
   };
   const pintarCand = () => {
     const q = ($('#q').value || '').trim().toLowerCase();
@@ -2132,7 +2228,7 @@ async function vistaLote(el, id) {
       <div class="ip-info"><b>${esc(it.proveedor)}</b>
         <small>${esc(it.concepto || '')}${it.fecha_vto ? ` · vence ${fmtF(it.fecha_vto)}` : ''}${it.cbu ? ` · <span class="mono">${esc(it.cbu)}</span>` : ''}</small>
         ${it.alertas?.length ? `<div class="chips">${chipsAlertas(it.alertas)}</div>` : ''}
-        ${it.comentario ? `<div class="small" style="margin-top:4px">💬 ${esc(it.comentario)}</div>` : ''}
+        ${it.comentario ? `<div class="small con-ico" style="margin-top:4px">${ICO.chat}${esc(it.comentario)}</div>` : ''}
         ${aprobando ? `<input class="ip-coment" data-com="${it.id}" placeholder="${sel ? 'Comentario (opcional)' : 'Por qué no lo aprobás (obligatorio)'}" value="${esc(ap.coment[it.id] || '')}" ${sel ? 'hidden' : ''}>` : ''}
         <div class="chips" style="margin-top:4px">${decision}${pagado}${it.factura_id ? `<button class="btn-link small" data-pdf="${it.factura_id}">Ver factura</button>` : ''}</div></div>
       <div class="ip-monto ${it.importe < 0 ? 'txt-neg' : ''}">${$$m(it.importe)}${it.moneda && it.moneda !== 'PES' ? `<small>${esc(it.moneda)} ${fmtNum.format(it.importe_original)}</small>` : ''}</div></div>`;
@@ -2150,7 +2246,7 @@ async function vistaLote(el, id) {
   const acciones = [];
   if (d.puede.editar) acciones.push(`<a class="btn" href="#/propuesta/${L.id}/editar">Editar</a>`);
   if (d.puede.enviar) acciones.push(`<button class="btn btn-acento" id="b-env">${ICO.send}Enviar al Director</button>`);
-  if (d.puede.retirar) acciones.push(`<a class="btn" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.send}Avisar por WhatsApp</a><button class="btn" id="b-ret">Retirar para editar</button>`);
+  if (d.puede.retirar) acciones.push(`<a class="btn" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.chat}Avisar por WhatsApp</a><button class="btn" id="b-ret">Retirar para editar</button>`);
   if (d.puede.editar) acciones.push(`<button class="btn btn-rojo" id="b-del">Borrar</button>`);
   if (!esDirector() && R.aprobado) acciones.push(`<button class="btn" id="b-csv">${ICO.doc}Exportar aprobados</button>`);
 
@@ -2189,7 +2285,7 @@ async function vistaLote(el, id) {
       const sinCom = d.items.filter(i => !ap.sel.has(i.id) && !String(ap.coment[i.id] || ap.general || '').trim());
       if (sinCom.length) { const c = $(`[data-com="${sinCom[0].id}"]`); c?.focus(); c?.scrollIntoView({ block: 'center' }); throw new Error(`Escribí por qué no aprobás el pago a ${sinCom[0].proveedor}.`); }
       const graves = d.items.filter(i => ap.sel.has(i.id) && i.alertas?.some(a => a.grave));
-      const msg = `¿Confirmás?\n\nAprobás ${ap.sel.size} pago(s) por ${$$m(totalSel())}${ap.sel.size < d.items.length ? ` y observás ${d.items.length - ap.sel.size}` : ''}.` + (graves.length ? `\n\n⚠ ${graves.length} de los aprobados tienen alerta de CBU.` : '');
+      const msg = `¿Confirmás?\n\nAprobás ${ap.sel.size} pago(s) por ${$$m(totalSel())}${ap.sel.size < d.items.length ? ` y observás ${d.items.length - ap.sel.size}` : ''}.` + (graves.length ? `\n\nAtención: ${graves.length} de los aprobados tienen alerta de CBU.` : '');
       if (!confirm(msg)) return;
       const r = await api(`/api/pagos/lotes/${L.id}/resolver`, { method: 'POST', body: { aprobados: [...ap.sel], comentarios: ap.coment, comentario: ap.general.trim(), app_url: appUrl() } });
       toast(r.aviso || 'Listo, quedó resuelta. Le avisamos por mail.', !!r.aviso);
@@ -2252,7 +2348,8 @@ function guiaDirector(el) {
       <p><b>1. Te llega un aviso</b> (mail o WhatsApp) sin importes, solo con el link. Por seguridad, los pagos se aprueban únicamente dentro de la app.</p>
       <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su factura (tocá “Ver factura”) y las alertas: en rojo, si el CBU del proveedor cambió hace poco o no coincide con el de la factura.</p>
       <p><b>3. Tildá lo que aprobás</b> y tocá “Aprobar seleccionados”. Lo que destildes queda observado: escribí por qué y le vuelve a Pili. Lo observado se puede volver a proponer más adelante.</p>
-      <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta. Desde “Todas las facturas” podés consultar cualquier factura (solo lectura).</p></div>`;
+      <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta.</p>
+      <p class="muted">Solo ves las propuestas que te enviaron y las facturas que están en ellas.</p></div>`;
 }
 
 // ---- Admin: categoría de pago por cuenta ----
