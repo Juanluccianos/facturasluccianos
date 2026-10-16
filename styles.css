@@ -611,3 +611,6 @@ div.linea-res { display: flex; margin: 4px 0; }
   .top .marca-m { height: 32px; }
   input, select, textarea { font-size: 16px; }
 }
+
+.barra-av { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barra-av span { display: block; height: 100%; background: var(--accent); transition: width .3s; }

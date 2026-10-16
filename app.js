@@ -1343,10 +1343,16 @@ async function vistaShares(el) {
     const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
     if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?`)) return;
     const res = [];
-    for (let i = 0; i < ids.length; i += 20) {
-      $('#resultado').innerHTML = `<div class="panel panel-pad"><span class="cargando"></span> Enviando ${i + 1}–${Math.min(i + 20, ids.length)} de ${ids.length}…</div>`;
-      res.push(...(await api('/api/shares/enviar', { method: 'POST', body: { ids: ids.slice(i, i + 20) } })).resultados);
+    // De a 5 por pedido: se ve el avance y, si Shares se satura, no se pierde el lote entero
+    let cerrarAv;
+    modal(`<h2>Enviando a Shares</h2><p class="muted" id="av-txt">Preparando…</p><div class="barra-av"><span id="av-bar" style="width:0%"></span></div><p class="small muted" style="margin-top:10px">Se envían a ritmo tranquilo para que Shares no las frene. No cierres esta pestaña.</p>`, { alMontar: (m, c) => { cerrarAv = c; } });
+    for (let i = 0; i < ids.length; i += 5) {
+      const t = $('#av-txt'); if (t) t.textContent = `${Math.min(i + 5, ids.length)} de ${ids.length}…`;
+      try { res.push(...(await api('/api/shares/enviar', { method: 'POST', body: { ids: ids.slice(i, i + 5) } })).resultados); }
+      catch (e) { ids.slice(i, i + 5).forEach(id => res.push({ id, ok: false, message: e.message })); }
+      const b = $('#av-bar'); if (b) b.style.width = Math.round(Math.min(i + 5, ids.length) / ids.length * 100) + '%';
     }
+    if (cerrarAv) cerrarAv();
     const ok = res.filter(x => x.ok).length;
     await vistaShares(el);
     $('#resultado').innerHTML = '';
