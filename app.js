@@ -48,7 +48,7 @@ const fmtFH = (s) => {
 const nroCbte = (f) => (f.pto_vta != null && f.numero != null) ? `${String(f.pto_vta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}` : '—';
 const fmtCuit = (c) => { c = String(c || ''); return c.length === 11 ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : (c || '—'); };
 const TIPOS = { 1: 'FA', 2: 'ND A', 3: 'NC A', 6: 'FB', 7: 'ND B', 8: 'NC B', 11: 'FC', 12: 'ND C', 13: 'NC C', 51: 'FM', 52: 'ND M', 53: 'NC M', 201: 'FCE A', 202: 'ND FCE A', 203: 'NC FCE A', 206: 'FCE B', 207: 'ND FCE B', 208: 'NC FCE B', 211: 'FCE C', 212: 'ND FCE C', 213: 'NC FCE C', 17: 'LSP A', 18: 'LSP B', 81: 'TFA', 82: 'TFB', 83: 'Tique' };
-const ESTADOS = { recibida: 'En cola de lectura', leyendo: 'Leyendo', excepcion: 'En excepción', lista: 'Lista para Shares', cargada: 'Cargada en Shares', error_shares: 'Error Shares', rechazada: 'Rechazada' };
+const ESTADOS = { recibida: 'En cola de lectura', leyendo: 'Leyendo', excepcion: 'En excepción', lista: 'Lista para Shares', en_cola: 'En cola para Shares', enviando: 'Enviando a Shares', cargada: 'Cargada en Shares', error_shares: 'Error Shares', rechazada: 'Rechazada' };
 const METODOS = { plantilla: 'Configuración del proveedor', plantilla_pendiente: 'Configuración pendiente', reglas: 'Reglas generales (sin IA)', ia: 'Gemini (IA)', manual: 'Carga manual' };
 const badgeMetodo = (m) => m ? `<span class="badge ${m === 'ia' ? 'b-normal' : m === 'plantilla' ? 'b-ok' : 'b-aviso'}">${esc(METODOS[m] || m)}</span>` : '';
 const badgeEstado = (e) => `<span class="badge b-${esc(e)}">${esc(ESTADOS[e] || e)}</span>`;
@@ -938,8 +938,10 @@ function pintarFactura(el, r) {
     tarea = `<section class="tarea"><div class="panel-titulo"><h2>Se está leyendo</h2><span class="badge b-recibida">En cola</span></div><div class="cuerpo"><p>El lector (QR + configuración del proveedor) la procesa en su próximo ciclo, en 1–2 minutos.${f.error_proceso ? ' Último error: ' + esc(f.error_proceso) : ''}</p></div></section>`;
   } else if (f.estado === 'rechazada') {
     tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Rechazada</h2></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'Sin motivo registrado.')}</p></div></section>`;
+  } else if (['en_cola', 'enviando'].includes(f.estado)) {
+    tarea = `<section class="tarea"><div class="panel-titulo"><h2>${f.estado === 'enviando' ? 'Enviándose a Shares' : 'En cola para Shares'}</h2><span class="badge b-${f.estado}">${esc(ESTADOS[f.estado])}</span></div><div class="cuerpo"><p>Se manda sola, en segundo plano, con todos los controles en vivo. Si Shares está saturado, espera y se reintenta. No hace falta hacer nada.</p></div></section>`;
   } else if (f.estado === 'error_shares' && r.shares_respuesta) {
-    tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Shares no la aceptó</h2><span class="badge b-critica">HTTP ${esc(r.shares_respuesta.http_status)}</span></div><div class="cuerpo"><p>${esc(r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body).slice(0, 300))}</p></div></section>`;
+    tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Shares no la aceptó</h2>${r.shares_respuesta.http_status ? `<span class="badge b-critica">HTTP ${esc(r.shares_respuesta.http_status)}</span>` : ''}</div><div class="cuerpo"><p>${esc(r.shares_respuesta.error || r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body || {}).slice(0, 300))}</p></div></section>`;
   } else if (abiertas.length) {
     const critica = abiertas.some(e => e.severidad === 'critica');
     const verSug = !!r.datos;   // la cuenta se muestra siempre: es lo que más se mira antes de mandar a Shares
@@ -1269,9 +1271,10 @@ function conectarFactura(el, r) {
   };
   const ben = $('#b-enviar');
   if (ben) ben.onclick = () => conBoton(ben, async () => {
-    if (!await confirmar('¿Enviar este comprobante a Shares?')) return;
-    const res = (await api('/api/shares/enviar', { method: 'POST', body: { ids: [id] } })).resultados[0];
-    toast(res.ok ? `✓ Cargada en Shares${res.shares_ref ? ' (ref. ' + res.shares_ref + ')' : ''}` : `Shares: ${res.message}`, !res.ok);
+    if (!await confirmar('¿Enviar este comprobante a Shares? Queda en cola y se manda solo en segundo plano.')) return;
+    const res = await api('/api/shares/encolar', { method: 'POST', body: { ids: [id] } });
+    if (res.encoladas.length) toast('En cola: se envía sola en segundo plano');
+    else toast(res.rechazadas[0]?.message || 'No se pudo encolar', true);
     recargar(await api('/api/facturas/' + id));
   });
   $$('[data-aceptar]', el).forEach(b => b.onclick = async () => {
@@ -1299,6 +1302,7 @@ async function vistaShares(el) {
       <span class="lote-cuenta hidden" id="lote"><input class="in-cuenta mono" list="dl-cuentas" id="lote-cta" placeholder="Cuenta para las elegidas"><button class="btn btn-chico" id="b-lote">Cambiar cuenta</button></span>
       <button class="btn btn-acento" id="b-env" disabled>${ICO.send}Aprobar y enviar</button></div></div>
     ${datalistCuentas()}
+    <div id="cola" style="margin-bottom:16px"></div>
     <div class="panel"><div class="tabla-wrap"><table><thead><tr><th><input type="checkbox" id="todas"></th>${encabezadoFacturas(false).replace('<tr>', '').replace('</tr>', '')}<th>Cuenta</th></tr></thead>
     <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}${celdaCuenta(f)}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay nada listo para enviar.</td></tr>'}</tbody></table></div></div>
     <div id="resultado"></div>`;
@@ -1341,28 +1345,51 @@ async function vistaShares(el) {
   $$('tr[data-id] td:not(:first-child):not(.td-cuenta)').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { location.hash = '#/factura/' + td.parentElement.dataset.id; }; });
   $('#b-env').onclick = () => conBoton($('#b-env'), async () => {
     const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
-    if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?`)) return;
-    const res = [];
-    // De a 5 por pedido: se ve el avance y, si Shares se satura, no se pierde el lote entero
-    let cerrarAv;
-    modal(`<h2>Enviando a Shares</h2><p class="muted" id="av-txt">Preparando…</p><div class="barra-av"><span id="av-bar" style="width:0%"></span></div><p class="small muted" style="margin-top:10px">Se envían a ritmo tranquilo para que Shares no las frene. No cierres esta pestaña.</p>`, { alMontar: (m, c) => { cerrarAv = c; } });
-    for (let i = 0; i < ids.length; i += 5) {
-      const t = $('#av-txt'); if (t) t.textContent = `${Math.min(i + 5, ids.length)} de ${ids.length}…`;
-      try { res.push(...(await api('/api/shares/enviar', { method: 'POST', body: { ids: ids.slice(i, i + 5) } })).resultados); }
-      catch (e) { ids.slice(i, i + 5).forEach(id => res.push({ id, ok: false, message: e.message })); }
-      const b = $('#av-bar'); if (b) b.style.width = Math.round(Math.min(i + 5, ids.length) / ids.length * 100) + '%';
-    }
-    if (cerrarAv) cerrarAv();
-    const ok = res.filter(x => x.ok).length;
+    if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?\n\nQuedan en cola y se mandan solas en segundo plano, a ritmo tranquilo. Podés seguir trabajando o cerrar la pestaña.`)) return;
+    const res = await api('/api/shares/encolar', { method: 'POST', body: { ids } });
+    toast(`${res.encoladas.length} en cola para Shares${res.rechazadas.length ? ` · ${res.rechazadas.length} no se pudieron encolar` : ''}`, !!res.rechazadas.length && !res.encoladas.length);
     await vistaShares(el);
-    $('#resultado').innerHTML = '';
-    // El resultado se muestra en una ventana (antes quedaba abajo de la tabla y no se veía)
-    const nombre = (id) => (r.facturas.find(f => f.id === id)?.razon_social_emisor) || '';
-    modal(`<h2 style="margin-bottom:4px">${ok === res.length ? 'Enviado a Shares' : ok ? 'Se envió una parte' : 'No se pudo enviar'}</h2>
-      <p class="muted" style="margin:0 0 14px">${ok} OK · ${res.length - ok} con error</p>
-      <div class="tabla-wrap"><table><tbody>${res.map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${esc(nombre(x.id))}</td><td>${x.ok ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-critica">Error</span>'}</td><td class="small">${esc(x.message || (x.ok ? 'Cargada' : 'Sin detalle'))}${x.shares_ref ? ` · ref. <span class="mono">${esc(x.shares_ref)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
-      <div class="acciones" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-acento" data-ok>Entendido</button></div>`, { ancho: true, alMontar: (m, cerrar) => { $('[data-ok]', m).onclick = cerrar; } });
+    if (res.rechazadas.length) {
+      const nombre = (id) => (r.facturas.find(f => f.id === id)?.razon_social_emisor) || '';
+      modal(`<h2 style="margin-bottom:4px">${res.rechazadas.length} no se pudieron encolar</h2><p class="muted" style="margin:0 0 14px">Las demás ya están en cola.</p>
+        <div class="tabla-wrap"><table><tbody>${res.rechazadas.map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${esc(nombre(x.id))}</td><td class="small">${esc(x.message)}</td></tr>`).join('')}</tbody></table></div>
+        <div class="acciones" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-acento" data-ok>Entendido</button></div>`, { ancho: true, alMontar: (m, c) => { $('[data-ok]', m).onclick = c; } });
+    }
   });
+  montarPanelCola(el, () => vistaShares(el));
+}
+
+// Panel "Cola de envío": muestra cuántas faltan, si Shares está en pausa y los últimos resultados.
+// Mientras la pantalla está abierta, cada 15 s le da un empujón a la cola (además del cron cada 5 min).
+async function montarPanelCola(el, alTerminar) {
+  const caja = $('#cola', el); if (!caja) return;
+  let antes = null;
+  const pintar = (c) => {
+    const activas = (c.en_cola || 0) + (c.enviando || 0);
+    const rec = c.recientes || [];
+    const ok = rec.filter(x => x.ok).length, mal = rec.filter(x => !x.ok);
+    if (!activas && !rec.length) { caja.innerHTML = ''; return activas; }
+    caja.innerHTML = `<div class="panel panel-pad cola ${activas ? 'activa' : ''}">
+      <div class="cola-top">${activas ? '<span class="cargando"></span>' : ICO.check}
+        <div><b>${activas ? `Enviando a Shares en segundo plano: ${activas} en cola` : 'Cola vacía: no queda nada por enviar'}</b>
+        <div class="small muted">${c.pausa_hasta ? `Shares nos frenó: se retoma sola a las ${esc(c.pausa_hasta)}. No se pierde nada.` : activas ? 'Se mandan de a una con todos los controles. Podés seguir trabajando o cerrar la pestaña.' : 'Últimas 6 horas'} · ${ok} cargadas${mal.length ? ` · <b>${mal.length} con error</b>` : ''}</div></div></div>
+      ${mal.length ? `<details class="cola-err"><summary>Ver las que dieron error</summary><table><tbody>${mal.slice(0, 30).map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${esc(x.proveedor || '')}</td><td class="small">${esc(x.message || '')}</td></tr>`).join('')}</tbody></table></details>` : ''}
+    </div>`;
+    return activas;
+  };
+  const tick = async () => {
+    if (!caja.isConnected) return;
+    let c; try { c = await api('/api/shares/cola/procesar', { method: 'POST' }); } catch { c = null; }
+    if (!caja.isConnected) return;
+    if (c) {
+      const activas = pintar(c);
+      if (antes !== null && activas < antes && alTerminar && !activas) { alTerminar(); return; }
+      antes = activas;
+      if (!activas) return;
+    }
+    setTimeout(tick, 15000);
+  };
+  tick();
 }
 
 // ---------------------------------------------------------------------------

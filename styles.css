@@ -614,3 +614,11 @@ div.linea-res { display: flex; margin: 4px 0; }
 
 .barra-av { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .barra-av span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+
+.b-en_cola, .b-enviando { background: var(--info-bg); color: var(--info); }
+.cola .cola-top { display: flex; gap: 12px; align-items: flex-start; }
+.cola .cola-top > svg.i { color: var(--pos); width: 22px; height: 22px; flex: none; margin-top: 2px; }
+.cola .cola-top .cargando { flex: none; margin-top: 3px; }
+.cola-err { margin-top: 10px; }
+.cola-err summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.cola-err table { margin-top: 8px; }
