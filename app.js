@@ -1634,7 +1634,7 @@ async function adminSalud(el) {
       const u = s.shares_uso_hora, d = s.shares_uso_dia || {};
       const NOM = { login: 'login', recent: 'historial/duplicados', provider: 'proveedor', receive: 'envíos', concepts: 'plan de cuentas' };
       const tipos = Object.entries(u.por_tipo || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${esc(NOM[k] || k)} ${n}`).join(' · ') || 'sin llamadas';
-      return fila(!u.frenadas, 'Uso de Shares (lo que consume esta app)', `Última hora: <b>${u.llamadas}</b> llamadas · <b>${u.frenadas}</b> frenadas por Shares (429) · pico ${u.pico_por_minuto}/min · ${tipos}<br>Últimas 24 h: ${d.llamadas ?? 0} llamadas · ${d.frenadas ?? 0} frenadas`);
+      return fila(!u.frenadas, 'Uso de Shares (lo que consume esta app)', `Última hora: <b>${u.llamadas}</b> llamadas · <b>${u.frenadas}</b> frenadas por Shares (429) · pico ${u.pico_por_minuto}/min · ${tipos}<br>Últimas 24 h: ${d.llamadas ?? 0} llamadas · ${d.frenadas ?? 0} frenadas${s.shares_pausa_hasta ? `<br><b>En pausa hasta las ${esc(s.shares_pausa_hasta)}</b>: Shares nos frenó, la app no le consulta nada hasta esa hora y después sigue sola.` : ''}`);
     })() : ''}
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
     ${s.arca_cert && s.arca_modo !== 'off' ? fila(true, 'Padrón ARCA (razón social por CUIT)', 'Requiere autorizar el servicio ws_sr_constancia_inscripcion para el certificado en ARCA', 'padron') : ''}
