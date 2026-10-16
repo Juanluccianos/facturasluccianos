@@ -1349,8 +1349,13 @@ async function vistaShares(el) {
     }
     const ok = res.filter(x => x.ok).length;
     await vistaShares(el);
-    $('#resultado').innerHTML = `<div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Resultado: ${ok} OK · ${res.length - ok} con error</h2></div>
-      <table><tbody>${res.map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${x.ok ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-critica">Error</span>'}</td><td class="small">${esc(x.message || '')}</td><td class="mono small">${esc(x.shares_ref || '')}</td></tr>`).join('')}</tbody></table></div>`;
+    $('#resultado').innerHTML = '';
+    // El resultado se muestra en una ventana (antes quedaba abajo de la tabla y no se veía)
+    const nombre = (id) => (r.facturas.find(f => f.id === id)?.razon_social_emisor) || '';
+    modal(`<h2 style="margin-bottom:4px">${ok === res.length ? 'Enviado a Shares' : ok ? 'Se envió una parte' : 'No se pudo enviar'}</h2>
+      <p class="muted" style="margin:0 0 14px">${ok} OK · ${res.length - ok} con error</p>
+      <div class="tabla-wrap"><table><tbody>${res.map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${esc(nombre(x.id))}</td><td>${x.ok ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-critica">Error</span>'}</td><td class="small">${esc(x.message || (x.ok ? 'Cargada' : 'Sin detalle'))}${x.shares_ref ? ` · ref. <span class="mono">${esc(x.shares_ref)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      <div class="acciones" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-acento" data-ok>Entendido</button></div>`, { ancho: true, alMontar: (m, cerrar) => { $('[data-ok]', m).onclick = cerrar; } });
   });
 }
 
