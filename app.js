@@ -114,6 +114,25 @@ function modal(html, { ancho = false, alMontar } = {}) {
   return cerrar;
 }
 
+// Confirmación propia (en vez de confirm() del navegador, que Chrome puede bloquear en silencio
+// si alguna vez se tildó "no permitir más diálogos": ahí el botón parece no hacer nada)
+function confirmar(texto, { boton = 'Sí, seguir', peligro = false } = {}) {
+  return new Promise((resolve) => {
+    let hecho = false;
+    modal(`<h2 style="margin-bottom:6px">¿Confirmás?</h2><p class="muted" style="white-space:pre-line;margin:0 0 18px">${esc(texto)}</p>
+      <div class="acciones" style="justify-content:flex-end"><button class="btn" data-no>Cancelar</button><button class="btn ${peligro ? 'btn-rojo' : 'btn-acento'}" data-si>${esc(boton)}</button></div>`, {
+      alMontar: (el, cerrar) => {
+        const fin = (v) => { if (hecho) return; hecho = true; cerrar(); resolve(v); };
+        $('[data-si]', el).onclick = () => fin(true);
+        $('[data-no]', el).onclick = () => fin(false);
+        setTimeout(() => $('[data-si]', el)?.focus(), 0);
+        const obs = new MutationObserver(() => { if ($('#modal').hidden) { obs.disconnect(); if (!hecho) { hecho = true; resolve(false); } } });
+        obs.observe($('#modal'), { attributes: true });
+      },
+    });
+  });
+}
+
 function pedirTexto({ titulo, ayuda = '', etiqueta = 'Comentario', boton = 'Confirmar', minimo = 5, valor = '' }) {
   return new Promise((resolve) => {
     let listo = false;
@@ -1229,7 +1248,7 @@ function conectarFactura(el, r) {
   });
   const bcp = $('#b-conf-prov');
   if (bcp) bcp.onclick = () => conBoton(bcp, async () => {
-    if (!confirm('Confirmás que el desglose y la cuenta están bien? Con esta factura se guarda cómo leer las próximas de este proveedor.')) return;
+    if (!await confirmar('Confirmás que el desglose y la cuenta están bien? Con esta factura se guarda cómo leer las próximas de este proveedor.')) return;
     const n = await guardar({ confirmar_proveedor: true });
     const av = n.confirmacion?.avisos || [];
     toast(`Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se leen solas.'}`);
@@ -1250,7 +1269,7 @@ function conectarFactura(el, r) {
   };
   const ben = $('#b-enviar');
   if (ben) ben.onclick = () => conBoton(ben, async () => {
-    if (!confirm('¿Enviar este comprobante a Shares?')) return;
+    if (!await confirmar('¿Enviar este comprobante a Shares?')) return;
     const res = (await api('/api/shares/enviar', { method: 'POST', body: { ids: [id] } })).resultados[0];
     toast(res.ok ? `✓ Cargada en Shares${res.shares_ref ? ' (ref. ' + res.shares_ref + ')' : ''}` : `Shares: ${res.message}`, !res.ok);
     recargar(await api('/api/facturas/' + id));
@@ -1322,7 +1341,7 @@ async function vistaShares(el) {
   $$('tr[data-id] td:not(:first-child):not(.td-cuenta)').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { location.hash = '#/factura/' + td.parentElement.dataset.id; }; });
   $('#b-env').onclick = () => conBoton($('#b-env'), async () => {
     const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
-    if (!confirm(`¿Enviar ${ids.length} comprobante(s) a Shares?`)) return;
+    if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?`)) return;
     const res = [];
     for (let i = 0; i < ids.length; i += 20) {
       $('#resultado').innerHTML = `<div class="panel panel-pad"><span class="cargando"></span> Enviando ${i + 1}–${Math.min(i + 20, ids.length)} de ${ids.length}…</div>`;
@@ -1508,11 +1527,11 @@ function modalProveedor(p, nuevo, alGuardar, extra = null) {
         });
       };
       $$('[data-desact]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-        if (!confirm('¿Desactivar la configuración? La próxima factura de este proveedor se lee como si fuera nuevo.')) return;
+        if (!await confirmar('¿Desactivar la configuración? La próxima factura de este proveedor se lee como si fuera nuevo.')) return;
         await api('/api/plantillas/' + b.dataset.desact, { method: 'PUT', body: { estado: 'desactivada' } }); toast('Configuración desactivada'); cerrar(); alGuardar && alGuardar();
       }));
       $$('[data-borrar-regla]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-        if (!confirm('¿Borrar la regla?')) return;
+        if (!await confirmar('¿Borrar la regla?')) return;
         await api('/api/reglas/' + b.dataset.borrarRegla, { method: 'DELETE' }); b.closest('tr').remove(); toast('Regla borrada');
       }));
     },
@@ -1622,7 +1641,7 @@ async function adminUsuarios(el) {
   const put = (id, body) => api('/api/usuarios/' + id, { method: 'PUT', body }).then(() => { toast('Guardado'); adminUsuarios(el); }).catch(e => toast(e.message, true));
   $$('[data-rol]', el).forEach(s => s.onchange = () => put(s.dataset.rol, { rol: s.value }));
   $$('[data-act]', el).forEach(b => b.onclick = () => put(b.dataset.act, { activo: b.dataset.v === '1' }));
-  $$('[data-totp]', el).forEach(b => b.onclick = () => confirm('¿Resetear el doble factor de este usuario?') && put(b.dataset.totp, { reset_totp: true }));
+  $$('[data-totp]', el).forEach(b => b.onclick = async () => await confirmar('¿Resetear el doble factor de este usuario?') && put(b.dataset.totp, { reset_totp: true }));
   $$('[data-pass]', el).forEach(b => b.onclick = async () => { const p = await pedirTexto({ titulo: 'Nueva contraseña', etiqueta: 'Contraseña (mínimo 10 caracteres)', boton: 'Guardar', minimo: 10 }); if (p) put(b.dataset.pass, { password: p }); });
   $('#b-nu', el).onclick = () => modal(`<h2>Nuevo usuario</h2><form id="f-nu">
       <div class="campo"><label>Nombre</label><input name="nombre" required></div>
@@ -1640,7 +1659,7 @@ async function adminEmpresas(el) {
     <table><tbody>${r.empresas.map(e => `<tr><td class="mono">${fmtCuit(e.cuit)}</td><td>${esc(e.razon_social)}</td><td><button class="btn btn-chico btn-rojo" data-del="${e.cuit}">Quitar</button></td></tr>`).join('') || '<tr><td class="muted">Sin empresas cargadas.</td></tr>'}</tbody></table>
     <form id="f-emp" class="fila" style="margin-top:16px;align-items:end"><div class="campo"><label>CUIT</label><input name="cuit" class="mono" required></div><div class="campo"><label>Razón social</label><input name="razon_social" required></div><div class="campo"><button class="btn btn-negro" type="submit">Agregar</button></div></form>`;
   $('#f-emp', el).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/empresas', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); adminEmpresas(el); }); };
-  $$('[data-del]', el).forEach(b => b.onclick = () => confirm('¿Quitar esta empresa?') && conBoton(b, async () => { await api('/api/empresas/' + b.dataset.del, { method: 'DELETE' }); adminEmpresas(el); }));
+  $$('[data-del]', el).forEach(b => b.onclick = async () => await confirmar('¿Quitar esta empresa?') && conBoton(b, async () => { await api('/api/empresas/' + b.dataset.del, { method: 'DELETE' }); adminEmpresas(el); }));
 }
 
 async function adminCuentas(el) {
@@ -1709,7 +1728,7 @@ async function adminConfig(el) {
   $$('[data-sw]', el).forEach(c => c.onchange = async () => {
     const it = CFG_UI.flatMap(x => x.items).find(x => x.k === c.dataset.sw);
     const msg = c.checked ? it.confirmarSi : it.confirmarNo;
-    if (msg && !confirm(msg)) { c.checked = !c.checked; return; }
+    if (msg && !await confirmar(msg)) { c.checked = !c.checked; return; }
     try { await guardar(it.k, c.checked); $(`[data-swtxt="${it.k}"]`, el).textContent = c.checked ? (it.si || 'Activado') : (it.no || 'Apagado'); }
     catch (e) { c.checked = !c.checked; toast(e.message, true); }
   });
@@ -1723,7 +1742,7 @@ async function adminConfig(el) {
     catch (e) { toast(e.message, true); }
   }));
   $$('[data-tel-ok]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const i = $(`[data-tel="${b.dataset.telOk}"]`, el); const x = await guardar(b.dataset.telOk, i.value); i.value = x.config[b.dataset.telOk] || ''; }));
-  $$('[data-reset]', el).forEach(b => b.onclick = () => confirm('¿Volver al valor original?') && conBoton(b, async () => { await guardar(b.dataset.reset, null); recargar(); }));
+  $$('[data-reset]', el).forEach(b => b.onclick = async () => await confirmar('¿Volver al valor original?') && conBoton(b, async () => { await guardar(b.dataset.reset, null); recargar(); }));
 }
 
 // ---- Pagos → Ajustes (Pili): aviso al Director, día de pago y categoría de cada cuenta ----
@@ -2169,7 +2188,7 @@ async function vistaPropuestaEditar(el, id) {
     const body = { cuit_empresa: st.empresa, fecha_pago: st.fecha, nota: $('#p-nota').value.trim(),
       facturas: [...st.sel.entries()].map(([factura_id, categoria]) => ({ factura_id, categoria })),
       manuales: st.manuales.filter(m => m.proveedor || m.concepto || m.importe) };
-    if (enviar && !confirm(`¿Enviar al Director ${t.n} pago(s) por ${$$m(t.total)}?\n\nDespués de enviarla no se puede editar (la podés retirar mientras no la resuelva).`)) return;
+    if (enviar && !await confirmar(`¿Enviar al Director ${t.n} pago(s) por ${$$m(t.total)}?\n\nDespués de enviarla no se puede editar (la podés retirar mientras no la resuelva).`)) return;
     const d = await api(id ? '/api/pagos/lotes/' + id : '/api/pagos/lotes', { method: id ? 'PUT' : 'POST', body });
     sessionStorage.setItem('prop_empresa', st.empresa);
     if (!enviar) { toast('Borrador guardado'); location.hash = '#/pago/' + d.lote.id; return; }
@@ -2269,7 +2288,7 @@ async function vistaLote(el, id) {
       if (sinCom.length) { const c = $(`[data-com="${sinCom[0].id}"]`); c?.focus(); c?.scrollIntoView({ block: 'center' }); throw new Error(`Escribí por qué no aprobás el pago a ${sinCom[0].proveedor}.`); }
       const graves = d.items.filter(i => ap.sel.has(i.id) && i.alertas?.some(a => a.grave));
       const msg = `¿Confirmás?\n\nAprobás ${ap.sel.size} pago(s) por ${$$m(totalSel())}${ap.sel.size < d.items.length ? ` y observás ${d.items.length - ap.sel.size}` : ''}.` + (graves.length ? `\n\nAtención: ${graves.length} de los aprobados tienen alerta de CBU.` : '');
-      if (!confirm(msg)) return;
+      if (!await confirmar(msg)) return;
       const r = await api(`/api/pagos/lotes/${L.id}/resolver`, { method: 'POST', body: { aprobados: [...ap.sel], comentarios: ap.coment, comentario: ap.general.trim(), app_url: appUrl() } });
       toast(r.aviso || 'Listo, quedó resuelta. Le avisamos por mail.', !!r.aviso);
       router();
@@ -2294,12 +2313,12 @@ async function vistaLote(el, id) {
   // Acciones de Pili
   const b = (sel, fn) => { const x = $(sel, el); if (x) x.onclick = () => conBoton(x, fn); };
   b('#b-env', async () => {
-    if (!confirm(`¿Enviar al Director ${R.items} pago(s) por ${$$m(R.total)}?`)) return;
+    if (!await confirmar(`¿Enviar al Director ${R.items} pago(s) por ${$$m(R.total)}?`)) return;
     const e = await api(`/api/pagos/lotes/${L.id}/enviar`, { method: 'POST', body: { app_url: appUrl() } });
     await router(); modalAvisoEnviado(e, e.aviso);
   });
-  b('#b-ret', async () => { if (!confirm('¿Retirar la propuesta? Vuelve a borrador y el Director deja de verla hasta que la reenvíes.')) return; await api(`/api/pagos/lotes/${L.id}/retirar`, { method: 'POST' }); toast('Propuesta retirada'); location.hash = `#/propuesta/${L.id}/editar`; });
-  b('#b-del', async () => { if (!confirm('¿Borrar este borrador?')) return; await api(`/api/pagos/lotes/${L.id}`, { method: 'DELETE' }); toast('Borrador eliminado'); location.hash = '#/propuestas'; });
+  b('#b-ret', async () => { if (!await confirmar('¿Retirar la propuesta? Vuelve a borrador y el Director deja de verla hasta que la reenvíes.')) return; await api(`/api/pagos/lotes/${L.id}/retirar`, { method: 'POST' }); toast('Propuesta retirada'); location.hash = `#/propuesta/${L.id}/editar`; });
+  b('#b-del', async () => { if (!await confirmar('¿Borrar este borrador?')) return; await api(`/api/pagos/lotes/${L.id}`, { method: 'DELETE' }); toast('Borrador eliminado'); location.hash = '#/propuestas'; });
   const csv = $('#b-csv', el);
   if (csv) csv.onclick = () => descargarCsv(`pagos_aprobados_${L.id}_${L.fecha_pago}.csv`, [
     ['Propuesta', 'Sociedad', 'Fecha de pago', 'Categoría', 'CUIT', 'Proveedor', 'Concepto', 'Vencimiento', 'CBU', 'Alias', 'Importe $', 'Moneda', 'Importe original', 'Estado', 'Pagado', 'Medio', 'Referencia', 'Factura ID'],
@@ -2355,11 +2374,11 @@ async function adminCategorias(el) {
     pintar.filtradas = fs;
   };
   $('#qc', el).oninput = (e) => { q = e.target.value.trim().toLowerCase(); pintar(); };
-  $('#b-bulk', el).onclick = () => {
+  $('#b-bulk', el).onclick = async () => {
     const fs = pintar.filtradas || [];
     const cat = $('#bulk-cat', el).value;
     if (!fs.length) return toast('No hay cuentas filtradas.', true);
-    if (!confirm(`¿Poner ${fs.length} cuenta(s) en “${cat ? nomCat(cat) : 'Automática'}”?`)) return;
+    if (!await confirmar(`¿Poner ${fs.length} cuenta(s) en “${cat ? nomCat(cat) : 'Automática'}”?`)) return;
     conBoton($('#b-bulk', el), async () => { await api('/api/pagos/cuentas', { method: 'PUT', body: { codigos: fs.map(c => c.codigo_concepto), categoria: cat || null } }); fs.forEach(c => { c.categoria = cat || null; }); pintar(); toast('Listo'); });
   };
   pintar();
