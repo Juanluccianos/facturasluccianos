@@ -1624,6 +1624,12 @@ async function adminSalud(el) {
     ${fila(s.apps_script, 'Apps Script (Gmail + Drive)', 'APPS_SCRIPT_URL y APPS_SCRIPT_SECRET', 'apps-script')}
     ${fila(s.lector && !!s.lector_ultimo, 'Lector (GitHub Actions)', `${s.lector ? 'LECTOR_SECRET cargado' : 'falta LECTOR_SECRET'} · último contacto ${s.lector_ultimo ? fmtFH(s.lector_ultimo) : 'nunca'} · disparo inmediato ${s.lector_disparo ? 'sí' : 'no (corre cada 15 min)'} · ${s.proveedores_configurados} proveedores configurados`)}
     ${fila(s.shares, 'Shares', esc(s.shares_base), 'shares')}
+    ${s.shares_uso_hora ? (() => {
+      const u = s.shares_uso_hora, d = s.shares_uso_dia || {};
+      const NOM = { login: 'login', recent: 'historial/duplicados', provider: 'proveedor', receive: 'envíos', concepts: 'plan de cuentas' };
+      const tipos = Object.entries(u.por_tipo || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${esc(NOM[k] || k)} ${n}`).join(' · ') || 'sin llamadas';
+      return fila(!u.frenadas, 'Uso de Shares (lo que consume esta app)', `Última hora: <b>${u.llamadas}</b> llamadas · <b>${u.frenadas}</b> frenadas por Shares (429) · pico ${u.pico_por_minuto}/min · ${tipos}<br>Últimas 24 h: ${d.llamadas ?? 0} llamadas · ${d.frenadas ?? 0} frenadas`);
+    })() : ''}
     ${fila(s.arca_cert && s.arca_modo !== 'off', 'ARCA (constatación de CAE)', `modo ${esc(s.arca_modo)} · certificado ${s.arca_cert ? 'cargado' : 'falta'}`, s.arca_modo !== 'off' ? 'arca' : '')}
     ${s.arca_cert && s.arca_modo !== 'off' ? fila(true, 'Padrón ARCA (razón social por CUIT)', 'Requiere autorizar el servicio ws_sr_constancia_inscripcion para el certificado en ARCA', 'padron') : ''}
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
