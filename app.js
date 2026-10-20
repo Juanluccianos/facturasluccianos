@@ -1995,38 +1995,48 @@ async function vistaPagos(el) {
   const RANGOS = { vencidas: ['Vencidas (30 días)', -30, -1], semana: ['Esta semana', 0, 6], quince: ['Próximos 15 días', 0, 15], mes: ['Próximos 30 días', 0, 30], todo: ['−30 a +60 días', -30, 60] };
   let rango = sessionStorage.getItem('pagos_rango') || 'quince';
   let incluirCargadas = sessionStorage.getItem('pagos_cargadas') !== '0';
+  let verPagadas = sessionStorage.getItem('pagos_ver_pagadas') === '1';
   el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que vence, agrupado por semana, con el CBU a mano. Lo que ya está pago (en Shares o desde “Propuestas de pago”) no aparece; lo que está en una propuesta lo indica.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-sync-pagos">${ICO.refresh}Actualizar pagos desde Shares</button>` : ''}<button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
     <p class="small muted" id="sync-info" style="margin:-6px 0 12px"></p>
     <div class="seg" id="seg">${Object.entries(RANGOS).map(([k, r]) => `<button data-r="${k}" class="${k === rango ? 'on' : ''}">${r[0]}</button>`).join('')}</div>
     <div class="kpis" id="kp"></div>
     <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor o CUIT" aria-label="Filtrar"></label>
-      <label class="check" style="margin:0"><input type="checkbox" id="chk-carg" ${incluirCargadas ? 'checked' : ''}> Incluir todas (no solo las cargadas/listas)</label></div>
+      <label class="check" style="margin:0"><input type="checkbox" id="chk-carg" ${incluirCargadas ? 'checked' : ''}> Incluir todas (no solo las cargadas/listas)</label>
+      <label class="check" style="margin:0"><input type="checkbox" id="chk-pag" ${verPagadas ? 'checked' : ''}> Mostrar las ya pagadas</label></div>
       <div id="lista"><div class="vacio"><span class="cargando"></span></div></div></div>`;
   let datos = null;
   const pintar = () => {
     const q = $('#q').value.trim().toLowerCase();
     const hoy = datos.hoy;
-    const fs = datos.facturas.filter(f => (incluirCargadas || ['lista', 'cargada', 'error_shares'].includes(f.estado)))
+    const pagadaF = (f) => f.ps_estado === 'pagada' || f.pago_estado === 'pagada';
+    // Resumen de lo que dijo Shares sobre las facturas cargadas del período
+    const carg = datos.facturas.filter(f => f.estado === 'cargada');
+    const cnt = (e) => carg.filter(f => f.ps_estado === e).length;
+    const resSh = { pagada: cnt('pagada'), parcial: cnt('parcial'), pendiente: cnt('pendiente'), sin_confirmar: cnt('sin_confirmar'), sin_consultar: carg.filter(f => !f.ps_estado).length };
+    const fs = datos.facturas.filter(f => verPagadas || !pagadaF(f)).filter(f => (incluirCargadas || ['lista', 'cargada', 'error_shares'].includes(f.estado)))
       .filter(f => !q || String(f.razon_social_emisor || '').toLowerCase().includes(q) || String(f.cuit_emisor || '').includes(q.replace(/-/g, '')))
       .map(f => ({ ...f, pesos: (f.ps_estado === 'parcial' && f.ps_pendiente != null ? Number(f.ps_pendiente) : (Number(f.total) || 0) * (f.moneda && f.moneda !== 'PES' && Number(f.cotizacion) > 1 ? Number(f.cotizacion) : 1)) * (TIPOS_NC_F.includes(Number(f.tipo_cbte_arca)) ? -1 : 1) }));
-    const total = fs.reduce((a, f) => a + f.pesos, 0);
-    const venc = fs.filter(f => f.fecha_vto < hoy), vencT = venc.reduce((a, f) => a + f.pesos, 0);
+    const aPagar = fs.filter(f => !pagadaF(f));
+    const total = aPagar.reduce((a, f) => a + f.pesos, 0);
+    const venc = aPagar.filter(f => f.fecha_vto < hoy), vencT = venc.reduce((a, f) => a + f.pesos, 0);
     const provs = new Set(fs.map(f => f.cuit_emisor)).size;
     const sinCbu = fs.filter(f => !(f.cbu_maestro || f.cbu_factura)).length;
     $('#kp').innerHTML = `<div class="kpi"><div class="et">A pagar en el período</div><div class="val">${$$corto(total)}</div><div class="sub">${fs.length} comprobante(s) · ${provs} proveedor(es)</div></div>
       <div class="kpi ${venc.length ? 'alerta' : ''}"><div class="et">Ya vencido</div><div class="val">${$$corto(vencT)}</div><div class="sub">${venc.length} comprobante(s)</div></div>
-      <div class="kpi"><div class="et">Sin CBU cargado</div><div class="val">${sinCbu}</div><div class="sub">completalo en la ficha del proveedor</div></div>`;
+      <div class="kpi"><div class="et">Sin CBU cargado</div><div class="val">${sinCbu}</div><div class="sub">completalo en la ficha del proveedor</div></div>
+      <div class="kpi"><div class="et">Según Shares (cargadas)</div><div class="val">${resSh.pagada} pagas</div><div class="sub">${resSh.parcial} en parte · ${resSh.pendiente} impagas · ${resSh.sin_confirmar} sin aprobar en Agente IA${resSh.sin_consultar ? ` · ${resSh.sin_consultar} sin consultar todavía` : ''}${resSh.pagada && !verPagadas ? '<br><button class="btn-link" id="b-ver-pag">ver las pagadas</button>' : ''}</div></div>`;
+    const bvp = $('#b-ver-pag'); if (bvp) bvp.onclick = () => { $('#chk-pag').checked = true; $('#chk-pag').onchange({ target: $('#chk-pag') }); };
     const sem = {};
     fs.forEach(f => { const k = lunesDe(f.fecha_vto); (sem[k] = sem[k] || []).push(f); });
     const claves = Object.keys(sem).sort();
     $('#lista').innerHTML = claves.length ? claves.map(k => {
       const fin = new Date(k + 'T12:00:00'); fin.setDate(fin.getDate() + 6);
-      const st = sem[k].reduce((a, f) => a + f.pesos, 0);
+      const st = sem[k].filter(f => !pagadaF(f)).reduce((a, f) => a + f.pesos, 0);
       const esta = k === lunesDe(hoy);
       return `<div class="semana ${esta ? 'esta' : ''}"><div class="semana-t"><b>${esta ? 'Esta semana' : k < lunesDe(hoy) ? 'Semana vencida' : 'Semana'} · ${fmtF(k).slice(0, 5)} al ${fmtF(fin.toLocaleDateString('sv-SE')).slice(0, 5)}</b><span>${sem[k].length} · <b>${$$m(st)}</b></span></div>
-        <div class="tabla-wrap"><table><tbody>${sem[k].map(f => { const cbu = f.cbu_maestro || f.cbu_factura, alias = f.alias_maestro || f.alias_factura, difCbu = f.cbu_maestro && f.cbu_factura && f.cbu_maestro !== f.cbu_factura;
-          return `<tr class="click" data-id="${f.id}"><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
+        <div class="tabla-wrap"><table class="tabla-agenda"><colgroup><col style="width:92px"><col><col style="width:230px"><col style="width:270px"><col style="width:160px"></colgroup><tbody>${sem[k].map(f => { const cbu = f.cbu_maestro || f.cbu_factura, alias = f.alias_maestro || f.alias_factura, difCbu = f.cbu_maestro && f.cbu_factura && f.cbu_maestro !== f.cbu_factura;
+          return `<tr class="click ${pagadaF(f) ? 'fila-pagada' : ''}" data-id="${f.id}"><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
           <td><div class="prov">${cuad(f.razon_social_emisor || '?')}<div><b>${esc(f.razon_social_emisor || 'Sin identificar')}</b><small class="mono">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</small></div></div></td>
           <td>${badgeEstado(f.estado)}${f.pago_estado && EST_PAGO_F[f.pago_estado] ? `<br><span class="badge ${EST_PAGO_F[f.pago_estado][1]}" style="margin-top:4px">${EST_PAGO_F[f.pago_estado][0]}</span>` : ''}${f.ps_estado && ['parcial', 'pagada'].includes(f.ps_estado) ? `<br><span class="badge ${EST_PAGO_SH[f.ps_estado][1]}" style="margin-top:4px">${EST_PAGO_SH[f.ps_estado][0]}</span>${f.ps_op ? `<small class="sub-celda">${esc(f.ps_op)} · ${fmtF(f.ps_fecha)}</small>` : ''}` : ''}</td>
           <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? `<small class="sub-celda txt-neg con-ico">${ICO.alert}distinto al de la factura</small>` : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
@@ -2039,14 +2049,15 @@ async function vistaPagos(el) {
   const cargar = async () => {
     const r = RANGOS[rango];
     $('#lista').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
-    datos = await api(`/api/pagos?desde=${isoMas(r[1])}&hasta=${isoMas(r[2])}`);
-    const si = $('#sync-info'); if (si) si.innerHTML = datos.shares_sync ? `Pagos leídos de Shares: lo que ya está pago no aparece, y lo pagado en parte muestra lo que falta. Última consulta: ${fmtFH(datos.shares_sync)}.` : 'Todavía no se consultaron los pagos en Shares.';
+    datos = await api(`/api/pagos?desde=${isoMas(r[1])}&hasta=${isoMas(r[2])}&pagadas=1`);
+    const si = $('#sync-info'); if (si) si.innerHTML = datos.shares_sync ? `Pagos leídos de Shares: lo que ya está pago no aparece, y lo pagado en parte muestra lo que falta. Última consulta: ${fmtFH(datos.shares_sync).replace(/\.$/, '')}.` : 'Todavía no se consultaron los pagos en Shares.';
     pintar();
   };
   $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
   $('#q').oninput = () => datos && pintar();
   const bs = $('#b-sync-pagos');
   if (bs) bs.onclick = () => conBoton(bs, async () => { const x = await api('/api/pagos/sincronizar', { method: 'POST' }); toast(x.mensaje); setTimeout(() => { if ($('#b-sync-pagos')) cargar(); }, 25000); });
+  $('#chk-pag').onchange = (e) => { verPagadas = e.target.checked; sessionStorage.setItem('pagos_ver_pagadas', verPagadas ? '1' : '0'); pintar(); };
   $('#chk-carg').onchange = (e) => { incluirCargadas = e.target.checked; sessionStorage.setItem('pagos_cargadas', incluirCargadas ? '1' : '0'); pintar(); };
   $('#b-csv').onclick = () => descargarCsv(`agenda_pagos_${new Date().toISOString().slice(0, 10)}.csv`, [
     ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'Pago', 'CBU', 'Alias', 'Moneda', 'Total original', 'Total en pesos', 'ID'],

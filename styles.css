@@ -632,3 +632,12 @@ div.linea-res { display: flex; margin: 4px 0; }
 .pago-sh-t td:first-child { width: 86px; }
 .pago-sh-t td.num { width: 110px; }
 .pago-sh-t .sub-celda { white-space: normal; overflow-wrap: anywhere; }
+
+/* Agenda: mismas columnas en todas las semanas */
+.tabla-agenda { table-layout: fixed; width: 100%; }
+.tabla-agenda td { overflow: hidden; text-overflow: ellipsis; }
+.tabla-agenda .prov > div { min-width: 0; }
+.tabla-agenda .prov b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 860px) { .tabla-agenda colgroup { display: none; } .tabla-agenda { table-layout: auto; } }
+.fila-pagada td { opacity: .55; }
+.fila-pagada td:nth-child(3) { opacity: 1; }
