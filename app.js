@@ -1431,7 +1431,7 @@ async function vistaProveedores(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU y cuenta habitual. Tocá uno para ver su ficha.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-nuevo">${ICO.user}Nuevo proveedor</button>` : ''}${puede('admin') ? `<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>` : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
-    <div class="tabla-wrap"><table><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
+    <div class="tabla-wrap"><table class="tabla-provs"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
   const cargar = async () => {
     const r = await api('/api/proveedores?q=' + encodeURIComponent($('#q').value.trim()));
     $('#tb').innerHTML = r.proveedores.length ? r.proveedores.map(p => `<tr class="click" data-cuit="${p.cuit}">
@@ -2628,3 +2628,78 @@ function bienvenida(forzar = false) {
   };
   modal('<div></div>', { alMontar: (el, cerrar) => pintar(el, cerrar) });
 }
+
+// ---------------------------------------------------------------------------
+//  Ordenar cualquier tabla tocando el título de la columna (en toda la app).
+//  Un toque: de mayor a menor (fechas e importes) o A→Z (texto). Otro toque: al revés.
+//  Detecta solo si la columna es fecha, importe/número o texto. Se recuerda por pantalla.
+// ---------------------------------------------------------------------------
+const ORDEN = {
+  // Una sola columna ordenada por tabla (la última que se tocó), recordada por pantalla
+  clave: (th) => `orden:${location.hash.split('?')[0]}:${[...th.closest('table').querySelectorAll('thead th')].map(h => h.textContent.trim()).join('|')}`,
+  valor(td) {
+    if (!td) return { t: 'x', v: '' };
+    if (td.dataset.orden != null) { const n = Number(td.dataset.orden); return isNaN(n) ? { t: 's', v: td.dataset.orden } : { t: 'n', v: n }; }
+    // En celdas con avatar + nombre (proveedor) se usa el nombre, no las iniciales
+    const base = td.querySelector('.prov b, b') || td;
+    const txt = (base.innerText || base.textContent || '').trim().split('\n')[0].trim();
+    let m = txt.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+    if (m) { const a = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : '0000'; return { t: 'n', v: Number(a + m[2].padStart(2, '0') + m[1].padStart(2, '0')) }; }
+    m = txt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return { t: 'n', v: Number(m[1] + m[2] + m[3]) };
+    m = txt.replace(/\s/g, '').match(/^(-)?(?:US\$|U\$S|USD|DOL|EUR|\$)?(-)?([\d.]+(?:,\d+)?)(\s*[MK])?/i);
+    if (m && /\d/.test(m[3]) && !/^\d{11}$/.test(m[3]) && !/^\d{2}-\d{8}-\d$/.test(txt)) {
+      let v = Number(m[3].replace(/\./g, '').replace(',', '.'));
+      if (/M/i.test(m[4] || '')) v *= 1e6; else if (/K/i.test(m[4] || '')) v *= 1e3;
+      if (m[1] || m[2]) v = -v;
+      if (isFinite(v)) return { t: 'n', v };
+    }
+    return { t: 's', v: txt.toLowerCase() };
+  },
+  aplicar(th, dir) {
+    const tabla = th.closest('table'); const tb = tabla && tabla.tBodies[0]; if (!tb) return;
+    const i = [...th.parentElement.children].indexOf(th);
+    const filas = [...tb.rows].filter(r => r.cells.length > 1);
+    if (filas.length < 2) return;
+    const vals = filas.map(r => ({ r, k: ORDEN.valor(r.cells[i]) }));
+    const num = vals.filter(x => x.k.t === 'n').length >= vals.filter(x => x.k.t === 's' && x.k.v).length;
+    vals.sort((a, b) => {
+      let c;
+      if (num) c = (a.k.t === 'n' ? a.k.v : -Infinity) - (b.k.t === 'n' ? b.k.v : -Infinity);
+      else c = String(a.k.v).localeCompare(String(b.k.v), 'es', { numeric: true });
+      return dir === 'asc' ? c : -c;
+    });
+    vals.forEach(x => tb.appendChild(x.r));
+    tabla.querySelectorAll('thead th').forEach(h => h.removeAttribute('data-dir'));
+    th.dataset.dir = dir;
+  },
+  // Primer toque: fechas/importes de mayor a menor; texto de la A a la Z
+  primero(th) {
+    const tb = th.closest('table')?.tBodies[0]; if (!tb) return 'desc';
+    const i = [...th.parentElement.children].indexOf(th);
+    const ks = [...tb.rows].slice(0, 15).map(r => ORDEN.valor(r.cells[i]));
+    return ks.filter(k => k.t === 'n').length >= ks.filter(k => k.t === 's' && k.v).length ? 'desc' : 'asc';
+  },
+  // No se ordenan las tablas agrupadas (filas de grupo con colspan): se desarmarían los grupos
+  ordenable: (th) => th && th.closest('thead') && !th.querySelector('input,button,select') && th.textContent.trim() && th.closest('table')?.tBodies[0] && !th.closest('table').querySelector('tbody tr.grupo-prov, tbody td[colspan]:not(.vacio)') && !th.closest('table').classList.contains('sin-orden'),
+};
+document.addEventListener('click', (e) => {
+  const th = e.target.closest('th');
+  if (!ORDEN.ordenable(th) || e.target.closest('input,button,select,a')) return;
+  const dir = th.dataset.dir ? (th.dataset.dir === 'asc' ? 'desc' : 'asc') : ORDEN.primero(th);
+  ORDEN.aplicar(th, dir);
+  try { sessionStorage.setItem(ORDEN.clave(th), JSON.stringify({ i: [...th.parentElement.children].indexOf(th), dir })); } catch { }
+});
+// Las tablas que se dibujan de nuevo vuelven a quedar con el orden elegido
+new MutationObserver(() => {
+  clearTimeout(ORDEN._t);
+  ORDEN._t = setTimeout(() => {
+    document.querySelectorAll('table thead th').forEach(th => { if (ORDEN.ordenable(th)) th.classList.add('ordenable'); });
+    document.querySelectorAll('table thead tr').forEach(tr => {
+      const th0 = tr.querySelector('th.ordenable'); if (!th0) return;
+      let g = null; try { g = JSON.parse(sessionStorage.getItem(ORDEN.clave(th0)) || 'null'); } catch { }
+      const th = g && tr.children[g.i];
+      if (th && ORDEN.ordenable(th) && th.dataset.dir !== g.dir) ORDEN.aplicar(th, g.dir);
+    });
+  }, 60);
+}).observe(document.documentElement, { childList: true, subtree: true });

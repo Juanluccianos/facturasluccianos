@@ -641,3 +641,32 @@ div.linea-res { display: flex; margin: 4px 0; }
 @media (max-width: 860px) { .tabla-agenda colgroup { display: none; } .tabla-agenda { table-layout: auto; } }
 .fila-pagada td { opacity: .55; }
 .fila-pagada td:nth-child(3) { opacity: 1; }
+
+/* ---- Tablas: se amoldan al ancho (sin desplazamiento lateral en la compu) y se ordenan por columna ---- */
+@media (min-width: 861px) {
+  th { white-space: normal; padding: 10px 10px; font-size: 11px; letter-spacing: .4px; line-height: 1.25; }
+  td { padding: 11px 10px; }
+  td .mono.largo { white-space: normal; overflow-wrap: anywhere; }
+  .sub-celda { white-space: normal; overflow-wrap: anywhere; }
+  td .prov { max-width: none; }
+  .prov b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tabla-wrap { overflow-x: visible; }
+}
+th.ordenable { cursor: pointer; user-select: none; }
+th.ordenable:hover { color: var(--text); }
+th.ordenable::after { content: '↕'; margin-left: 4px; opacity: .25; font-size: 10px; }
+th.ordenable[data-dir="desc"]::after { content: '↓'; opacity: .9; color: var(--accent-ink, var(--accent)); }
+th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--accent-ink, var(--accent)); }
+/* Proveedores: en pantallas más chicas se ocultan las columnas menos usadas para que entre todo */
+@media (max-width: 1500px) { .tabla-provs th:nth-child(3), .tabla-provs td:nth-child(3), .tabla-provs th:nth-child(7), .tabla-provs td:nth-child(7) { display: none; } }
+/* Tablas en escritorio: etiquetas y números de comprobante pueden partirse en dos renglones para que no haya desplazamiento lateral */
+@media (min-width: 861px) { .chips { flex-wrap: wrap; } }
+/* Pantallas medianas (notebook chica): tabla más compacta */
+@media (min-width: 861px) and (max-width: 1240px) {
+  th { padding: 9px 6px; } td { padding: 10px 6px; font-size: 13px; }
+  td.mono { white-space: normal; } td.num { white-space: normal; } .celda-motivos { min-width: 140px; }
+  td.mono { white-space: normal; } td.num { white-space: normal; } .celda-motivos { min-width: 140px; }
+  .prov .cuad { display: none; } .celda-cuenta small { max-width: 170px; }
+  td .badge { font-size: 11.5px; padding: 2px 8px; white-space: normal; border-radius: 8px; max-width: 130px; }
+  .tabla-provs th:nth-child(6), .tabla-provs td:nth-child(6) { display: none; }
+}
