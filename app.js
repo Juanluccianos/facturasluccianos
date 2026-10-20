@@ -2190,10 +2190,10 @@ async function vistaPropuestaEditar(el, id) {
   const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   el.innerHTML = `<div class="encabezado"><div><h1>${id ? `Editar propuesta #${id}` : 'Nueva propuesta de pagos'}</h1>
       <p>Solo aparecen facturas <b>cargadas en Shares</b> de la sociedad elegida que no estén en otra propuesta. Vienen tildadas las que vencen hasta la fecha de pago (y sus notas de crédito).</p></div></div>
-    <div class="panel panel-pad"><div class="fila" style="align-items:end">
+    <div class="panel panel-pad"><div class="prop-cab">
       <div class="campo"><label>Sociedad</label>${empresas.length === 1 ? `<div class="campo-fijo">${esc(empresas[0].razon_social)} <span class="mono muted small">${fmtCuit(empresas[0].cuit)}</span></div>` : `<select id="p-emp">${empresas.map(e => `<option value="${esc(e.cuit)}" ${e.cuit === st.empresa ? 'selected' : ''}>${esc(e.razon_social)} (${fmtCuit(e.cuit)})</option>`).join('')}</select>`}</div>
       <div class="campo"><label>Fecha de pago</label><input type="date" id="p-fecha" value="${esc(st.fecha)}"><div class="ayuda">Día fijo: ${dias[cfg.dia_pago] || '—'}. Cambiala si es una excepción.</div></div>
-      <div class="campo" style="flex:2"><label>Nota para el Director (opcional)</label><input id="p-nota" maxlength="500" value="${esc(st.nota)}" placeholder="Ej.: adelantamos Lácteos por el aumento"></div></div></div>
+      <div class="campo"><label>Nota para el Director (opcional)</label><input id="p-nota" maxlength="500" value="${esc(st.nota)}" placeholder="Ej.: adelantamos Lácteos por el aumento"></div></div></div>
     <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor, CUIT o cuenta" aria-label="Filtrar"></label>
       <span class="acciones"><button class="btn btn-chico" id="b-sug">Tildar sugeridas</button><button class="btn btn-chico" id="b-todas">Todas</button><button class="btn btn-chico btn-ghost" id="b-ning">Ninguna</button></span></div>
       <div id="cand"><div class="vacio"><span class="cargando"></span></div></div></div>

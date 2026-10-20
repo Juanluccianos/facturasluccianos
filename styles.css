@@ -670,3 +670,9 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
   td .badge { font-size: 11.5px; padding: 2px 8px; white-space: normal; border-radius: 8px; max-width: 130px; }
   .tabla-provs th:nth-child(6), .tabla-provs td:nth-child(6) { display: none; }
 }
+/* Nueva propuesta: encabezado en grilla, todo alineado arriba y la sociedad con el mismo alto que los campos */
+.prop-cab { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(170px, 260px) minmax(240px, 2fr); gap: 16px 20px; align-items: start; }
+.prop-cab .campo { margin: 0; min-width: 0; }
+.prop-cab .campo-fijo { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prop-cab .ayuda { margin-top: 5px; }
+@media (max-width: 860px) { .prop-cab { grid-template-columns: 1fr; } }
