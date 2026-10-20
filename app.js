@@ -1234,6 +1234,7 @@ function conectarFactura(el, r) {
       card.classList.toggle('vivo', !!ok);
       if (ok) { listas++; $('.vivo-ok span', card).textContent = ok.startsWith('!') ? ok.slice(1) : 'Corregido: ' + ok; }
     });
+    if (!total) return;   // sin pendientes (ej. ya cargada): no se toca el título
     const h = $('.panel-titulo h2', box);
     if (h && !h.dataset.orig) h.dataset.orig = h.textContent;
     if (h) h.textContent = listas === total ? 'Todo listo: tocá Confirmar' : listas ? `${h.dataset.orig} · ${listas} de ${total} en orden` : h.dataset.orig;
@@ -2013,7 +2014,7 @@ async function vistaPagos(el) {
     // Resumen de lo que dijo Shares sobre las facturas cargadas del período
     const carg = datos.facturas.filter(f => f.estado === 'cargada');
     const cnt = (e) => carg.filter(f => f.ps_estado === e).length;
-    const resSh = { pagada: cnt('pagada'), parcial: cnt('parcial'), pendiente: cnt('pendiente'), sin_confirmar: cnt('sin_confirmar'), sin_consultar: carg.filter(f => !f.ps_estado).length };
+    const resSh = { pagada: cnt('pagada'), parcial: cnt('parcial'), pendiente: cnt('pendiente'), sin_confirmar: cnt('sin_confirmar'), error: cnt('error') + cnt('sin_datos'), sin_consultar: carg.filter(f => !f.ps_estado).length };
     const fs = datos.facturas.filter(f => verPagadas || !pagadaF(f)).filter(f => (incluirCargadas || ['lista', 'cargada', 'error_shares'].includes(f.estado)))
       .filter(f => !q || String(f.razon_social_emisor || '').toLowerCase().includes(q) || String(f.cuit_emisor || '').includes(q.replace(/-/g, '')))
       .map(f => ({ ...f, pesos: (f.ps_estado === 'parcial' && f.ps_pendiente != null ? Number(f.ps_pendiente) : (Number(f.total) || 0) * (f.moneda && f.moneda !== 'PES' && Number(f.cotizacion) > 1 ? Number(f.cotizacion) : 1)) * (TIPOS_NC_F.includes(Number(f.tipo_cbte_arca)) ? -1 : 1) }));
@@ -2025,7 +2026,7 @@ async function vistaPagos(el) {
     $('#kp').innerHTML = `<div class="kpi"><div class="et">A pagar en el período</div><div class="val">${$$corto(total)}</div><div class="sub">${fs.length} comprobante(s) · ${provs} proveedor(es)</div></div>
       <div class="kpi ${venc.length ? 'alerta' : ''}"><div class="et">Ya vencido</div><div class="val">${$$corto(vencT)}</div><div class="sub">${venc.length} comprobante(s)</div></div>
       <div class="kpi"><div class="et">Sin CBU cargado</div><div class="val">${sinCbu}</div><div class="sub">completalo en la ficha del proveedor</div></div>
-      <div class="kpi"><div class="et">Según Shares (cargadas)</div><div class="val">${resSh.pagada} pagas</div><div class="sub">${resSh.parcial} en parte · ${resSh.pendiente} impagas · ${resSh.sin_confirmar} sin aprobar en Agente IA${resSh.sin_consultar ? ` · ${resSh.sin_consultar} sin consultar todavía` : ''}${resSh.pagada && !verPagadas ? '<br><button class="btn-link" id="b-ver-pag">ver las pagadas</button>' : ''}</div></div>`;
+      <div class="kpi"><div class="et">Según Shares (cargadas)</div><div class="val">${resSh.pagada} pagas</div><div class="sub">${resSh.parcial} en parte · ${resSh.pendiente} impagas · ${resSh.sin_confirmar} sin aprobar en Agente IA${resSh.error ? ` · <span class="txt-neg">${resSh.error} con error</span>` : ''}${resSh.sin_consultar ? ` · ${resSh.sin_consultar} sin consultar todavía` : ''}${resSh.pagada && !verPagadas ? '<br><button class="btn-link" id="b-ver-pag">ver las pagadas</button>' : ''}</div></div>`;
     const bvp = $('#b-ver-pag'); if (bvp) bvp.onclick = () => { $('#chk-pag').checked = true; $('#chk-pag').onchange({ target: $('#chk-pag') }); };
     const sem = {};
     fs.forEach(f => { const k = lunesDe(f.fecha_vto); (sem[k] = sem[k] || []).push(f); });
