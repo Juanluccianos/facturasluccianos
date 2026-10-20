@@ -622,3 +622,13 @@ div.linea-res { display: flex; margin: 4px 0; }
 .cola-err { margin-top: 10px; }
 .cola-err summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
 .cola-err table { margin-top: 8px; }
+
+/* Pago leído de Shares (detalle de factura) */
+.pago-sh-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pago-sh-t { margin-top: 8px; font-size: 13px; }
+.pago-sh-t td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pago-sh-t td.num { text-align: right; white-space: nowrap; }
+.pago-sh-t { width: 100%; table-layout: fixed; }
+.pago-sh-t td:first-child { width: 86px; }
+.pago-sh-t td.num { width: 110px; }
+.pago-sh-t .sub-celda { white-space: normal; overflow-wrap: anywhere; }
