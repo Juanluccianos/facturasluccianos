@@ -691,3 +691,4 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 .firma-obs .firma-trazo { color: #8a1d1d; }
 @media (max-width: 860px) { .firma-wrap { justify-content: center; } }
 .txt-ok { color: var(--ok, #2e7d32); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; } .txt-ok svg { width: 14px; height: 14px; }
+.b-no_factura { background: var(--surface-2); color: var(--muted); }

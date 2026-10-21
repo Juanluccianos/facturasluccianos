@@ -48,8 +48,8 @@ const fmtFH = (s) => {
 const nroCbte = (f) => (f.pto_vta != null && f.numero != null) ? `${String(f.pto_vta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}` : '—';
 const fmtCuit = (c) => { c = String(c || ''); return c.length === 11 ? `${c.slice(0, 2)}-${c.slice(2, 10)}-${c.slice(10)}` : (c || '—'); };
 const TIPOS = { 1: 'FA', 2: 'ND A', 3: 'NC A', 6: 'FB', 7: 'ND B', 8: 'NC B', 11: 'FC', 12: 'ND C', 13: 'NC C', 51: 'FM', 52: 'ND M', 53: 'NC M', 201: 'FCE A', 202: 'ND FCE A', 203: 'NC FCE A', 206: 'FCE B', 207: 'ND FCE B', 208: 'NC FCE B', 211: 'FCE C', 212: 'ND FCE C', 213: 'NC FCE C', 17: 'LSP A', 18: 'LSP B', 81: 'TFA', 82: 'TFB', 83: 'Tique' };
-const ESTADOS = { recibida: 'En cola de lectura', leyendo: 'Leyendo', excepcion: 'En excepción', lista: 'Lista para Shares', en_cola: 'En cola para Shares', enviando: 'Enviando a Shares', cargada: 'Cargada en Shares', error_shares: 'Error Shares', rechazada: 'Rechazada' };
-const METODOS = { plantilla: 'Configuración del proveedor', plantilla_pendiente: 'Configuración pendiente', reglas: 'Reglas generales (sin IA)', ia: 'Gemini (IA)', manual: 'Carga manual' };
+const ESTADOS = { recibida: 'En cola de lectura', leyendo: 'Leyendo', excepcion: 'En excepción', lista: 'Lista para Shares', en_cola: 'En cola para Shares', enviando: 'Enviando a Shares', cargada: 'Cargada en Shares', error_shares: 'Error Shares', rechazada: 'Rechazada', no_factura: 'No es factura' };
+const METODOS = { plantilla: 'Configuración del proveedor', plantilla_pendiente: 'Configuración pendiente', reglas: 'Reglas generales (sin IA)', ia: 'Gemini (IA)', manual: 'Carga manual', no_factura: 'Detectado sin IA' };
 const badgeMetodo = (m) => m ? `<span class="badge ${m === 'ia' ? 'b-normal' : m === 'plantilla' ? 'b-ok' : 'b-aviso'}">${esc(METODOS[m] || m)}</span>` : '';
 const badgeEstado = (e) => `<span class="badge b-${esc(e)}">${esc(ESTADOS[e] || e)}</span>`;
 const JURIS = ['BUENOS AIRES', 'CABA', 'CORDOBA', 'SANTA FE', 'MENDOZA', 'NEUQUEN', 'SALTA', 'TUCUMAN', 'CHACO', 'MISIONES', 'RIO NEGRO', 'CORRIENTES', 'CHUBUT', 'LA PAMPA', 'TIERRA DEL FUEGO'];
@@ -390,6 +390,7 @@ async function vistaLogin() {
 const RUTAS = [
   { re: /^#\/tablero$/, v: vistaTablero, nav: 'tablero', miga: '<b>Inicio</b>' },
   { re: /^#\/bandeja$/, v: vistaBandeja, nav: 'bandeja', miga: 'Trabajo / <b>Para revisar</b>' },
+  { re: /^#\/no-facturas$/, v: vistaNoFacturas, nav: 'no-facturas', miga: 'Trabajo / <b>No son facturas</b>' },
   { re: /^#\/facturas$/, v: vistaFacturas, nav: 'facturas', miga: 'Trabajo / <b>Todas las facturas</b>' },
   { re: /^#\/factura\/(\d+)$/, v: vistaFactura, nav: 'bandeja', miga: 'Trabajo / <b>Factura</b>' },
   { re: /^#\/shares$/, v: vistaShares, nav: 'shares', miga: 'Trabajo / <b>Enviar a Shares</b>' },
@@ -421,6 +422,7 @@ function shell(ruta) {
         ${it('tablero', 'home', 'Inicio')}
         <div class="grp-t">Trabajo</div>
         ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
+        ${it('no-facturas', 'doc', 'No son facturas', '<span class="cnt" data-cnt="nofact"></span>')}
         ${puede('aprobador') ? it('shares', 'send', 'Enviar a Shares', '<span class="cnt" data-cnt="lista"></span>') : ''}
         ${it('facturas', 'doc', 'Todas las facturas')}
         ${it('pagos', 'calendar', 'Agenda de pagos')}
@@ -467,7 +469,7 @@ async function contadores(t = null) {
       t = await api('/api/tablero');
     }
     const rp = puede('aprobador') ? await api('/api/pagos/resumen').catch(() => ({})) : {};
-    S.cnt = { at: Date.now(), revisar: t.por_estado?.excepcion?.n || 0, lista: (t.por_estado?.lista?.n || 0) + (t.por_estado?.error_shares?.n || 0), pagos: rp.por_pagar || 0 };
+    S.cnt = { at: Date.now(), revisar: t.por_estado?.excepcion?.n || 0, nofact: t.por_estado?.no_factura?.n || 0, lista: (t.por_estado?.lista?.n || 0) + (t.por_estado?.error_shares?.n || 0), pagos: rp.por_pagar || 0 };
     pintarContadores(S.cnt);
   } catch { /* no es crítico */ }
 }
@@ -959,6 +961,9 @@ function pintarFactura(el, r) {
   let tarea = '';
   if (['recibida', 'leyendo'].includes(f.estado) && !r.datos) {
     tarea = `<section class="tarea"><div class="panel-titulo"><h2>Se está leyendo</h2><span class="badge b-recibida">En cola</span></div><div class="cuerpo"><p>El lector (QR + configuración del proveedor) la procesa en su próximo ciclo, en 1–2 minutos.${f.error_proceso ? ' Último error: ' + esc(f.error_proceso) : ''}</p></div></section>`;
+  } else if (f.estado === 'no_factura') {
+    tarea = `<section class="tarea"><div class="panel-titulo"><h2>No parece una factura</h2><span class="badge b-no_factura">No es factura</span></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'No tiene CAE ni QR.')} No se borra: si es una factura, tocá “Es una factura” y se lee de nuevo (con IA).</p>
+      <div class="acciones" style="margin-top:10px"><button class="btn btn-acento" id="b-esfac">${ICO.check}Es una factura: leerla</button><button class="btn" id="b-descnf">Descartar</button></div></div></section>`;
   } else if (f.estado === 'rechazada') {
     tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Rechazada</h2></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'Sin motivo registrado.')}</p></div></section>`;
   } else if (['en_cola', 'enviando'].includes(f.estado)) {
@@ -1287,6 +1292,10 @@ function conectarFactura(el, r) {
     toast(`Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se leen solas.'}`);
     recargar(n);
   });
+  const besf = $('#b-esfac');
+  if (besf) besf.onclick = () => conBoton(besf, async () => { const n = await api(`/api/facturas/${id}/es-factura`, { method: 'POST', body: {} }); toast('En cola: se lee de nuevo con IA'); recargar(n); });
+  const bdnf = $('#b-descnf');
+  if (bdnf) bdnf.onclick = () => conBoton(bdnf, async () => { await api('/api/facturas/descartar', { method: 'POST', body: { ids: [Number(id)] } }); toast('Descartada'); recargar(await api('/api/facturas/' + id)); });
   const brz = $('#b-rechazar');
   if (brz) brz.onclick = async () => {
     const motivo = await pedirTexto({ titulo: 'Rechazar factura', ayuda: 'No se borra: queda registrada como rechazada con este motivo.', etiqueta: 'Motivo', boton: 'Rechazar' });
@@ -2735,4 +2744,48 @@ function firmaDirector(L, d, R) {
     <div class="firma-fecha">${ICO.check}${esc(fecha)}${hora ? ` · ${hora} hs` : ''}</div>
     <div class="firma-det">${detalle}</div>
   </div></div>`;
+}
+
+// ---- No son facturas: lo que entró por mail y no es un comprobante (remitos, presupuestos, recibos, logos…) ----
+async function vistaNoFacturas(el) {
+  const r = await api('/api/facturas?estado=no_factura&limite=500');
+  let q = '';
+  const filtradas = () => r.facturas.filter(f => !q || `${f.archivo_nombre} ${f.mail_from} ${f.rechazo_motivo} ${f.razon_social_emisor || ''}`.toLowerCase().includes(q));
+  const de = (m) => esc(String(m || '').replace(/<.*>/, '').replace(/"/g, '').trim() || m || '—');
+  el.innerHTML = `<div class="encabezado"><div><h1>No son facturas</h1><p>Lo que llegó al mail y no es un comprobante: remitos, presupuestos, recibos, estados de cuenta, logos de firmas… No frenan “Para revisar” y no se borra nada: si alguno es una factura, tocá “Es factura” y se lee de nuevo.</p></div>
+      <div class="acciones">${puede('aprobador') ? '<button class="btn btn-rojo" id="b-desc-todas"></button>' : ''}</div></div>
+    <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q-nf" placeholder="Filtrar por archivo, remitente o motivo" aria-label="Filtrar"></label><span class="small muted" id="nf-n"></span></div>
+      <div class="tabla-wrap"><table><thead><tr><th>Archivo</th><th>De</th><th>Por qué</th><th>Recibido</th><th></th></tr></thead><tbody id="tb-nf"></tbody></table></div></div>`;
+  const pintar = () => {
+    const fs = filtradas();
+    $('#nf-n').textContent = `${fs.length} archivo(s)`;
+    const bt = $('#b-desc-todas');
+    if (bt) { bt.textContent = `Descartar ${fs.length === r.facturas.length ? 'todas' : 'las filtradas'} (${fs.length})`; bt.disabled = !fs.length; }
+    $('#tb-nf').innerHTML = fs.length ? fs.map(f => `<tr data-id="${f.id}">
+        <td><button class="btn-link" data-ver="${f.id}">${esc(f.archivo_nombre || 'archivo #' + f.id)}</button><small class="sub-celda">#${f.id}${f.razon_social_emisor ? ' · ' + esc(f.razon_social_emisor) : ''}</small></td>
+        <td>${de(f.mail_from)}</td>
+        <td>${esc(f.rechazo_motivo || '—')}</td>
+        <td data-orden="${esc(f.recibido_at || '')}">${fmtFH(f.recibido_at)}</td>
+        <td style="white-space:nowrap">${puede('carga') ? `<button class="btn btn-chico" data-es="${f.id}">${ICO.check}Es factura</button>` : ''}${puede('aprobador') ? ` <button class="btn btn-chico btn-ghost" data-desc="${f.id}">Descartar</button>` : ''}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="vacio">No hay nada acá. Todo lo que entró es factura.</td></tr>';
+    $$('[data-ver]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.ver));
+    $$('[data-es]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
+      await api(`/api/facturas/${b.dataset.es}/es-factura`, { method: 'POST', body: {} });
+      r.facturas = r.facturas.filter(x => String(x.id) !== b.dataset.es); toast('En cola: se lee de nuevo con IA'); S.cnt = null; contadores(); pintar();
+    }));
+    $$('[data-desc]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
+      await api('/api/facturas/descartar', { method: 'POST', body: { ids: [Number(b.dataset.desc)] } });
+      r.facturas = r.facturas.filter(x => String(x.id) !== b.dataset.desc); S.cnt = null; contadores(); pintar();
+    }));
+  };
+  $('#q-nf').oninput = (e) => { q = e.target.value.trim().toLowerCase(); pintar(); };
+  const bt = $('#b-desc-todas');
+  if (bt) bt.onclick = () => conBoton(bt, async () => {
+    const fs = filtradas();
+    if (!fs.length || !await confirmar(`¿Descartás ${fs.length} archivo(s)? Quedan como rechazados (“no es factura”) y se pueden reabrir.`, { boton: 'Descartar', peligro: true })) return;
+    const x = await api('/api/facturas/descartar', { method: 'POST', body: { ids: fs.map(f => f.id) } });
+    const ids = new Set(fs.map(f => f.id)); r.facturas = r.facturas.filter(f => !ids.has(f.id));
+    toast(`Descartadas: ${x.descartadas}`); S.cnt = null; contadores(); pintar();
+  });
+  pintar();
 }
