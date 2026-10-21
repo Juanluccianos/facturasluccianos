@@ -2362,7 +2362,7 @@ async function vistaLote(el, id) {
 
   el.innerHTML = `<div class="encabezado"><div><div class="acciones" style="margin-bottom:6px"><a class="btn btn-ghost btn-chico" href="#/propuestas">${ICO.back}${esDirector() ? 'Aprobar pagos' : 'Propuestas'}</a></div>
       <h1>${esc(L.empresa || fmtCuit(L.cuit_empresa))} · ${esc(fechaLarga(L.fecha_pago))}</h1>
-      <p>${badgeLote(L.estado)} &nbsp;Propuesta #${L.id} · armada por ${quien(L.creado_por)}${L.enviado_at ? ` · enviada ${fmtFH(L.enviado_at)}` : ''}${L.resuelto_at ? ` · resuelta por ${quien(L.resuelto_por)} ${fmtFH(L.resuelto_at)}` : ''}</p></div>
+      <p>${badgeLote(L.estado)} &nbsp;Propuesta #${L.id} · armada por ${quien(L.creado_por)}${L.enviado_at ? ` · enviada ${fmtFH(L.enviado_at)}` : ''}${L.resuelto_at ? ` · resuelta por ${L.resuelto_nombre ? esc(L.resuelto_nombre) : quien(L.resuelto_por)} ${fmtFH(L.resuelto_at)}` : ''}</p></div>
       ${acciones.length ? `<div class="acciones">${acciones.join('')}</div>` : ''}</div>
     ${L.nota ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Nota:</b> ${esc(L.nota)}</div>` : ''}
     ${L.comentario_director ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Comentario del Director:</b> ${esc(L.comentario_director)}</div>` : ''}
@@ -2373,6 +2373,7 @@ async function vistaLote(el, id) {
     <div id="secs">${nombreCats.map(seccion).join('')}</div>
     ${aprobando ? `<div class="barra-acciones" id="barra-ap"></div>` : ''}
     ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Tildá los pagos que ya hiciste y marcálos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
+    ${firmaDirector(L, d, R)}
     <div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Historial</h2></div><div class="panel-pad"><ul class="hist">${d.historial.map(h => `<li><span class="small mono muted">${fmtFH(h.ts)}</span> <b>${quien(h.usuario)}</b> ${esc(historialTxt[h.accion] || h.accion)}${h.accion === 'resolver' && h.valor_nuevo ? (() => { const v = safeParse(h.valor_nuevo); return v ? ` · ${v.aprobados} de ${v.de} aprobados (${$$m(v.total_aprobado)})` : ''; })() : ''}</li>`).join('') || '<li class="muted">Sin movimientos.</li>'}</ul></div></div>`;
 
   // PDFs
@@ -2703,3 +2704,26 @@ new MutationObserver(() => {
     });
   }, 60);
 }).observe(document.documentElement, { childList: true, subtree: true });
+
+// Firma del Director: se muestra en la propuesta una vez que la resolvió (aprobó, aprobó en parte u observó todo)
+function firmaDirector(L, d, R) {
+  if (!L.resuelto_at || !['aprobado', 'parcial', 'cerrado', 'rechazado'].includes(L.estado)) return '';
+  const nombre = L.resuelto_nombre || String(L.resuelto_por || '').split('@')[0];
+  const t = String(L.resuelto_at);
+  const f = new Date(t.replace(' ', 'T') + (/Z|[+-]\d{2}:?\d{2}$/.test(t) ? '' : 'Z'));
+  const ok = !Number.isNaN(f.getTime());
+  const fecha = ok ? f.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : fmtF(t);
+  const hora = ok ? f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  const aprob = d.items.filter(i => i.decision === 'aprobado').length;
+  const titulo = L.estado === 'rechazado' ? 'Observada por' : aprob < d.items.length ? 'Autorizada en parte por' : 'Autorizada por';
+  const detalle = L.estado === 'rechazado' ? `Observó los ${d.items.length} pago(s)` : `Aprobó ${aprob} de ${d.items.length} pago(s) por ${$$m(R.aprobado)}`;
+  const rol = 'Director'; // solo el Director puede resolver (lo controla el worker)
+  return `<div class="firma-wrap"><div class="firma ${L.estado === 'rechazado' ? 'firma-obs' : ''}">
+    <div class="firma-et">${titulo}</div>
+    <div class="firma-trazo" aria-hidden="true">${esc(nombre)}</div>
+    <div class="firma-linea"></div>
+    <div class="firma-nom">${esc(nombre)}${rol ? ` <span>· ${rol}</span>` : ''}</div>
+    <div class="firma-fecha">${ICO.check}${esc(fecha)}${hora ? ` · ${hora} hs` : ''}</div>
+    <div class="firma-det">${detalle}</div>
+  </div></div>`;
+}

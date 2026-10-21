@@ -676,3 +676,17 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 .prop-cab .campo-fijo { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prop-cab .ayuda { margin-top: 5px; }
 @media (max-width: 860px) { .prop-cab { grid-template-columns: 1fr; } }
+/* Firma del Director en la propuesta resuelta */
+.firma-wrap { display: flex; justify-content: flex-end; margin-top: 18px; }
+.firma { width: min(360px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md, 14px); padding: 16px 22px 18px; text-align: center; }
+.firma-et { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; text-align: left; }
+.firma-trazo { font-family: 'Mrs Saint Delafield', 'Brush Script MT', cursive; font-size: 52px; line-height: 1; color: #1d3a8a; margin: 14px 0 -6px; transform: rotate(-4deg); white-space: nowrap; overflow: hidden; }
+[data-theme="dark"] .firma-trazo { color: #9db7ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .firma-trazo { color: #9db7ff; } }
+.firma-linea { border-top: 1.5px solid var(--text); opacity: .55; margin: 0 6px 8px; }
+.firma-nom { font-weight: 700; font-size: 14px; } .firma-nom span { font-weight: 500; color: var(--muted); }
+.firma-fecha { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.firma-fecha svg { width: 14px; height: 14px; color: var(--acc, #4d7c2a); }
+.firma-det { font-size: 12.5px; margin-top: 6px; color: var(--text); }
+.firma-obs .firma-trazo { color: #8a1d1d; }
+@media (max-width: 860px) { .firma-wrap { justify-content: center; } }
