@@ -1836,7 +1836,7 @@ async function vistaAjustesPagos(el) {
     </div></section>
     <section class="cfg-sec"><h3 class="cfg-h">${ICO.chart}Gastos, Inversión o Materia prima</h3><div class="panel panel-pad" id="aj-cat"><span class="cargando"></span></div></section>`;
   $('#aj-mail').onclick = () => conBoton($('#aj-mail'), async () => {
-    const r = await api('/api/pagos/probar-mail', { method: 'POST', body: {} });
+    const r = await api('/api/pagos/probar-mail', { method: 'POST', body: { app_url: appUrl() } });
     const dirs = (r.directores || []).map(d => `${esc(d.nombre)} (${esc(d.email)})`).join(', ');
     $('#aj-mail-res').innerHTML = r.ok
       ? `<span class="txt-ok">${ICO.check} Salió el mail a ${esc(r.para)}. Revisá tu bandeja (y spam).</span> Los avisos van a: <b>${dirs || 'ningún Director activo'}</b>.`
