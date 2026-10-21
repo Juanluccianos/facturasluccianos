@@ -295,37 +295,37 @@ const GRUPOS = {
   cuenta: { t: 'Falta la cuenta', ico: 'coin', tono: 'acc', orden: 3 },
   importes: { t: 'Revisar importes', ico: 'calc', tono: 'warn', orden: 4 },
   arca: { t: 'ARCA', ico: 'shield', tono: 'info', orden: 5 },
-  manual: { t: 'Cargar a mano', ico: 'doc', tono: 'warn', orden: 6 },
+  manual: { t: 'Carga manual', ico: 'doc', tono: 'warn', orden: 6 },
   lectura: { t: 'Leyendo', ico: 'clock', tono: 'info', orden: 7 },
 };
 const MOTIVOS = {
-  PROVEEDOR_NUEVO: ['nuevo', 'Proveedor nuevo', 'Primera factura: confirmá el desglose y la cuenta. Las próximas se leen solas.'],
-  FORMATO_CAMBIO: ['nuevo', 'Cambió el formato', 'El proveedor cambió su factura: confirmá que se leyó bien.'],
-  PROVEEDOR_DESCONOCIDO: ['nuevo', 'No está en el maestro', 'Dalo de alta para poder cargarla en Shares.'],
-  PROVEEDOR_COND_IVA: ['nuevo', 'Falta condición de IVA', 'Completala en la ficha del proveedor.'],
-  YA_EN_SHARES: ['duplicado', 'Ya está en Shares', 'Alguien la cargó antes: la app la rechaza sola como duplicada.'],
-  DUPLICADO: ['duplicado', 'Posible duplicado', 'Ya entró otra igual por la casilla.'],
+  PROVEEDOR_NUEVO: ['nuevo', 'Proveedor nuevo', 'Primera factura del proveedor: verificá el desglose y la cuenta. Una vez confirmada, las siguientes se procesan automáticamente.'],
+  FORMATO_CAMBIO: ['nuevo', 'Cambió el formato', 'El formato de la factura cambió respecto de la configuración del proveedor: verificá la lectura.'],
+  PROVEEDOR_DESCONOCIDO: ['nuevo', 'No está en el maestro', 'Debe darse de alta en el maestro para poder registrarla en Shares.'],
+  PROVEEDOR_COND_IVA: ['nuevo', 'Falta condición de IVA', 'Completá la condición frente al IVA en la ficha del proveedor.'],
+  YA_EN_SHARES: ['duplicado', 'Ya está en Shares', 'El comprobante ya está registrado en Shares; el sistema lo rechaza automáticamente como duplicado.'],
+  DUPLICADO: ['duplicado', 'Posible duplicado', 'Ya ingresó otro comprobante con el mismo número.'],
   IMPUTACION: ['cuenta', 'Confirmar la cuenta', 'Elegí o confirmá la cuenta contable.'],
   CUENTA_INEXISTENTE: ['cuenta', 'Cuenta fuera del plan', 'La cuenta no existe en el plan de Shares.'],
-  FISCAL_MAPEO: ['cuenta', 'Percepción sin cuenta', 'Hay una percepción que no sabemos dónde imputar.'],
-  ARITMETICA: ['importes', 'Los importes no cierran', 'La suma de los componentes no da el total.'],
+  FISCAL_MAPEO: ['cuenta', 'Percepción sin cuenta', 'Hay una percepción sin cuenta contable asignada.'],
+  ARITMETICA: ['importes', 'Diferencia en importes', 'La suma de los componentes no coincide con el total.'],
   QR_INCONSISTENTE: ['importes', 'No coincide con el QR', 'Lo leído no coincide con el QR de ARCA.'],
-  MONEDA: ['importes', 'Moneda extranjera', 'Revisá el tipo de cambio: a Shares va en pesos.'],
-  FECHA: ['importes', 'Fecha rara', 'La fecha está fuera del rango esperado.'],
-  CBU: ['importes', 'CBU distinto', 'El CBU no es el del maestro: ojo antes de pagar.'],
-  CBU_NUEVO: ['importes', 'CBU nuevo', 'Primera vez que vemos este CBU.'],
+  MONEDA: ['importes', 'Moneda extranjera', 'Verificá el tipo de cambio: el comprobante se registra en pesos.'],
+  FECHA: ['importes', 'Fecha fuera de rango', 'La fecha está fuera del rango esperado.'],
+  CBU: ['importes', 'CBU distinto', 'El CBU informado no coincide con el del maestro: validalo antes de pagar.'],
+  CBU_NUEVO: ['importes', 'CBU nuevo', 'CBU no registrado previamente para este proveedor.'],
   ARCA_RECHAZADO: ['arca', 'ARCA no valida el CAE', 'El comprobante no figura en ARCA como emitido.'],
-  ARCA_ERROR: ['arca', 'ARCA no respondió', 'Se reintenta sola cada 15 minutos.'],
-  ARCA_PENDIENTE: ['arca', 'Falta constatar en ARCA', 'Se reintenta sola cada 15 minutos.'],
+  ARCA_ERROR: ['arca', 'ARCA no respondió', 'Se reintenta automáticamente cada 15 minutos.'],
+  ARCA_PENDIENTE: ['arca', 'Falta constatar en ARCA', 'Se reintenta automáticamente cada 15 minutos.'],
   ARCA_OFF: ['arca', 'ARCA apagado', 'La constatación está desactivada.'],
-  PROVEEDOR_NO_EN_SHARES: ['nuevo', 'Falta darlo de alta en Shares', 'Shares no crea proveedores: hay que darlo de alta allá antes de enviar.'],
+  PROVEEDOR_NO_EN_SHARES: ['nuevo', 'Falta darlo de alta en Shares', 'Shares no crea proveedores automáticamente: debe darse de alta en Shares antes del envío.'],
   ARCA_NO_APLICA: ['arca', 'Sin constatación ARCA', 'Servicio público (C.E.S.P.) o tique de controlador fiscal: ARCA no permite constatarlo por web service.'],
-  LECTURA: ['manual', 'No se pudo leer', 'Completá los datos mirando el PDF.'],
-  NO_ES_FACTURA: ['manual', 'No parece una factura', 'Puede ser un remito, un resumen o publicidad.'],
-  TIPO_NO_SOPORTADO: ['manual', 'Tipo no contemplado', 'Este tipo de comprobante no se carga automático.'],
-  FACTURA_B: ['manual', 'Factura B', 'Nos facturaron B: revisá si corresponde.'],
+  LECTURA: ['manual', 'No se pudo leer', 'Completá los datos faltantes según el PDF.'],
+  NO_ES_FACTURA: ['manual', 'No parece una factura', 'Puede tratarse de un remito, un resumen de cuenta u otro documento.'],
+  TIPO_NO_SOPORTADO: ['manual', 'Tipo no contemplado', 'Este tipo de comprobante no se procesa automáticamente.'],
+  FACTURA_B: ['manual', 'Factura B', 'Se recibió una factura B: verificá si corresponde.'],
   DESTINATARIO: ['manual', 'Emitida a otro CUIT', 'No está a nombre de una empresa del grupo.'],
-  SHARES_CONSULTA: ['manual', 'No se pudo consultar Shares', 'No pudimos chequear si ya estaba cargada.'],
+  SHARES_CONSULTA: ['manual', 'No se pudo consultar Shares', 'No fue posible verificar si el comprobante ya estaba registrado.'],
 };
 const motivo = (cod) => { const m = MOTIVOS[cod] || ['manual', cod, '']; return { ...GRUPOS[m[0]], grupoT: GRUPOS[m[0]].t, g: m[0], t: m[1], d: m[2], titulo: m[1] }; };
 // DESC_EXC se mantiene para compatibilidad (tablas viejas, CSV)
@@ -359,7 +359,7 @@ async function vistaLogin() {
   }
   $('#app').innerHTML = `<div class="login">
     <div class="login-arte"><img src="logo-negro.png" alt="Lucciano's"><p class="login-sub">Facturas de proveedores</p>
-      <div class="login-txt"><h2>Las facturas de proveedores, sin tipear.</h2><p>Llegan por mail, se leen solas, se validan contra ARCA y quedan listas para Shares. Vos solo mirás lo que necesita una persona.</p></div>
+      <div class="login-txt"><h2>Gestión de facturas de proveedores.</h2><p>Recepción por correo, lectura automática, validación contra ARCA y registro en Shares. Solo requieren intervención las facturas con observaciones.</p></div>
       <div class="pasos"><span>${ICO.mail}Llega por mail</span><span>${ICO.sparkle}Se lee sola</span><span>${ICO.shield}ARCA la valida</span><span>${ICO.send}Va a Shares</span></div></div>
     <div class="login-form"><form id="f-login">
       <h1>${setup ? 'Primer ingreso' : 'Ingresar'}</h1>
@@ -610,8 +610,8 @@ async function vistaTablero(el) {
     </div>
     <section class="hero ${nRev ? '' : 'tranqui'}">
       <div><span class="et">Para revisar ahora</span>
-        <h2>${nRev ? `${nRev} ${nRev === 1 ? 'factura espera' : 'facturas esperan'} una persona` : 'No hay nada para revisar'}</h2>
-        <p>${nRev ? 'Todo lo demás entró solo. Arrancá por los proveedores nuevos: al confirmarlos, sus próximas facturas se cargan sin intervención.' : 'Todas las facturas que entraron pasaron los controles. Podés revisar las que están listas para Shares.'}</p>
+        <h2>${nRev ? `${nRev} ${nRev === 1 ? 'factura requiere' : 'facturas requieren'} revisión` : 'No hay facturas pendientes de revisión'}</h2>
+        <p>${nRev ? 'El resto se procesó automáticamente. Conviene comenzar por los proveedores nuevos: una vez confirmados, sus próximas facturas se procesan sin intervención.' : 'Todas las facturas recibidas superaron los controles. Las que están listas pueden enviarse desde “Enviar a Shares”.'}</p>
         ${lg.length ? `<div class="motivos">${lg.map(([, g]) => `<span>${g.n} · ${esc(g.t.toLowerCase())}</span>`).join('')}</div>` : ''}</div>
       <div class="lado"><span class="grande">${nRev}</span>${nRev ? `<a class="btn btn-acento btn-grande" href="#/bandeja">Empezar a revisar ${ICO.arrow}</a>` : puede('aprobador') && pe('lista').n ? `<a class="btn btn-acento btn-grande" href="#/shares">Ver listas para Shares ${ICO.arrow}</a>` : ''}</div>
     </section>
@@ -632,17 +632,17 @@ async function vistaTablero(el) {
         <div class="medidor"><i style="width:${pLect('plantilla')}%;background:var(--accent)"></i><i style="width:${pLect('reglas')}%;background:var(--info)"></i><i style="width:${pLect('ia')}%;background:var(--warn)"></i></div></div>
     </div>
     <div class="dos">
-      <div class="panel"><div class="panel-titulo"><h2>Qué está trabando</h2><span class="ayuda">tocá un motivo para ver esas facturas</span></div>
+      <div class="panel"><div class="panel-titulo"><h2>Qué está trabando</h2><span class="ayuda">seleccioná un motivo para ver las facturas</span></div>
         ${lg.length ? `<ul class="traba">${lg.map(([k, g]) => { const [bg, fg, bar] = tonoVar(g.tono); return `<li data-grupo="${k}" tabindex="0"><span class="ico" style="background:var(--${bg});color:var(--${fg})">${ICO[g.ico]}</span>
           <div><div class="t">${esc(g.t)}</div><div class="d">${esc(g.cods.map(c => motivo(c).t).join(' · '))}</div><div class="barrita"><i style="width:${Math.round(100 * g.n / maxG)}%;background:var(--${bar})"></i></div></div><span class="n">${g.n}</span></li>`; }).join('')}</ul>`
         : `<div class="vacio"><span class="grande">Nada trabado</span>No hay excepciones abiertas.</div>`}</div>
       <div class="panel"><div class="panel-titulo"><h2>Últimas que entraron</h2><a class="btn btn-ghost btn-chico" href="#/facturas">Ver todas</a></div>
         ${ult.facturas.length ? `<ul class="feed">${ult.facturas.map(f => `<li data-id="${f.id}" tabindex="0">${cuad(nombreProv(f))}<div style="min-width:0"><div class="t">${esc(nombreProv(f))}</div><div class="d">${esc(TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)} · ${esc(METODOS[f.lector_metodo] || 'sin leer')}</div></div>
-          <div class="r"><b>${f.total != null ? $$m(f.total) : '—'}</b>${badgeEstado(f.estado)}</div></li>`).join('')}</ul>` : '<div class="vacio">Todavía no entró ninguna factura.</div>'}</div>
+          <div class="r"><b>${f.total != null ? $$m(f.total) : '—'}</b>${badgeEstado(f.estado)}</div></li>`).join('')}</ul>` : '<div class="vacio">Todavía no se recibieron facturas.</div>'}</div>
     </div>`;
   $('#b-subir').onclick = modalSubir;
   if (puede('aprobador')) api('/api/pagos/resumen').then(rp => {
-    const txt = [rp.esperando ? `${rp.esperando} propuesta(s) esperando al Director` : '', rp.por_pagar ? `${rp.por_pagar} pago(s) aprobados para hacer` : '', rp.borradores ? `${rp.borradores} borrador(es)` : ''].filter(Boolean);
+    const txt = [rp.esperando ? `${rp.esperando} propuesta(s) esperando al Director` : '', rp.por_pagar ? `${rp.por_pagar} pago(s) aprobados pendientes` : '', rp.borradores ? `${rp.borradores} borrador(es)` : ''].filter(Boolean);
     const hero = $('.hero', el);
     if (txt.length && hero && !$('.aviso-pagos', el)) hero.insertAdjacentHTML('afterend', `<a class="panel panel-pad aviso-pagos" href="#/propuestas">${ICO.coin}<span><b>Pagos:</b> ${esc(txt.join(' · '))}</span>${ICO.arrow}</a>`);
   }).catch(() => null);
@@ -655,8 +655,8 @@ async function vistaTablero(el) {
 }
 
 function modalSubir() {
-  modal(`<h2>Subir factura</h2><p class="muted">Para facturas que no llegaron por mail. Entran al mismo circuito: lectura, ARCA y controles.</p>
-    <label class="drop" id="drop"><input type="file" accept="application/pdf" multiple hidden id="f-pdf">${ICO.upload}<span>Arrastrá los PDF acá o <u>elegilos</u></span><small class="muted">Hasta 15 MB cada uno</small></label>
+  modal(`<h2>Subir factura</h2><p class="muted">Para facturas que no ingresaron por correo. Siguen el mismo circuito: lectura, constatación en ARCA y controles.</p>
+    <label class="drop" id="drop"><input type="file" accept="application/pdf" multiple hidden id="f-pdf">${ICO.upload}<span>Arrastrá los PDF a esta área o <u>elegilos</u></span><small class="muted">Hasta 15 MB cada uno</small></label>
     <div id="sub-res" class="small" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>`, {
     alMontar: (el) => {
       const drop = $('#drop', el), inp = $('#f-pdf', el), res = $('#sub-res', el);
@@ -670,7 +670,7 @@ function modalSubir() {
           try {
             const b64 = await new Promise((ok, err) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = err; fr.readAsDataURL(file); });
             const r = await api('/api/facturas/subir', { method: 'POST', body: { archivo_nombre: file.name, pdf_base64: b64 } });
-            linea.className = 'linea-res bien'; linea.innerHTML = `${ICO.check}${esc(file.name)} → <a href="#/factura/${r.id}">#${r.id}</a> ${badgeEstado(r.estado)} <span class="muted">${esc(r.lector?.ok ? 'el lector ya arrancó' : 'se lee en el próximo ciclo del lector')}</span>`;
+            linea.className = 'linea-res bien'; linea.innerHTML = `${ICO.check}${esc(file.name)} → <a href="#/factura/${r.id}">#${r.id}</a> ${badgeEstado(r.estado)} <span class="muted">${esc(r.lector?.ok ? 'el lector ya se inició' : 'se procesará en el próximo ciclo del lector')}</span>`;
           } catch (e) { linea.className = 'linea-res mal'; linea.innerHTML = `${ICO.x}${esc(file.name)}: ${esc(e.message)}`; }
         }
       };
@@ -712,7 +712,7 @@ function leerCola() { try { return JSON.parse(sessionStorage.getItem('cola_ids')
 
 async function vistaBandeja(el) {
   let grupo = sessionStorage.getItem('bandeja_grupo') || 'todas';
-  el.innerHTML = `<div class="encabezado"><div><h1>Para revisar</h1><p>Cada fila dice qué falta. Abrila, resolvé lo marcado y pasá a la siguiente.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Para revisar</h1><p>Facturas con observaciones pendientes. Cada fila indica el motivo; una vez resuelto, la factura continúa el circuito.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-reval">${ICO.refresh}Revalidar todas</button>` : ''}<button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div></div>
     <div class="seg" role="tablist" id="seg"></div>
     <div class="panel">
@@ -740,7 +740,7 @@ async function vistaBandeja(el) {
       <div class="porque"><span class="badge ${TONO_BADGE[m.tono]}">${esc(m.titulo)}${m.extra ? ` +${m.extra}` : ''}</span><small>${esc(m.d)}</small></div>
       <div class="monto">${f.total != null ? (f.moneda && f.moneda !== 'PES' ? esc(f.moneda) + ' ' : '') + $$m(f.total) : '—'}<small>${f.fecha_emision ? 'emitida ' + fmtF(f.fecha_emision) : 'recibida ' + fmtFH(f.recibido_at)}</small></div>
       <span class="btn btn-chico ir">Revisar ${ICO.arrow}</span></a>`).join('')
-      : `<div class="vacio"><span class="grande">${q ? 'Sin resultados' : '¡Bandeja limpia!'}</span>${q ? 'Probá con otro texto.' : 'No hay facturas esperando una persona.'}</div>`;
+      : `<div class="vacio"><span class="grande">${q ? 'Sin resultados' : '¡Bandeja limpia!'}</span>${q ? 'Probá con otro criterio de búsqueda.' : 'No hay facturas pendientes de revisión.'}</div>`;
     const tot = lista.reduce((a, x) => a + (Number(x.f.total) || 0), 0);
     $('#pg').innerHTML = `<span>${lista.length} factura(s) · ${$$m(tot)}</span>${cuenta.lectura && grupo !== 'lectura' ? `<span>${cuenta.lectura} todavía leyéndose</span>` : ''}`;
   };
@@ -775,7 +775,7 @@ async function vistaBandeja(el) {
 async function vistaFacturas(el) {
   const q0 = sessionStorage.getItem('facturas_q') || '', ord0 = sessionStorage.getItem('facturas_orden') || 'id', est0 = sessionStorage.getItem('facturas_estado') || '';
   ['facturas_q', 'facturas_orden', 'facturas_estado'].forEach(k => sessionStorage.removeItem(k));
-  el.innerHTML = `<div class="encabezado"><div><h1>Todas las facturas</h1><p>Historial completo, con el PDF original a un clic.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Todas las facturas</h1><p>Registro completo de las facturas recibidas, con acceso al PDF original.</p></div>
     <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button><button class="btn btn-negro" id="b-subir">${ICO.upload}Subir factura</button></div></div>
     <div class="panel"><div class="filtros">
       <div class="campo ancho"><label for="q">Buscar</label><input id="q" placeholder="Proveedor, CUIT, número, #id, remitente" value="${esc(q0)}"></div>
@@ -924,7 +924,7 @@ function bloqueCuenta(r, d, editable) {
 // Estado de pago leído de Shares (solo lectura: los pagos se hacen en Shares)
 const EST_PAGO_SH = { pagada: ['Pagada en Shares', 'b-cargada'], parcial: ['Pagada en parte', 'b-warn'], pendiente: ['Impaga en Shares', 'b-aviso'], sin_confirmar: ['Sin aprobar en Shares', 'b-aviso'], error: ['No se pudo consultar', 'b-critica'], sin_datos: ['Sin datos para consultar', 'b-aviso'] };
 function bloquePagoShares(ps) {
-  if (!ps) return `<div class="pago-sh"><p class="small muted">Todavía no se consultó en Shares si está paga. Se revisa sola varias veces por día.</p>${puede('aprobador') ? `<button class="btn btn-chico" id="b-pago-sh">${ICO.refresh}Consultar ahora</button>` : ''}</div>`;
+  if (!ps) return `<div class="pago-sh"><p class="small muted">Aún no se consultó el estado de pago en Shares. La consulta se realiza automáticamente varias veces por día.</p>${puede('aprobador') ? `<button class="btn btn-chico" id="b-pago-sh">${ICO.refresh}Consultar ahora</button>` : ''}</div>`;
   const e = EST_PAGO_SH[ps.estado] || [ps.estado, 'b-aviso'];
   const imp = safeJsonF(ps.imputaciones_json) || {};
   const filas = [
@@ -935,7 +935,7 @@ function bloquePagoShares(ps) {
   return `<div class="pago-sh">
     <div class="pago-sh-top"><span class="badge ${e[1]}">${esc(e[0])}</span>
       ${ps.importe_pendiente != null && ps.estado !== 'pagada' ? `<span>Falta pagar <b>${$$m(ps.importe_pendiente)}</b>${ps.importe_total ? ` de ${$$m(ps.importe_total)}` : ''}</span>` : ''}
-      ${ps.estado === 'sin_confirmar' ? '<span class="small muted">Todavía está en "Agente IA": cuando se apruebe en Shares, se ve si se pagó.</span>' : ''}
+      ${ps.estado === 'sin_confirmar' ? '<span class="small muted">Pendiente de aprobación en "Agente IA" de Shares. Una vez aprobada, se informará su estado de pago.</span>' : ''}
       ${ps.error ? `<span class="small txt-neg">${esc(ps.error)}</span>` : ''}
       <span class="small muted" style="margin-left:auto">consultado ${fmtFH(ps.consultado_at)}</span>
       ${puede('aprobador') && ps.estado !== 'pagada' ? `<button class="btn btn-chico" id="b-pago-sh">${ICO.refresh}Consultar ahora</button>` : ''}</div>
@@ -962,18 +962,18 @@ function pintarFactura(el, r) {
   if (['recibida', 'leyendo'].includes(f.estado) && !r.datos) {
     tarea = `<section class="tarea"><div class="panel-titulo"><h2>Se está leyendo</h2><span class="badge b-recibida">En cola</span></div><div class="cuerpo"><p>El lector (QR + configuración del proveedor) la procesa en su próximo ciclo, en 1–2 minutos.${f.error_proceso ? ' Último error: ' + esc(f.error_proceso) : ''}</p></div></section>`;
   } else if (f.estado === 'no_factura') {
-    tarea = `<section class="tarea"><div class="panel-titulo"><h2>No parece una factura</h2><span class="badge b-no_factura">No es factura</span></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'No tiene CAE ni QR.')} No se borra: si es una factura, tocá “Es una factura” y se lee de nuevo (con IA).</p>
+    tarea = `<section class="tarea"><div class="panel-titulo"><h2>No parece una factura</h2><span class="badge b-no_factura">No es factura</span></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'No tiene CAE ni QR.')} El archivo se conserva. Si se trata de una factura, seleccioná “Es una factura” para procesarla nuevamente con IA.</p>
       <div class="acciones" style="margin-top:10px"><button class="btn btn-acento" id="b-esfac">${ICO.check}Es una factura: leerla</button><button class="btn" id="b-descnf">Descartar</button></div></div></section>`;
   } else if (f.estado === 'rechazada') {
     tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Rechazada</h2></div><div class="cuerpo"><p>${esc(f.rechazo_motivo || 'Sin motivo registrado.')}</p></div></section>`;
   } else if (['en_cola', 'enviando'].includes(f.estado)) {
-    tarea = `<section class="tarea"><div class="panel-titulo"><h2>${f.estado === 'enviando' ? 'Enviándose a Shares' : 'En cola para Shares'}</h2><span class="badge b-${f.estado}">${esc(ESTADOS[f.estado])}</span></div><div class="cuerpo"><p>Se manda sola, en segundo plano, con todos los controles en vivo. Si Shares está saturado, espera y se reintenta. No hace falta hacer nada.</p></div></section>`;
+    tarea = `<section class="tarea"><div class="panel-titulo"><h2>${f.estado === 'enviando' ? 'Enviándose a Shares' : 'En cola para Shares'}</h2><span class="badge b-${f.estado}">${esc(ESTADOS[f.estado])}</span></div><div class="cuerpo"><p>Se envía automáticamente en segundo plano, con todos los controles vigentes. Si Shares limita las solicitudes, el envío se reintenta. No requiere acción.</p></div></section>`;
   } else if (f.estado === 'error_shares' && r.shares_respuesta) {
     tarea = `<section class="tarea critica"><div class="panel-titulo"><h2>Shares no la aceptó</h2>${r.shares_respuesta.http_status ? `<span class="badge b-critica">HTTP ${esc(r.shares_respuesta.http_status)}</span>` : ''}</div><div class="cuerpo"><p>${esc(r.shares_respuesta.error || r.shares_respuesta.body?.message || JSON.stringify(r.shares_respuesta.body || {}).slice(0, 300))}</p></div></section>`;
   } else if (abiertas.length) {
     const critica = abiertas.some(e => e.severidad === 'critica');
     const verSug = !!r.datos;   // la cuenta se muestra siempre: es lo que más se mira antes de mandar a Shares
-    tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Lo único que falta: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `Faltan ${abiertas.length} cosas`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
+    tarea = `<section class="tarea ${critica ? 'critica' : ''}"><div class="panel-titulo"><h2>${abiertas.length === 1 ? 'Pendiente: ' + esc(motivo(abiertas[0].codigo).t.toLowerCase()) : `${abiertas.length} observaciones pendientes`}</h2><span class="badge ${critica ? 'b-critica' : 'b-acc'}">${critica ? 'Importante' : 'Para resolver'}</span></div>
       <div class="cuerpo">
         ${abiertas.map(e => { const m = motivo(e.codigo); return `<div class="excepcion ${e.severidad}" data-cod="${esc(e.codigo)}"><div class="txt"><div class="vivo-ok">${ICO.check}<span></span></div><div><b>${esc(m.t)}</b> <span class="cod muted">${esc(e.codigo)}</span></div><div class="small">${esc(String(e.mensaje || '').replace(/“Confirmar proveedor”/g, '“Confirmar”'))}</div>${m.d && m.d !== e.mensaje ? `<div class="small muted">${esc(m.d)}</div>` : ''}</div>
           ${editable && !['IMPUTACION', 'PROVEEDOR_NUEVO'].includes(e.codigo) && (e.severidad !== 'critica' || puede('admin')) ? `<button class="btn btn-chico" data-aceptar="${esc(e.codigo)}">Aceptar igual</button>` : ''}
@@ -981,10 +981,10 @@ function pintarFactura(el, r) {
         ${verSug ? bloqueCuenta(r, d, editable) : ''}
       </div></section>`;
   } else if (f.estado === 'lista') {
-    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Pasó todos los controles. Revisá la cuenta: ${puede('aprobador') ? 'después la enviás desde acá o junto con las demás desde “Enviar a Shares”.' : 'un aprobador la envía a Shares.'}</p>
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Todo en orden</h2><span class="badge b-ok">Lista para Shares</span></div><div class="cuerpo"><p>Superó todos los controles. Verificá la cuenta contable; ${puede('aprobador') ? 'luego podés enviarla desde aquí o junto con las demás desde “Enviar a Shares”.' : 'un aprobador la enviará a Shares.'}</p>
       ${r.datos ? bloqueCuenta(r, d, editable) : ''}</div></section>`;
   } else if (f.estado === 'cargada') {
-    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>No hay nada más que hacer con esta factura. Cargarla a mano llevaba unos ${TIEMPOS.manual} minutos; con el sistema, ${f.auto_ok ? 'entró sola: ~' + TIEMPOS.auto : '~' + TIEMPOS.revisada} min. <b>Ahorro: ${String(TIEMPOS.manual - (f.auto_ok ? TIEMPOS.auto : TIEMPOS.revisada)).replace('.', ',')} min.</b></p>
+    tarea = `<section class="tarea bien"><div class="panel-titulo"><h2>Cargada en Shares</h2>${f.shares_ref ? `<span class="badge b-ok">Ref. ${esc(f.shares_ref)}</span>` : ''}</div><div class="cuerpo"><p>La factura completó el circuito. La carga manual demandaba unos ${TIEMPOS.manual} minutos; con el sistema, ${f.auto_ok ? 'procesada automáticamente: ~' + TIEMPOS.auto : '~' + TIEMPOS.revisada} min. <b>Ahorro: ${String(TIEMPOS.manual - (f.auto_ok ? TIEMPOS.auto : TIEMPOS.revisada)).replace('.', ',')} min.</b></p>
       <h3 style="margin:14px 0 6px">Pago</h3>${bloquePagoShares(r.pago_shares)}</div></section>`;
   }
 
@@ -1223,11 +1223,11 @@ function conectarFactura(el, r) {
     const reglas = {
       ARITMETICA: cierra && 'Ahora los importes cierran.',
       LECTURA: cierra && dc.numero && dc.cae && d.emisor?.cuit && 'Datos completos y los importes cierran.',
-      QR_INCONSISTENTE: cierra && tocoArca && 'Corregiste los datos: se vuelven a controlar al confirmar.',
-      ARCA_RECHAZADO: tocoArca && '!Cambiaste datos: ARCA se vuelve a consultar al tocar Confirmar.',
-      ARCA_ERROR: tocoArca && '!Cambiaste datos: ARCA se vuelve a consultar al tocar Confirmar.',
-      PROVEEDOR_NUEVO: '!Se resuelve al tocar Confirmar (si el desglose y la cuenta están bien).',
-      FORMATO_CAMBIO: '!Se resuelve al tocar Confirmar (si los datos están bien).',
+      QR_INCONSISTENTE: cierra && tocoArca && 'Los datos fueron modificados: se volverán a controlar al confirmar.',
+      ARCA_RECHAZADO: tocoArca && '!Los datos cambiaron: ARCA se volverá a consultar al confirmar.',
+      ARCA_ERROR: tocoArca && '!Los datos cambiaron: ARCA se volverá a consultar al confirmar.',
+      PROVEEDOR_NUEVO: '!Se resuelve al confirmar, si el desglose y la cuenta son correctos.',
+      FORMATO_CAMBIO: '!Se resuelve al confirmar, si los datos son correctos.',
       FISCAL_MAPEO: iibbOk && 'Todas las percepciones de IIBB tienen jurisdicción.',
       IMPUTACION: cuentaOk && 'Cuenta elegida.',
       CUENTA_INEXISTENTE: cuentaOk && 'La cuenta existe en el plan.',
@@ -1242,7 +1242,7 @@ function conectarFactura(el, r) {
     if (!total) return;   // sin pendientes (ej. ya cargada): no se toca el título
     const h = $('.panel-titulo h2', box);
     if (h && !h.dataset.orig) h.dataset.orig = h.textContent;
-    if (h) h.textContent = listas === total ? 'Todo listo: tocá Confirmar' : listas ? `${h.dataset.orig} · ${listas} de ${total} en orden` : h.dataset.orig;
+    if (h) h.textContent = listas === total ? 'Controles completos: confirmá la factura' : listas ? `${h.dataset.orig} · ${listas} de ${total} en orden` : h.dataset.orig;
     box.classList.toggle('lista-vivo', listas === total);
   }
   controlEnVivo();
@@ -1270,7 +1270,7 @@ function conectarFactura(el, r) {
     recargar(n);
   });
   const bg = $('#b-guardar');
-  if (bg) bg.onclick = () => conBoton(bg, async () => { const n = await guardar(); toast(n.factura.estado === 'lista' ? '✓ Guardada: lista para Shares' : 'Guardada y revalidada'); recargar(n); });
+  if (bg) bg.onclick = () => conBoton(bg, async () => { const n = await guardar(); toast(n.factura.estado === 'lista' ? 'Guardada: lista para Shares' : 'Guardada y revalidada'); recargar(n); });
   const bc = $('#b-confirmar');
   if (bc) bc.onclick = () => conBoton(bc, async () => { const n = await guardar({ confirmar_imputacion: true }); toast('Cuenta confirmada'); recargar(n); });
   const bia = $('#b-ia');
@@ -1281,19 +1281,19 @@ function conectarFactura(el, r) {
     alMontar: (m, cerrar) => { $('#b-rel', m).onclick = () => conBoton($('#b-rel', m), async () => {
       const forzar = $('input[name=modo]:checked', m).value === '1';
       const n = await api(`/api/facturas/${id}/releer`, { method: 'POST', body: { forzar_ia: forzar } });
-      cerrar(); toast(n.lector_disparo?.ok ? 'En cola: el lector ya arrancó' : 'En cola: se lee en el próximo ciclo del lector'); recargar(n);
+      cerrar(); toast(n.lector_disparo?.ok ? 'En cola: el lector ya se inició' : 'En cola: se procesará en el próximo ciclo del lector'); recargar(n);
     }); },
   });
   const bcp = $('#b-conf-prov');
   if (bcp) bcp.onclick = () => conBoton(bcp, async () => {
-    if (!await confirmar('Confirmás que el desglose y la cuenta están bien? Con esta factura se guarda cómo leer las próximas de este proveedor.')) return;
+    if (!await confirmar('¿Confirmás que el desglose y la cuenta son correctos? Esta factura se usará como modelo para leer las próximas del proveedor.')) return;
     const n = await guardar({ confirmar_proveedor: true });
     const av = n.confirmacion?.avisos || [];
-    toast(`Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se leen solas.'}`);
+    toast(`Proveedor configurado (v${n.confirmacion?.version}). ${av.length ? av[0] : 'Sus próximas facturas se procesarán automáticamente.'}`);
     recargar(n);
   });
   const besf = $('#b-esfac');
-  if (besf) besf.onclick = () => conBoton(besf, async () => { const n = await api(`/api/facturas/${id}/es-factura`, { method: 'POST', body: {} }); toast('En cola: se lee de nuevo con IA'); recargar(n); });
+  if (besf) besf.onclick = () => conBoton(besf, async () => { const n = await api(`/api/facturas/${id}/es-factura`, { method: 'POST', body: {} }); toast('En cola para una nueva lectura con IA'); recargar(n); });
   const bdnf = $('#b-descnf');
   if (bdnf) bdnf.onclick = () => conBoton(bdnf, async () => { await api('/api/facturas/descartar', { method: 'POST', body: { ids: [Number(id)] } }); toast('Descartada'); recargar(await api('/api/facturas/' + id)); });
   const brz = $('#b-rechazar');
@@ -1311,9 +1311,9 @@ function conectarFactura(el, r) {
   };
   const ben = $('#b-enviar');
   if (ben) ben.onclick = () => conBoton(ben, async () => {
-    if (!await confirmar('¿Enviar este comprobante a Shares? Queda en cola y se manda solo en segundo plano.')) return;
+    if (!await confirmar('¿Enviar este comprobante a Shares? Se agregará a la cola y se enviará en segundo plano.')) return;
     const res = await api('/api/shares/encolar', { method: 'POST', body: { ids: [id] } });
-    if (res.encoladas.length) toast('En cola: se envía sola en segundo plano');
+    if (res.encoladas.length) toast('En cola: se enviará en segundo plano');
     else toast(res.rechazadas[0]?.message || 'No se pudo encolar', true);
     recargar(await api('/api/facturas/' + id));
   });
@@ -1337,20 +1337,20 @@ async function vistaShares(el) {
   const ORIG = { manual: 'elegida', regla: 'regla', shares: 'Shares', proveedor: 'maestro', ia: 'Gemini' };
   const celdaCuenta = (f) => `<td class="td-cuenta"><input class="in-cuenta mono" list="dl-cuentas" data-cta="${f.id}" value="${esc(f.cuenta ?? '')}" placeholder="Cuenta" aria-label="Cuenta de la factura #${f.id}">
     <small class="sub-celda" data-den="${f.id}">${esc(f.cuenta_denominacion || nombreCuenta(f.cuenta) || 'Sin cuenta')}${f.imputacion_origen ? ` · ${esc(ORIG[f.imputacion_origen] || f.imputacion_origen)}` : ''}</small></td>`;
-  el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que pasaron todos los controles. Revisá la cuenta de cada una: la cambiás ahí mismo. Nada se carga sin tu aprobación.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que superaron todos los controles. Verificá la cuenta contable de cada una (se puede modificar desde esta pantalla). Ningún comprobante se registra sin aprobación.</p></div>
     <div class="acciones"><span class="muted" id="sel-info"></span>
       <span class="lote-cuenta hidden" id="lote"><input class="in-cuenta mono" list="dl-cuentas" id="lote-cta" placeholder="Cuenta para las elegidas"><button class="btn btn-chico" id="b-lote">Cambiar cuenta</button></span>
       <button class="btn btn-acento" id="b-env" disabled>${ICO.send}Aprobar y enviar</button></div></div>
     ${datalistCuentas()}
     <div id="cola" style="margin-bottom:16px"></div>
     <div class="panel"><div class="tabla-wrap"><table><thead><tr><th><input type="checkbox" id="todas"></th>${encabezadoFacturas(false).replace('<tr>', '').replace('</tr>', '')}<th>Cuenta</th></tr></thead>
-    <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}${celdaCuenta(f)}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay nada listo para enviar.</td></tr>'}</tbody></table></div></div>
+    <tbody>${r.facturas.length ? r.facturas.map(f => `<tr data-id="${f.id}"><td><input type="checkbox" data-sel="${f.id}" data-total="${f.total || 0}"></td>${filasFacturas([f], { conExc: false }).replace(/^<tr[^>]*>/, '').replace(/<\/tr>$/, '')}${celdaCuenta(f)}</tr>`).join('') : '<tr><td colspan="9" class="vacio">No hay comprobantes listos para enviar.</td></tr>'}</tbody></table></div></div>
     <div id="resultado"></div>`;
   const existe = (v) => !S.cuentas?.length || S.cuentas.some(c => String(c.codigo_concepto) === String(v).trim());
   const cambiar = async (ids, cod) => {
     const res = await api('/api/facturas/cuenta', { method: 'POST', body: { ids, codigo_concepto: Number(cod) } });
     const mal = res.resultados.filter(x => !x.ok || x.estado !== 'lista');
-    toast(mal.length ? `Cuenta ${cod} guardada. ${mal.length} quedaron con algo para revisar.` : `✓ Cuenta ${cod} en ${ids.length} factura(s)`, !!mal.length);
+    toast(mal.length ? `Cuenta ${cod} guardada. ${mal.length} quedaron con observaciones.` : `✓ Cuenta ${cod} en ${ids.length} factura(s)`, !!mal.length);
     if (mal.some(x => x.estado && x.estado !== 'lista')) await vistaShares(el);
     else ids.forEach(id => { const s = $(`[data-den="${id}"]`); if (s) s.textContent = `${res.cuenta?.denominacion || nombreCuenta(cod)} · elegida`; const i = $(`[data-cta="${id}"]`); if (i) i.value = cod; });
   };
@@ -1385,7 +1385,7 @@ async function vistaShares(el) {
   $$('tr[data-id] td:not(:first-child):not(.td-cuenta)').forEach(td => { td.style.cursor = 'pointer'; td.onclick = () => { location.hash = '#/factura/' + td.parentElement.dataset.id; }; });
   $('#b-env').onclick = () => conBoton($('#b-env'), async () => {
     const ids = $$('[data-sel]:checked').map(c => Number(c.dataset.sel));
-    if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?\n\nQuedan en cola y se mandan solas en segundo plano, a ritmo tranquilo. Podés seguir trabajando o cerrar la pestaña.`)) return;
+    if (!await confirmar(`¿Enviar ${ids.length} comprobante(s) a Shares?\n\nSe agregan a la cola y se envían en segundo plano. Podés continuar trabajando o cerrar la pestaña.`)) return;
     const res = await api('/api/shares/encolar', { method: 'POST', body: { ids } });
     toast(`${res.encoladas.length} en cola para Shares${res.rechazadas.length ? ` · ${res.rechazadas.length} no se pudieron encolar` : ''}`, !!res.rechazadas.length && !res.encoladas.length);
     await vistaShares(el);
@@ -1411,8 +1411,8 @@ async function montarPanelCola(el, alTerminar) {
     if (!activas && !rec.length) { caja.innerHTML = ''; return activas; }
     caja.innerHTML = `<div class="panel panel-pad cola ${activas ? 'activa' : ''}">
       <div class="cola-top">${activas ? '<span class="cargando"></span>' : ICO.check}
-        <div><b>${activas ? `Enviando a Shares en segundo plano: ${activas} en cola` : 'Cola vacía: no queda nada por enviar'}</b>
-        <div class="small muted">${c.pausa_hasta ? `Shares nos frenó: se retoma sola a las ${esc(c.pausa_hasta)}. No se pierde nada.` : activas ? 'Se mandan de a una con todos los controles. Podés seguir trabajando o cerrar la pestaña.' : 'Últimas 6 horas'} · ${ok} cargadas${mal.length ? ` · <b>${mal.length} con error</b>` : ''}</div></div></div>
+        <div><b>${activas ? `Enviando a Shares en segundo plano: ${activas} en cola` : 'Cola vacía: no hay comprobantes pendientes de envío'}</b>
+        <div class="small muted">${c.pausa_hasta ? `Shares limitó las solicitudes: el envío se reanuda automáticamente a las ${esc(c.pausa_hasta)}. No se pierde nada.` : activas ? 'Se envían de a uno, con todos los controles. Podés continuar trabajando o cerrar la pestaña.' : 'Últimas 6 horas'} · ${ok} cargadas${mal.length ? ` · <b>${mal.length} con error</b>` : ''}</div></div></div>
       ${mal.length ? `<details class="cola-err"><summary>Ver las que dieron error</summary><table><tbody>${mal.slice(0, 30).map(x => `<tr><td class="mono"><a href="#/factura/${x.id}">#${x.id}</a></td><td>${esc(x.proveedor || '')}</td><td class="small">${esc(x.message || '')}</td></tr>`).join('')}</tbody></table></details>` : ''}
     </div>`;
     return activas;
@@ -1437,7 +1437,7 @@ async function montarPanelCola(el, alTerminar) {
 // ---------------------------------------------------------------------------
 async function vistaProveedores(el) {
   await cuentas().catch(() => null);
-  el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro: CUIT, condición IVA, CBU y cuenta habitual. Tocá uno para ver su ficha.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Proveedores</h1><p>Maestro de proveedores: CUIT, condición frente al IVA, CBU y cuenta habitual. Seleccioná un proveedor para ver su ficha.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-nuevo">${ICO.user}Nuevo proveedor</button>` : ''}${puede('admin') ? `<button class="btn" id="b-sh">${ICO.refresh}Traer cuentas desde Shares</button><button class="btn btn-negro" id="b-imp">${ICO.upload}Importar Excel</button>` : ''}</div></div>
     <div class="panel"><div class="filtros"><div class="campo ancho"><label>Buscar</label><input id="q" placeholder="Razón social, CUIT o código Shares"></div></div>
     <div class="tabla-wrap"><table class="tabla-provs"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Cód. Shares</th><th>Cond. IVA</th><th>Cuenta por defecto</th><th>CBU</th><th>Lectura</th><th class="num">Facturas</th><th>Estado</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
@@ -1463,7 +1463,7 @@ async function vistaProveedores(el) {
 function modalCuentasShares(alTerminar) {
   modal(`<h2>Traer cuentas desde Shares</h2>
     <p class="muted">Para cada proveedor del maestro se consultan sus últimas facturas registradas en Shares (solo lectura, no se carga nada) y se deja como <b>cuenta por defecto</b> la que más usó. Los proveedores sin facturas en Shares quedan como están. También aprende qué cuentas usa Shares para cada percepción.</p>
-    <p class="small muted">Puede tardar un rato con todo el maestro: dejá esta ventana abierta. Si se corta, volvé a tocar "Empezar" y sigue desde donde quedó.</p>
+    <p class="small muted">Con el maestro completo, el proceso puede demorar: mantené esta ventana abierta. Si se interrumpe, presioná "Empezar" y continúa desde donde quedó.</p>
     <div class="acciones"><button class="btn btn-negro" id="cs-ir">Empezar</button><button class="btn" id="cs-stop" disabled>Pausar</button></div>
     <div id="cs-prog" class="small" style="margin-top:12px"></div><div id="cs-res" class="small" style="margin-top:8px;max-height:300px;overflow:auto"></div>`, {
     ancho: true,
@@ -1520,7 +1520,7 @@ function modalCuentasShares(alTerminar) {
               cambios.push(...r.actualizados);
               esperas++;
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-espera" class="muted"></p>');
-              await esperar(ESPERA_TANDA, 'cs-espera', (s) => `Shares cortó en la consulta ${usadas + 1} de la tanda: espero ${s} s y arranco una tanda nueva…`);
+              await esperar(ESPERA_TANDA, 'cs-espera', (s) => `Shares limitó la consulta ${usadas + 1} del lote: se reanuda en ${s} s con un lote nuevo.`);
               usadas = 0;
               $('#cs-espera', el).remove();
               continue;
@@ -1534,12 +1534,12 @@ function modalCuentasShares(alTerminar) {
             if (!r.fin) {
               const espera = usadas >= TANDA ? ESPERA_TANDA : PAUSA_LOTE;
               $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p id="cs-ritmo" class="muted"></p>');
-              await esperar(espera, 'cs-ritmo', (s) => usadas >= TANDA ? `Tanda de ${TANDA} lista: sigo en ${s} s` : `Llevo ${usadas} de ${TANDA} en esta tanda · próximo lote en ${s} s`);
+              await esperar(espera, 'cs-ritmo', (s) => usadas >= TANDA ? `Lote de ${TANDA} completo: continúa en ${s} s` : `${usadas} de ${TANDA} consultas en este lote · próximo lote en ${s} s`);
               $('#cs-ritmo', el).remove();
               if (usadas >= TANDA) usadas = 0;
             }
             if (loteEntero) {   // falló todo el lote: algo pasa con Shares → se pausa en vez de seguir de largo
-              $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p style="color:#b42318">Shares rechazó todo el lote: pausado. Mirá el error abajo; en un rato tocá "Empezar" y retoma desde acá.</p>');
+              $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p style="color:#b42318">Shares rechazó el lote completo: proceso en pausa. Revisá el error a continuación y presioná "Empezar" más tarde para retomar.</p>');
               break;
             }
             if (r.fin) {
@@ -1553,7 +1553,7 @@ function modalCuentasShares(alTerminar) {
           }
         } catch (e) { toast(e.message, true); }
         $('#cs-ir', el).disabled = false; $('#cs-stop', el).disabled = true;
-        if (parar) $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p class="muted">Pausado. Tocá "Empezar" para seguir desde acá.</p>');
+        if (parar) $('#cs-prog', el).insertAdjacentHTML('beforeend', '<p class="muted">En pausa. Presioná "Empezar" para continuar.</p>');
       };
     },
   });
@@ -1586,7 +1586,7 @@ function modalProveedor(p, nuevo, alGuardar, extra = null) {
           ...(pl.config.vto_clave ? [`Vencimiento ← “${esc(pl.config.vto_clave)}”`] : [])].join('<br>') || 'Sin campos'}</div>
         <div class="small muted">${esc(pl.usos)} usos · ${esc(pl.fallos)} con cambio de formato · aprobada por ${esc(pl.aprobada_por || '—')} ${fmtFH(pl.aprobada_at)} · aprendida de la factura <a href="#/factura/${pl.factura_origen_id}">#${pl.factura_origen_id}</a></div></div>
         ${pl.estado === 'activa' && puede('admin') ? `<button class="btn btn-chico btn-rojo" data-desact="${pl.id}">Desactivar</button>` : ''}</div>`).join('')
-      : '<p class="muted small">Todavía no tiene. Se crea al confirmar su primera factura.</p>'}
+      : '<p class="muted small">Sin configuración. Se genera al validar su primera factura.</p>'}
       <h3 style="margin:20px 0 8px">Reglas de imputación</h3>
       <table><tbody>${(extra.reglas || []).map(rg => `<tr><td>${rg.palabra_clave ? `si contiene “${esc(rg.palabra_clave)}”` : '<i>siempre</i>'}</td><td class="mono">${rg.codigo_concepto}</td><td class="small muted">${esc(rg.denominacion || '')}</td><td>${puede('aprobador') ? `<button class="btn btn-chico btn-rojo" data-borrar-regla="${rg.id}">Borrar</button>` : ''}</td></tr>`).join('') || '<tr><td class="muted">Sin reglas. Se crean desde la factura al confirmar la cuenta.</td></tr>'}</tbody></table>
       <h3 style="margin:20px 0 8px">Historial</h3><div class="small">${(extra.auditoria || []).slice(0, 15).map(a => `<div>${fmtFH(a.ts)} · ${esc(a.usuario)} · ${esc(a.accion)} ${esc(a.campo || '')}: ${esc(a.valor_anterior ?? '')} → ${esc(a.valor_nuevo ?? '')}</div>`).join('') || '<span class="muted">—</span>'}</div>` : ''}`, {
@@ -1731,7 +1731,7 @@ async function adminUsuarios(el) {
       <div class="campo"><label>Nombre</label><input name="nombre" required></div>
       <div class="campo"><label>Email</label><input name="email" type="email" required></div>
       <div class="campo"><label>Rol</label><select name="rol"><option>carga</option><option>aprobador</option><option>admin</option><option>director</option></select></div>
-      <div class="campo"><label>Contraseña inicial</label><input name="password" type="text" minlength="10" required><div class="ayuda">Pasásela por un canal seguro; la puede cambiar en “Mi cuenta”.</div></div>
+      <div class="campo"><label>Contraseña inicial</label><input name="password" type="text" minlength="10" required><div class="ayuda">Comunicala por un canal seguro; el usuario puede cambiarla desde “Mi cuenta”.</div></div>
       <button class="btn btn-negro" type="submit">Crear</button></form>`, {
     alMontar: (m, cerrar) => { $('#f-nu', m).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/usuarios', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); cerrar(); toast('Usuario creado'); adminUsuarios(el); }); }; },
   });
@@ -1739,7 +1739,7 @@ async function adminUsuarios(el) {
 
 async function adminEmpresas(el) {
   const r = await api('/api/empresas');
-  el.innerHTML = `<p class="muted">CUITs del grupo a los que tienen que venir emitidas las facturas (control “Destinatario”).</p>
+  el.innerHTML = `<p class="muted">CUIT de las sociedades del grupo a cuyo nombre deben emitirse las facturas (control “Destinatario”).</p>
     <table><tbody>${r.empresas.map(e => `<tr><td class="mono">${fmtCuit(e.cuit)}</td><td>${esc(e.razon_social)}</td><td><button class="btn btn-chico btn-rojo" data-del="${e.cuit}">Quitar</button></td></tr>`).join('') || '<tr><td class="muted">Sin empresas cargadas.</td></tr>'}</tbody></table>
     <form id="f-emp" class="fila" style="margin-top:16px;align-items:end"><div class="campo"><label>CUIT</label><input name="cuit" class="mono" required></div><div class="campo"><label>Razón social</label><input name="razon_social" required></div><div class="campo"><button class="btn btn-negro" type="submit">Agregar</button></div></form>`;
   $('#f-emp', el).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/empresas', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); adminEmpresas(el); }); };
@@ -1765,9 +1765,9 @@ async function adminCuentas(el) {
 const DIAS_SEMANA = [['1', 'Lun'], ['2', 'Mar'], ['3', 'Mié'], ['4', 'Jue'], ['5', 'Vie'], ['6', 'Sáb'], ['0', 'Dom']];
 const CFG_UI = [
   { t: 'Envío a Shares', ico: 'send', items: [
-    { k: 'shares_envio_habilitado', tipo: 'switch', t: 'Enviar facturas a Shares', d: 'Apagado es el modo prueba: la app lee y controla todo, pero no carga nada en Shares.',
+    { k: 'shares_envio_habilitado', tipo: 'switch', t: 'Enviar facturas a Shares', d: 'Desactivado (modo prueba): el sistema lee y controla los comprobantes, pero no los registra en Shares.',
       si: 'Activado: “Enviar a Shares” carga los comprobantes de verdad', no: 'Apagado: modo prueba',
-      confirmarSi: '¿Habilitar el envío real a Shares?\n\nDesde ahora “Enviar a Shares” carga los comprobantes en Shares.', confirmarNo: '¿Apagar el envío a Shares? Nadie va a poder cargar comprobantes hasta que lo vuelvas a prender.' },
+      confirmarSi: '¿Habilitar el envío real a Shares?\n\nDesde ahora “Enviar a Shares” carga los comprobantes en Shares.', confirmarNo: '¿Desactivar el envío a Shares? No se podrán registrar comprobantes hasta que se vuelva a activar.' },
   ] },
   { t: 'Controles de cada factura', ico: 'shield', items: [
     { k: 'arca_bloqueante', tipo: 'switch', t: 'Exigir la constatación de ARCA', d: 'Si ARCA está conectado y no se pudo constatar el comprobante, la factura queda para revisar.' },
@@ -1777,11 +1777,11 @@ const CFG_UI = [
     { k: 'fecha_contable', tipo: 'opciones', t: 'Fecha contable en Shares', d: 'Con qué fecha se registra el comprobante.', ops: [['emision', 'Emisión'], ['recepcion', 'Recepción']] },
   ] },
   { t: 'Pagos', ico: 'coin', items: [
-    { k: 'dia_pago', tipo: 'dia', t: 'Día fijo de pago', d: 'Cada propuesta nueva sugiere el próximo. Pili también lo puede cambiar desde Propuestas de pago → Ajustes.' },
+    { k: 'dia_pago', tipo: 'dia', t: 'Día fijo de pago', d: 'Cada propuesta nueva sugiere la próxima fecha. También puede modificarse desde Propuestas de pago → Ajustes.' },
     { k: 'director_whatsapp', tipo: 'tel', t: 'WhatsApp del Director', d: 'Para el botón “Avisar por WhatsApp”. Con código de país y área, sin 0 ni 15 (ej. 54 9 223 512 3456).' },
   ] },
   { t: 'Inteligencia artificial', ico: 'sparkle', items: [
-    { k: 'max_cuentas_prompt', tipo: 'numero', t: 'Cuentas que se le muestran a la IA', d: 'Para sugerir la cuenta de un proveedor nuevo. Más cuentas = más opciones, pero más lento.', suf: 'cuentas', step: 10 },
+    { k: 'max_cuentas_prompt', tipo: 'numero', t: 'Cuentas que se le muestran a la IA', d: 'Para sugerir la cuenta de un proveedor nuevo. Más cuentas implican más opciones, pero una lectura más lenta.', suf: 'cuentas', step: 10 },
   ] },
 ];
 async function adminConfig(el) {
@@ -1806,7 +1806,7 @@ async function adminConfig(el) {
   const fila = (it) => `<div class="cfg-row" data-fila="${it.k}"><div><div class="t">${esc(it.t)} ${igual(it.k) || it.tipo === 'switch' ? '' : `<button class="btn-link small" data-reset="${it.k}">volver al original</button>`}</div><div class="d">${esc(it.d)}</div></div>
     <div class="cfg-ctrl">${control(it)}</div></div>`;
   el.innerHTML = `${CFG_UI.map(sec => `<section class="cfg-sec"><h3 class="cfg-h">${ICO[sec.ico]}${esc(sec.t)}</h3><div class="panel">${sec.items.map(fila).join('')}</div></section>`).join('')}
-    <p class="small muted" style="margin-top:14px">Los cambios se guardan solos y quedan en Auditoría. Los mapeos técnicos de Shares (tipos de comprobante, condición IVA y percepciones) no se tocan desde acá: se cambian con una versión nueva de la app. Para aplicarlos a facturas que ya están en revisión, usá “Revalidar todas” en Para revisar.</p>`;
+    <p class="small muted" style="margin-top:14px">Los cambios se guardan automáticamente y quedan registrados en Auditoría. Los mapeos técnicos de Shares (tipos de comprobante, condición IVA y percepciones) no se modifican desde esta pantalla: requieren una nueva versión de la aplicación. Para aplicarlos a facturas que ya están en revisión, usá “Revalidar todas” en Para revisar.</p>`;
   const recargar = () => adminConfig(el);
 
   $$('[data-sw]', el).forEach(c => c.onchange = async () => {
@@ -1836,11 +1836,11 @@ async function vistaAjustesPagos(el) {
   el.innerHTML = `<div class="encabezado"><div><div class="acciones" style="margin-bottom:6px"><a class="btn btn-ghost btn-chico" href="#/propuestas">${ICO.back}Propuestas</a></div>
       <h1>Ajustes de pagos</h1><p>A quién se avisa, qué día se paga y cómo se agrupa cada cuenta en la aprobación del Director.</p></div></div>
     <section class="cfg-sec"><h3 class="cfg-h">${ICO.chat}Aviso al Director</h3><div class="panel">
-      <div class="cfg-row"><div><div class="t">WhatsApp del Director</div><div class="d">El botón “Avisar por WhatsApp” abre el chat con él y el mensaje armado (sin importes, solo el link). Con código de país y área, sin 0 ni 15.</div></div>
+      <div class="cfg-row"><div><div class="t">WhatsApp del Director</div><div class="d">El botón “Avisar por WhatsApp” abre el chat con el Director y un mensaje predefinido (sin importes, solo con el enlace). Con código de país y área, sin 0 ni 15.</div></div>
         <div class="cfg-ctrl"><span class="muted">${ICO.phone}</span><input id="aj-wsp" value="${esc(c.director_whatsapp || '')}" placeholder="5492235123456" inputmode="tel" style="width:190px"><button class="btn btn-chico btn-negro" id="aj-wsp-ok">Guardar</button></div></div>
-      <div class="cfg-row"><div><div class="t">Aviso por mail</div><div class="d">Cuando enviás una propuesta, al Director le llega un mail con el link (sin importes). Con este botón te mandás un mail de prueba a vos para confirmar que sale.</div><div class="d" id="aj-mail-res"></div></div>
-        <div class="cfg-ctrl"><button class="btn btn-chico" id="aj-mail">${ICO.send}Mandarme un mail de prueba</button></div></div>
-      <div class="cfg-row"><div><div class="t">Día fijo de pago</div><div class="d">Cada propuesta nueva sugiere el próximo; si es una excepción, cambiás la fecha en la propuesta.</div></div>
+      <div class="cfg-row"><div><div class="t">Aviso por correo</div><div class="d">Al enviar una propuesta, el Director recibe un correo con el enlace (sin importes). Este botón envía un correo de prueba a tu casilla para verificar el funcionamiento.</div><div class="d" id="aj-mail-res"></div></div>
+        <div class="cfg-ctrl"><button class="btn btn-chico" id="aj-mail">${ICO.send}Enviar correo de prueba</button></div></div>
+      <div class="cfg-row"><div><div class="t">Día fijo de pago</div><div class="d">Cada propuesta nueva sugiere la próxima fecha; ante una excepción, la fecha se modifica en la propuesta.</div></div>
         <div class="cfg-ctrl"><div class="seg" id="aj-dia">${DIAS_SEMANA.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(c.dia_pago) === v ? 'on' : ''}">${t}</button>`).join('')}</div></div></div>
     </div></section>
     <section class="cfg-sec"><h3 class="cfg-h">${ICO.chart}Gastos, Inversión o Materia prima</h3><div class="panel panel-pad" id="aj-cat"><span class="cargando"></span></div></section>`;
@@ -1848,8 +1848,8 @@ async function vistaAjustesPagos(el) {
     const r = await api('/api/pagos/probar-mail', { method: 'POST', body: { app_url: appUrl() } });
     const dirs = (r.directores || []).map(d => `${esc(d.nombre)} (${esc(d.email)})`).join(', ');
     $('#aj-mail-res').innerHTML = r.ok
-      ? `<span class="txt-ok">${ICO.check} Salió el mail a ${esc(r.para)}. Revisá tu bandeja (y spam).</span> Los avisos van a: <b>${dirs || 'ningún Director activo'}</b>.`
-      : `<span class="txt-neg">No salió el mail: ${esc(r.error || 'error desconocido')}</span>`;
+      ? `<span class="txt-ok">${ICO.check} Correo enviado a ${esc(r.para)}. Verificá tu bandeja de entrada (y la carpeta de spam).</span> Los avisos van a: <b>${dirs || 'ningún Director activo'}</b>.`
+      : `<span class="txt-neg">No se pudo enviar el correo: ${esc(r.error || 'error desconocido')}</span>`;
   });
   $('#aj-wsp-ok').onclick = () => conBoton($('#aj-wsp-ok'), async () => { const x = await api('/api/pagos/config', { method: 'PUT', body: { director_whatsapp: $('#aj-wsp').value } }); $('#aj-wsp').value = x.director_whatsapp || ''; toast('Guardado'); });
   $$('#aj-dia button').forEach(b => b.onclick = async () => {
@@ -1873,7 +1873,7 @@ async function vistaMiCuenta(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Mi cuenta</h1><p>${esc(S.user.email)} · rol ${esc(S.user.rol)}</p></div></div>
     ${bloqueInstalar()}
     <div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:12px">Doble factor</h2>
-      ${S.user.totp_activo ? '<p><span class="badge b-ok">Activo</span> Te vamos a pedir el código de tu app autenticadora al ingresar.</p>'
+      ${S.user.totp_activo ? '<p><span class="badge b-ok">Activo</span> Al ingresar se solicitará el código de tu aplicación autenticadora.</p>'
       : '<p class="muted">Usá Google Authenticator, Microsoft Authenticator o similar.</p><button class="btn btn-negro" id="b-2fa">Activar doble factor</button><div id="c-2fa"></div>'}
     </div>
     <form class="panel panel-pad" style="max-width:560px" id="f-pass"><h2 style="margin-bottom:12px">Cambiar contraseña</h2>
@@ -1886,7 +1886,7 @@ async function vistaMiCuenta(el) {
   if (b) b.onclick = () => conBoton(b, async () => {
     const r = await api('/api/yo/totp/iniciar', { method: 'POST' });
     $('#c-2fa').innerHTML = `<p>1. Escaneá este QR con la app:</p><div id="qr" style="background:#fff;padding:12px;display:inline-block;border-radius:8px"></div>
-      <p class="small muted">o cargá la clave a mano: <span class="mono">${esc(r.secret)}</span></p>
+      <p class="small muted">o ingresá la clave manualmente: <span class="mono">${esc(r.secret)}</span></p>
       <p>2. Escribí el código de 6 dígitos que muestra la app:</p><div class="fila"><input id="code" inputmode="numeric" maxlength="6" class="mono"><button class="btn btn-negro" id="b-conf">Confirmar</button></div>`;
     if (window.QRCode) new QRCode($('#qr'), { text: r.otpauth, width: 180, height: 180 });
     else $('#qr').textContent = r.otpauth;
@@ -1940,7 +1940,7 @@ async function pintarSaldoShares(cuit, fresco = false) {
     const noExiste = (x.saldos || []).length && (x.saldos || []).every(s => s.existe === false);
     if (!$('#kp-saldo')) return;
     k.innerHTML = `<div class="et">Saldo en Shares</div><div class="val ${tot > 0.01 ? 'txt-neg' : ''}">${noExiste ? '—' : $$corto(tot)}</div>
-      <div class="sub">${noExiste ? 'no está dado de alta en Shares' : err ? esc(err.error) : tot > 0.01 ? 'le debemos · cuenta corriente' : 'sin deuda'}${s0.length > 1 ? '<br>' + s0.map(s => `${esc(s.empresa)}: ${$$m(s.saldo)}`).join(' · ') : ''}
+      <div class="sub">${noExiste ? 'no está dado de alta en Shares' : err ? esc(err.error) : tot > 0.01 ? 'saldo a pagar · cuenta corriente' : 'sin deuda'}${s0.length > 1 ? '<br>' + s0.map(s => `${esc(s.empresa)}: ${$$m(s.saldo)}`).join(' · ') : ''}
       <br><button class="btn-link" id="b-saldo-r">actualizar</button></div>`;
     $('#b-saldo-r').onclick = () => { k.querySelector('.val').innerHTML = '<span class="cargando"></span>'; pintarSaldoShares(cuit, true); };
   } catch (e) { if ($('#kp-saldo')) k.innerHTML = `<div class="et">Saldo en Shares</div><div class="val">—</div><div class="sub">${esc(e.message)}</div>`; }
@@ -1993,7 +1993,7 @@ async function vistaFicha(el, cuit) {
     </div>
     <div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Facturas en la app</h2><span class="ayuda">${facts.length} ${facts.length === 100 ? '(las últimas 100)' : ''}</span></div>
       <div class="tabla-wrap"><table><thead>${encabezadoFacturas()}</thead><tbody id="tb">${filasFacturas(facts)}</tbody></table></div></div>
-    ${sh.length ? `<div class="panel"><div class="panel-titulo"><h2>Últimas cargadas en Shares</h2><span class="ayuda">de la última consulta a Shares (incluye cargas a mano)</span></div>
+    ${sh.length ? `<div class="panel"><div class="panel-titulo"><h2>Últimas cargadas en Shares</h2><span class="ayuda">de la última consulta a Shares (incluye cargas manuales)</span></div>
       <div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Nro. registro</th><th>Cuentas</th><th class="num">Total</th></tr></thead><tbody>
       ${sh.map(h => `<tr><td class="mono">${esc(fmtF(h.fecha))}</td><td class="mono">${h.pv != null && h.nro != null ? `${esc(h.tipo || '')} ${String(h.pv).padStart(5, '0')}-${String(h.nro).padStart(8, '0')}` : '—'}</td><td class="mono">${esc(h.nro_reg ?? '—')}</td>
         <td class="small">${[...new Set((h.items || []).filter(i => i[0] === 2 || i[0] === 3).map(i => i[1]))].map(c => `<span class="mono">${esc(c)}</span> ${esc(nombreCuenta(c) || '')}`).join('<br>') || '—'}</td><td class="num">${$$m(h.total)}</td></tr>`).join('')}
@@ -2015,7 +2015,7 @@ async function vistaPagos(el) {
   let rango = sessionStorage.getItem('pagos_rango') || 'quince';
   let incluirCargadas = sessionStorage.getItem('pagos_cargadas') !== '0';
   let verPagadas = sessionStorage.getItem('pagos_ver_pagadas') === '1';
-  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que vence, agrupado por semana, con el CBU a mano. Lo que ya está pago (en Shares o desde “Propuestas de pago”) no aparece; lo que está en una propuesta lo indica.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Vencimientos agrupados por semana, con el CBU de cada proveedor. Las facturas pagadas (en Shares o desde “Propuestas de pago”) no se muestran; las incluidas en una propuesta se indican.</p></div>
     <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-sync-pagos">${ICO.refresh}Actualizar pagos desde Shares</button>` : ''}<button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
     <p class="small muted" id="sync-info" style="margin:-6px 0 12px"></p>
     <div class="seg" id="seg">${Object.entries(RANGOS).map(([k, r]) => `<button data-r="${k}" class="${k === rango ? 'on' : ''}">${r[0]}</button>`).join('')}</div>
@@ -2060,7 +2060,7 @@ async function vistaPagos(el) {
           <td>${badgeEstado(f.estado)}${f.pago_estado && EST_PAGO_F[f.pago_estado] ? `<br><span class="badge ${EST_PAGO_F[f.pago_estado][1]}" style="margin-top:4px">${EST_PAGO_F[f.pago_estado][0]}</span>` : ''}${f.ps_estado && ['parcial', 'pagada'].includes(f.ps_estado) ? `<br><span class="badge ${EST_PAGO_SH[f.ps_estado][1]}" style="margin-top:4px">${EST_PAGO_SH[f.ps_estado][0]}</span>${f.ps_op ? `<small class="sub-celda">${esc(f.ps_op)} · ${fmtF(f.ps_fecha)}</small>` : ''}` : ''}</td>
           <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? `<small class="sub-celda txt-neg con-ico">${ICO.alert}distinto al de la factura</small>` : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
           <td class="num"><b>${$$m(f.pesos)}</b>${f.ps_estado === 'parcial' ? `<small class="sub-celda">falta de ${$$m(f.total)}</small>` : f.moneda && f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.total)}</small>` : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
-    }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro rango.</div>';
+    }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro período.</div>';
     $$('#lista tr[data-id]').forEach(tr => tr.onclick = (e) => { if (e.target.closest('[data-copiar]')) return; location.hash = '#/factura/' + tr.dataset.id; });
     $$('#lista [data-copiar]').forEach(b => b.onclick = (e) => { e.stopPropagation(); copiar(b.dataset.copiar); });
     pintar.filas = fs;
@@ -2069,7 +2069,7 @@ async function vistaPagos(el) {
     const r = RANGOS[rango];
     $('#lista').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
     datos = await api(`/api/pagos?desde=${isoMas(r[1])}&hasta=${isoMas(r[2])}&pagadas=1`);
-    const si = $('#sync-info'); if (si) si.innerHTML = datos.shares_sync ? `Pagos leídos de Shares: lo que ya está pago no aparece, y lo pagado en parte muestra lo que falta. Última consulta: ${fmtFH(datos.shares_sync).replace(/\.$/, '')}.` : 'Todavía no se consultaron los pagos en Shares.';
+    const si = $('#sync-info'); if (si) si.innerHTML = datos.shares_sync ? `Pagos informados por Shares: las facturas pagadas no se muestran y las pagadas parcialmente indican el saldo pendiente. Última consulta: ${fmtFH(datos.shares_sync).replace(/\.$/, '')}.` : 'Todavía no se consultaron los pagos en Shares.';
     pintar();
   };
   $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
@@ -2146,9 +2146,9 @@ function linkWhatsapp(d) {
 }
 function modalAvisoEnviado(d, aviso) {
   modal(`<h2>Propuesta enviada</h2>
-    <p class="muted">${aviso ? esc(aviso) : 'Le llegó un mail al Director (sin importes). Si querés apurarlo, avisale por WhatsApp: el mensaje tampoco lleva importes, solo el link.'}</p>
+    <p class="muted">${aviso ? esc(aviso) : 'El Director recibió un correo (sin importes). Para agilizar la aprobación podés avisarle por WhatsApp: el mensaje tampoco incluye importes, solo el enlace.'}</p>
     <div class="acciones"><a class="btn btn-acento" target="_blank" rel="noopener" href="${esc(linkWhatsapp(d))}">${ICO.chat}Avisar por WhatsApp</a><button class="btn" id="b-cerrar-av">Listo</button></div>
-    ${d.config?.director_whatsapp ? '' : '<p class="small muted" style="margin-top:12px">Tip: cargá el celular del Director en Propuestas de pago → Ajustes y el mensaje le llega directo.</p>'}`,
+    ${d.config?.director_whatsapp ? '' : '<p class="small muted" style="margin-top:12px">Sugerencia: registrá el celular del Director en Propuestas de pago → Ajustes para enviarle el mensaje directamente.</p>'}`,
   { alMontar: (m, cerrar) => { $('#b-cerrar-av', m).onclick = cerrar; } });
 }
 
@@ -2157,7 +2157,7 @@ async function vistaPropuestas(el) {
   const dir = esDirector();
   let filtro = sessionStorage.getItem('prop_filtro') || 'activas';
   el.innerHTML = `<div class="encabezado"><div><h1>${dir ? 'Aprobar pagos' : 'Propuestas de pago'}</h1>
-      <p>${dir ? 'Las propuestas que te mandaron para aprobar. Tocá una para ver el detalle por Gastos, Inversión y Materia prima.' : 'Armá la propuesta por sociedad y fecha de pago con las facturas ya cargadas en Shares, mandala al Director y, cuando vuelva aprobada, marcá lo pagado.'}</p></div>
+      <p>${dir ? 'Propuestas de pago pendientes de tu aprobación. Seleccioná una para ver el detalle por Gastos, Inversión y Materia prima.' : 'Armá la propuesta por sociedad y fecha de pago con las facturas registradas en Shares, enviala al Director para su aprobación y, una vez aprobada, registrá los pagos realizados.'}</p></div>
     ${dir ? '' : `<div class="acciones"><a class="btn" href="#/pagos-ajustes">${ICO.sliders}Ajustes</a><a class="btn btn-negro" href="#/propuesta/nueva">${ICO.coin}Nueva propuesta</a></div>`}</div>
     <div class="seg" id="seg"><button data-f="activas">Activas</button><button data-f="todas">Todas</button></div>
     <div id="lista"><div class="vacio"><span class="cargando"></span></div></div>`;
@@ -2174,13 +2174,13 @@ async function vistaPropuestas(el) {
         <div class="lc-monto">${$$m(l.total)}<small>${l.n} pago(s)${l.aprobado != null && ['aprobado', 'parcial', 'cerrado'].includes(l.estado) ? ` · aprobado ${$$m(l.aprobado)}` : ''}${l.por_pagar ? ` · <b>${l.por_pagar} por pagar</b>` : ''}</small></div>
         ${barraCategorias(por, l.total)}
         <div class="lc-cats">${Object.keys(CAT_PAGO).map(k => `<span>${dotCat(k)}${esc(nomCat(k))} <b>${$$corto(por[k])}</b></span>`).join('')}</div></a>`;
-    }).join('')}</div>` : `<div class="panel"><div class="vacio"><span class="grande">${dir ? 'No hay nada para aprobar' : 'Todavía no hay propuestas'}</span>${dir ? 'Cuando te manden una propuesta te llega un mail.' : 'Tocá “Nueva propuesta” para armar la primera.'}</div></div>`);
+    }).join('')}</div>` : `<div class="panel"><div class="vacio"><span class="grande">${dir ? 'No hay nada para aprobar' : 'Todavía no hay propuestas'}</span>${dir ? 'Cuando se te envíe una propuesta, recibirás un aviso por correo.' : 'Seleccioná “Nueva propuesta” para armar la primera.'}</div></div>`);
   };
   $$('#seg button').forEach(b => b.onclick = () => { filtro = b.dataset.f; sessionStorage.setItem('prop_filtro', filtro); pintar(); });
   let oculto = false; try { oculto = !!localStorage.getItem('instalar_oculto'); } catch { /* sin storage */ }
   if (dir && !esStandalone() && !oculto && matchMedia('(max-width: 860px)').matches) {
     $('#seg').insertAdjacentHTML('beforebegin', `<div class="panel panel-pad aviso-instalar"><button class="ibtn cerrar" aria-label="No mostrar más">${ICO.x}</button>
-      <img src="icons/icon-192.png" alt="" width="44" height="44"><div><b>Tenela a mano como app</b><div data-instalar></div></div></div>`);
+      <img src="icons/icon-192.png" alt="" width="44" height="44"><div><b>Instalala como aplicación</b><div data-instalar></div></div></div>`);
     montarInstalar(el);
     $('.aviso-instalar .cerrar', el).onclick = () => { try { localStorage.setItem('instalar_oculto', '1'); } catch { /* */ } $('.aviso-instalar', el).remove(); };
   }
@@ -2215,7 +2215,7 @@ async function vistaPropuestaEditar(el, id) {
     <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor, CUIT o cuenta" aria-label="Filtrar"></label>
       <span class="acciones"><button class="btn btn-chico" id="b-sug">Tildar sugeridas</button><button class="btn btn-chico" id="b-todas">Todas</button><button class="btn btn-chico btn-ghost" id="b-ning">Ninguna</button></span></div>
       <div id="cand"><div class="vacio"><span class="cargando"></span></div></div></div>
-    <div class="panel"><div class="panel-titulo"><h2>Pagos sin factura en la app</h2><span class="ayuda">anticipos, impuestos, sueldos, etc. También los aprueba el Director.</span></div>
+    <div class="panel"><div class="panel-titulo"><h2>Pagos sin factura en la app</h2><span class="ayuda">Anticipos, impuestos, sueldos u otros. También requieren la aprobación del Director.</span></div>
       <div id="manuales" class="panel-pad"></div></div>
     <div class="barra-acciones" id="barra"></div>`;
 
@@ -2251,7 +2251,7 @@ async function vistaPropuestaEditar(el, id) {
       if (!grupos.has(c.cuit_proveedor)) grupos.set(c.cuit_proveedor, []);
       grupos.get(c.cuit_proveedor).push(c);
     }
-    if (!st.cand.length) { $('#cand').innerHTML = '<div class="vacio"><span class="grande">No hay facturas para proponer</span>No hay facturas cargadas en Shares de esta sociedad que estén libres. Podés agregar pagos manuales abajo.</div>'; return; }
+    if (!st.cand.length) { $('#cand').innerHTML = '<div class="vacio"><span class="grande">No hay facturas para proponer</span>No hay facturas de esta sociedad registradas en Shares y disponibles. Podés agregar pagos manuales a continuación.</div>'; return; }
     $('#cand').innerHTML = `<div class="tabla-wrap"><table class="tabla-cand"><thead><tr><th style="width:32px"></th><th>Comprobante</th><th>Vence</th><th>Cuenta</th><th>Categoría</th><th class="num">Importe</th></tr></thead><tbody>
       ${[...grupos.entries()].map(([cuit, fs]) => {
         const f0 = fs[0];
@@ -2387,10 +2387,10 @@ async function vistaLote(el, id) {
     <div class="kpis"><div class="kpi"><div class="et">Total propuesto</div><div class="val">${$$corto(R.total)}</div><div class="sub">${R.items} pago(s)${R.alertas_graves ? ` · <b class="txt-neg">${R.alertas_graves} con alerta</b>` : ''}</div>${barraCategorias(R.por_categoria, R.total)}</div>
       ${kpisCategorias(R.por_categoria, R.total)}</div>
     ${['aprobado', 'parcial', 'cerrado', 'rechazado'].includes(L.estado) ? `<div class="kpis"><div class="kpi ok"><div class="et">Aprobado</div><div class="val">${$$corto(R.aprobado)}</div></div><div class="kpi ${R.observado ? 'alerta' : ''}"><div class="et">Observado</div><div class="val">${$$corto(R.observado)}</div></div><div class="kpi"><div class="et">Pagado</div><div class="val">${$$corto(R.pagado)}</div><div class="sub">${R.aprobado - R.pagado > 0.009 ? `falta ${$$m(R.aprobado - R.pagado)}` : 'completo'}</div></div></div>` : ''}
-    ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y vuelve a Pili con tu comentario (es obligatorio). </p>' : ''}
+    ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y se devuelve al área de Pagos con tu comentario (obligatorio). </p>' : ''}
     <div id="secs">${nombreCats.map(seccion).join('')}</div>
     ${aprobando ? `<div class="barra-acciones" id="barra-ap"></div>` : ''}
-    ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Tildá los pagos que ya hiciste y marcálos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
+    ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Seleccioná los pagos realizados y marcalos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
     ${firmaDirector(L, d, R)}
     <div class="panel" style="margin-top:16px"><div class="panel-titulo"><h2>Historial</h2></div><div class="panel-pad"><ul class="hist">${d.historial.map(h => `<li><span class="small mono muted">${fmtFH(h.ts)}</span> <b>${quien(h.usuario)}</b> ${esc(historialTxt[h.accion] || h.accion)}${h.accion === 'resolver' && h.valor_nuevo ? (() => { const v = safeParse(h.valor_nuevo); return v ? ` · ${v.aprobados} de ${v.de} aprobados (${$$m(v.total_aprobado)})` : ''; })() : ''}</li>`).join('') || '<li class="muted">Sin movimientos.</li>'}</ul></div></div>`;
 
@@ -2417,7 +2417,7 @@ async function vistaLote(el, id) {
       const msg = `¿Confirmás?\n\nAprobás ${ap.sel.size} pago(s) por ${$$m(totalSel())}${ap.sel.size < d.items.length ? ` y observás ${d.items.length - ap.sel.size}` : ''}.` + (graves.length ? `\n\nAtención: ${graves.length} de los aprobados tienen alerta de CBU.` : '');
       if (!await confirmar(msg)) return;
       const r = await api(`/api/pagos/lotes/${L.id}/resolver`, { method: 'POST', body: { aprobados: [...ap.sel], comentarios: ap.coment, comentario: ap.general.trim(), app_url: appUrl() } });
-      toast(r.aviso || 'Listo, quedó resuelta. Le avisamos por mail.', !!r.aviso);
+      toast(r.aviso || 'Propuesta resuelta. Se notificó por correo.', !!r.aviso);
       router();
     });
   const conectarAp = () => {
@@ -2457,7 +2457,7 @@ async function vistaLote(el, id) {
   const pg = $('#b-pagar', el);
   if (pg) pg.onclick = () => {
     const ids = $$('[data-pg]:checked', el).map(c => Number(c.dataset.pg));
-    if (!ids.length) return toast('Tildá los pagos que ya hiciste.', true);
+    if (!ids.length) return toast('Seleccioná los pagos realizados.', true);
     const tot = d.items.filter(i => ids.includes(i.id)).reduce((a, i) => a + i.importe, 0);
     modal(`<h2>Marcar ${ids.length} pago(s) como pagados</h2><p class="muted">Total ${$$m(tot)}</p><form id="f-pg">
       <div class="fila"><div class="campo"><label>Fecha</label><input type="date" name="fecha" value="${new Date().toLocaleDateString('sv-SE')}" required></div>
@@ -2472,13 +2472,13 @@ const safeParse = (s) => { try { return JSON.parse(s); } catch { return null; } 
 
 // ---- Guía para el Director ----
 function guiaDirector(el) {
-  el.innerHTML = `<div class="encabezado"><div><h1>Cómo aprobar pagos</h1><p>Tres pasos, desde el celular o la compu.</p></div></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Cómo aprobar pagos</h1><p>Tres pasos, desde el celular o la computadora.</p></div></div>
     <div class="panel panel-pad guia-txt">
-      <p><b>1. Te llega un aviso</b> (mail o WhatsApp) sin importes, solo con el link. Por seguridad, los pagos se aprueban únicamente dentro de la app.</p>
-      <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su vencimiento y su factura (tocá “Ver factura”).</p>
-      <p><b>3. Tildá lo que aprobás</b> y tocá “Aprobar seleccionados”. Lo que destildes queda observado: escribí por qué y le vuelve a Pili. Lo observado se puede volver a proponer más adelante.</p>
-      <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta.</p>
-      <p class="muted">Solo ves las propuestas que te enviaron y las facturas que están en ellas.</p></div>
+      <p><b>1. Recibís un aviso</b> (correo o WhatsApp) sin importes, solo con el enlace. Por seguridad, los pagos se aprueban únicamente dentro de la app.</p>
+      <p><b>2. Abrí la propuesta.</b> En la parte superior se muestra el total y su apertura en <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Debajo, cada pago agrupado por categoría, con su vencimiento y su factura (“Ver factura”).</p>
+      <p><b>3. Tildá lo que aprobás</b> y presioná “Aprobar seleccionados”. Lo que no selecciones queda observado: indicá el motivo y se devuelve al área de Pagos. Lo observado se puede volver a proponer más adelante.</p>
+      <p class="muted">Una vez aprobada, el área de Pagos realiza y registra los pagos; su estado se ve en la misma propuesta.</p>
+      <p class="muted">Solo se muestran las propuestas enviadas y las facturas incluidas en ellas.</p></div>
     <div style="margin-top:16px">${bloqueInstalar()}</div>`;
   montarInstalar(el);
 }
@@ -2518,7 +2518,7 @@ async function vistaAnalisis(el) {
   const mesHoy = new Date().toLocaleDateString('sv-SE').slice(0, 7);
   let desde = sessionStorage.getItem('an_desde') || mesHoy, hasta = sessionStorage.getItem('an_hasta') || mesHoy;
   let vista = sessionStorage.getItem('an_vista') || 'cuenta', soloOk = sessionStorage.getItem('an_solo') === 'ok', medida = sessionStorage.getItem('an_medida') || 'neto';
-  el.innerHTML = `<div class="encabezado"><div><h1>Análisis de compras</h1><p>Lo comprado según las facturas que entraron a la app, en pesos. Las notas de crédito restan.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Análisis de compras</h1><p>Compras según las facturas recibidas en el sistema, en pesos. Las notas de crédito restan.</p></div>
     <div class="acciones"><button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
     <div class="panel"><div class="filtros">
       <div class="campo"><label for="an-d">Desde</label><input type="month" id="an-d" value="${desde}"></div>
@@ -2559,7 +2559,7 @@ async function vistaAnalisis(el) {
       <div class="panel"><div class="panel-titulo"><h2>Evolución mensual</h2><span class="ayuda">${medida === 'neto' ? 'neto' : 'con IVA'} · en pesos</span></div>
         <div class="panel-pad">${barras(meses.map(m => ({ et: fmtMes(m), v: porMes[m] || 0, sub: fmtMes(m, true), act: m >= desde && m <= hasta })))}</div></div>
       <div class="panel"><div class="panel-titulo"><div class="seg" style="margin:0" id="an-v">${[['cuenta', 'Por cuenta'], ['proveedor', 'Por proveedor'], ['local', 'Por local']].map(([k, t]) => `<button data-v="${k}" class="${vista === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-        <span class="ayuda">${vista === 'local' ? 'el local sale del detalle de la factura' : vista === 'proveedor' ? 'tocá uno para ver su ficha' : ''}</span></div>
+        <span class="ayuda">${vista === 'local' ? 'el local surge del detalle de la factura' : vista === 'proveedor' ? 'seleccioná uno para ver su ficha' : ''}</span></div>
         <div id="an-rank">${ranking(grupos[vista], { total: tot, limite: 15 })}</div></div>`;
     $$('#an-v button').forEach(b => b.onclick = () => { vista = b.dataset.v; sessionStorage.setItem('an_vista', vista); pintar(); });
     conectarRanking($('#an-cuerpo'));
@@ -2601,31 +2601,31 @@ async function vistaAnalisis(el) {
 //  Guía de uso + bienvenida la primera vez
 // ---------------------------------------------------------------------------
 const PASOS_GUIA = [
-  ['mail', 'Llega por mail', 'El proveedor manda la factura a la casilla. Cada 15 minutos la app la guarda en Drive y la pone en cola. También podés subirla a mano con “Subir factura”.'],
-  ['sparkle', 'Se lee sola', 'El lector usa el QR de ARCA y la configuración del proveedor. Si el proveedor es nuevo, usa reglas generales o Gemini, y una persona confirma esa primera vez.'],
-  ['shield', 'Se valida', 'Se constata el CAE en ARCA, se controla que los importes cierren, que esté a nombre de una empresa del grupo y que no esté cargada en Shares.'],
-  ['inbox', 'Vos revisás lo raro', 'Lo que no pasa un control va a “Para revisar”, con el motivo en criollo. Lo resolvés y pasa sola a la siguiente.'],
-  ['send', 'Va a Shares', 'Las que pasan todo quedan en “Enviar a Shares”. Un aprobador las manda en lote. Nada se carga sin aprobación.'],
+  ['mail', 'Recepción por correo', 'El proveedor envía la factura a la casilla. Cada 15 minutos el sistema la archiva en Drive y la incorpora a la cola. También puede cargarse manualmente con “Subir factura”.'],
+  ['sparkle', 'Lectura automática', 'El lector utiliza el QR de ARCA y la configuración del proveedor. Para proveedores nuevos aplica reglas generales o Gemini; si ARCA valida la factura y los importes cierran, el proveedor queda configurado automáticamente.'],
+  ['shield', 'Validación', 'Se constata el CAE en ARCA, se controla que los importes cierren, que esté a nombre de una empresa del grupo y que no esté cargada en Shares.'],
+  ['inbox', 'Revisión de observaciones', 'Las facturas que no superan un control pasan a “Para revisar”, con el motivo detallado. Una vez resuelto, continúan el circuito.'],
+  ['send', 'Registro en Shares', 'Las facturas que superan los controles quedan en “Enviar a Shares”. Un aprobador las envía en lote. Ningún comprobante se registra sin aprobación.'],
 ];
 async function vistaGuia(el) {
   if (esDirector()) return guiaDirector(el);
   const grupos = Object.entries(GRUPOS).filter(([k]) => k !== 'lectura').sort((a, b) => a[1].orden - b[1].orden);
-  el.innerHTML = `<div class="encabezado"><div><h1>Guía de uso</h1><p>Cómo funciona la app, qué significa cada motivo y los atajos para ir más rápido.</p></div>
+  el.innerHTML = `<div class="encabezado"><div><h1>Guía de uso</h1><p>Funcionamiento del sistema, significado de cada motivo y atajos de teclado.</p></div>
     <div class="acciones"><button class="btn" id="b-bienv">${ICO.sparkle}Ver la bienvenida otra vez</button></div></div>
     <div class="panel"><div class="panel-titulo"><h2>El recorrido de una factura</h2></div>
       <ol class="pasos-guia">${PASOS_GUIA.map(([ic, t, d], i) => `<li><span class="num-paso">${ICO[ic]}<b>${i + 1}</b></span><div><div class="t">${esc(t)}</div><p>${esc(d)}</p></div></li>`).join('')}</ol></div>
     <div class="dos" style="margin-top:16px">
       <div class="panel"><div class="panel-titulo"><h2>Cómo revisar una factura</h2></div><div class="panel-pad guia-txt">
-        <p><b>1. Mirá el recuadro verde.</b> Dice exactamente qué falta. Si es un proveedor nuevo, revisá el desglose contra el PDF y la cuenta sugerida (si viene de Shares, es la que usa siempre).</p>
-        <p><b>2. Corregí lo que haga falta</b> en la pestaña Datos. Abajo te dice si los importes cierran al centavo.</p>
-        <p><b>3. Tocá el botón verde.</b> Se guarda, se revalida y pasás a la siguiente de la cola.</p>
+        <p><b>1. Revisá el recuadro de tareas.</b> Indica qué falta resolver. En proveedores nuevos, verificá el desglose contra el PDF y la cuenta sugerida (si proviene de Shares, es la habitual).</p>
+        <p><b>2. Corregí lo que haga falta</b> en la pestaña Datos. Debajo se indica si los importes cierran al centavo.</p>
+        <p><b>3. Confirmá.</b> Se guarda, se revalida y se abre la siguiente factura de la cola.</p>
         <p><b>¿Algo no corresponde?</b> “Rechazar” la saca del circuito (queda registrada y se puede reabrir). “Aceptar igual” deja pasar un control con un comentario que queda en el historial.</p>
-        <p><b>Proveedor nuevo:</b> al confirmarlo, la app aprende dónde está cada dato y sus próximas facturas se leen solas, sin IA.</p></div></div>
+        <p><b>Proveedor nuevo:</b> al confirmarlo (o automáticamente, si ARCA valida la factura), el sistema aprende la ubicación de cada dato y sus próximas facturas se procesan sin IA.</p></div></div>
       <div class="panel"><div class="panel-titulo"><h2>Atajos</h2></div><div class="panel-pad">
         <dl class="kv atajos"><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Buscar desde cualquier pantalla. Un número abre esa factura (ej. 14).</dd>
           <dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>Bajar / subir en “Para revisar”.</dd><dt><kbd>Enter</kbd></dt><dd>Abrir la factura marcada.</dd><dt><kbd>/</kbd></dt><dd>Ir al buscador de la cola.</dd></dl>
         <h3 style="margin:18px 0 8px">Otras pantallas</h3>
-        <div class="guia-txt"><p><b>Propuestas de pago:</b> elegís sociedad y fecha de pago, tildás las facturas cargadas en Shares (vienen sugeridas las que vencen) y la mandás al Director. Él aprueba u observa cada pago, separado en Gastos, Inversión y Materia prima. Lo aprobado se exporta y se marca pagado.</p><p><b>Agenda de pagos:</b> qué vence por semana con el CBU para copiar. <b>Análisis de compras:</b> cuánto se compró por cuenta, proveedor y local. <b>Ficha del proveedor:</b> tocá cualquier proveedor para ver sus compras, cómo se carga y su historial en Shares.</p></div></div></div>
+        <div class="guia-txt"><p><b>Propuestas de pago:</b> se elige la sociedad y la fecha de pago, se seleccionan las facturas registradas en Shares (se sugieren las que vencen) y se envía al Director. Él aprueba u observa cada pago, separado en Gastos, Inversión y Materia prima. Lo aprobado se exporta y se marca pagado.</p><p><b>Agenda de pagos:</b> vencimientos por semana, con el CBU de cada proveedor. <b>Análisis de compras:</b> cuánto se compró por cuenta, proveedor y local. <b>Ficha del proveedor:</b> seleccioná un proveedor para ver sus compras, su configuración de lectura y su historial en Shares.</p></div></div></div>
     </div>
     <div class="panel"><div class="panel-titulo"><h2>Qué significa cada motivo</h2><span class="ayuda">los mismos que ves en “Para revisar”</span></div>
       <div class="motivos-guia">${grupos.map(([k, g]) => { const [bg, fg] = g.tono === 'acc' ? ['accent-soft', 'accent-ink'] : [g.tono + '-bg', g.tono];
@@ -2747,45 +2747,54 @@ function firmaDirector(L, d, R) {
 }
 
 // ---- No son facturas: lo que entró por mail y no es un comprobante (remitos, presupuestos, recibos, logos…) ----
+// Vista limpia: a la izquierda la lista; a la derecha el archivo elegido con "Es factura" / "Descartar".
+// Al resolver uno, pasa solo al siguiente.
 async function vistaNoFacturas(el) {
   const r = await api('/api/facturas?estado=no_factura&limite=500');
-  let q = '';
+  let q = '', sel = r.facturas[0]?.id || null;
   const filtradas = () => r.facturas.filter(f => !q || `${f.archivo_nombre} ${f.mail_from} ${f.rechazo_motivo} ${f.razon_social_emisor || ''}`.toLowerCase().includes(q));
   const de = (m) => esc(String(m || '').replace(/<.*>/, '').replace(/"/g, '').trim() || m || '—');
-  el.innerHTML = `<div class="encabezado"><div><h1>No son facturas</h1><p>Lo que llegó al mail y no es un comprobante: remitos, presupuestos, recibos, estados de cuenta, logos de firmas… No frenan “Para revisar” y no se borra nada: si alguno es una factura, tocá “Es factura” y se lee de nuevo.</p></div>
-      <div class="acciones">${puede('aprobador') ? '<button class="btn btn-rojo" id="b-desc-todas"></button>' : ''}</div></div>
-    <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q-nf" placeholder="Filtrar por archivo, remitente o motivo" aria-label="Filtrar"></label><span class="small muted" id="nf-n"></span></div>
-      <div class="tabla-wrap"><table><thead><tr><th>Archivo</th><th>De</th><th>Por qué</th><th>Recibido</th><th></th></tr></thead><tbody id="tb-nf"></tbody></table></div></div>`;
-  const pintar = () => {
-    const fs = filtradas();
-    $('#nf-n').textContent = `${fs.length} archivo(s)`;
-    const bt = $('#b-desc-todas');
-    if (bt) { bt.textContent = `Descartar ${fs.length === r.facturas.length ? 'todas' : 'las filtradas'} (${fs.length})`; bt.disabled = !fs.length; }
-    $('#tb-nf').innerHTML = fs.length ? fs.map(f => `<tr data-id="${f.id}">
-        <td><button class="btn-link" data-ver="${f.id}">${esc(f.archivo_nombre || 'archivo #' + f.id)}</button><small class="sub-celda">#${f.id}${f.razon_social_emisor ? ' · ' + esc(f.razon_social_emisor) : ''}</small></td>
-        <td>${de(f.mail_from)}</td>
-        <td>${esc(f.rechazo_motivo || '—')}</td>
-        <td data-orden="${esc(f.recibido_at || '')}">${fmtFH(f.recibido_at)}</td>
-        <td style="white-space:nowrap">${puede('carga') ? `<button class="btn btn-chico" data-es="${f.id}">${ICO.check}Es factura</button>` : ''}${puede('aprobador') ? ` <button class="btn btn-chico btn-ghost" data-desc="${f.id}">Descartar</button>` : ''}</td></tr>`).join('')
-      : '<tr><td colspan="5" class="vacio">No hay nada acá. Todo lo que entró es factura.</td></tr>';
-    $$('[data-ver]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.ver));
-    $$('[data-es]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-      await api(`/api/facturas/${b.dataset.es}/es-factura`, { method: 'POST', body: {} });
-      r.facturas = r.facturas.filter(x => String(x.id) !== b.dataset.es); toast('En cola: se lee de nuevo con IA'); S.cnt = null; contadores(); pintar();
-    }));
-    $$('[data-desc]', el).forEach(b => b.onclick = () => conBoton(b, async () => {
-      await api('/api/facturas/descartar', { method: 'POST', body: { ids: [Number(b.dataset.desc)] } });
-      r.facturas = r.facturas.filter(x => String(x.id) !== b.dataset.desc); S.cnt = null; contadores(); pintar();
-    }));
+  const corto = (t) => String(t || '').replace(/\s*\(no tiene CAE ni QR\)/, '').replace(/^La IA indicó que no es una factura.*$/, 'Según la IA, no es un comprobante');
+  el.innerHTML = `<div class="encabezado"><div><h1>No son facturas</h1><p>Documentos recibidos por correo que no son comprobantes fiscales: remitos, presupuestos, recibos, estados de cuenta e imágenes de firmas. Seleccioná uno para visualizarlo. Si corresponde a una factura, “Es factura” la procesa nuevamente; de lo contrario, “Descartar”.</p></div>
+      <div class="acciones">${puede('aprobador') ? '<button class="btn btn-ghost" id="b-desc-todas"></button>' : ''}</div></div>
+    <div class="nf-grid">
+      <div class="panel nf-lista"><div class="nf-buscar"><label class="campo-buscar">${ICO.search}<input id="q-nf" placeholder="Filtrar" aria-label="Filtrar"></label></div><div id="nf-items" role="listbox" aria-label="Archivos"></div></div>
+      <div class="nf-ver"><div class="panel nf-cab" id="nf-cab"></div><div class="visor" id="visor"><div class="vacio"><span>Seleccioná un archivo de la lista</span></div></div></div>
+    </div>`;
+  const quitar = (ids) => {
+    const fs = filtradas(), idx = fs.findIndex(f => f.id === sel);
+    const set = new Set(ids); r.facturas = r.facturas.filter(f => !set.has(f.id));
+    if (set.has(sel)) { const rest = filtradas(); sel = rest[Math.min(Math.max(idx, 0), rest.length - 1)]?.id || null; }
+    S.cnt = null; contadores(); pintar(true);
   };
-  $('#q-nf').oninput = (e) => { q = e.target.value.trim().toLowerCase(); pintar(); };
+  const pintarCab = () => {
+    const f = r.facturas.find(x => x.id === sel);
+    if (!f) { $('#nf-cab').innerHTML = '<p class="muted" style="margin:0">No hay documentos pendientes de clasificación.</p>'; $('#visor').innerHTML = '<div class="vacio"><span>Sin archivos</span></div>'; return; }
+    $('#nf-cab').innerHTML = `<div class="nf-cab-t"><b title="${esc(f.archivo_nombre || '')}">${esc(f.archivo_nombre || 'archivo #' + f.id)}</b>
+        <small>${de(f.mail_from)} · ${fmtFH(f.recibido_at)} · ${esc(corto(f.rechazo_motivo) || 'Sin CAE ni QR')}</small></div>
+      <div class="acciones">${puede('carga') ? `<button class="btn btn-chico" id="nf-es">${ICO.check}Es factura</button>` : ''}${puede('aprobador') ? `<button class="btn btn-chico btn-negro" id="nf-desc">Descartar</button>` : ''}</div>`;
+    const be = $('#nf-es'); if (be) be.onclick = () => conBoton(be, async () => { await api(`/api/facturas/${f.id}/es-factura`, { method: 'POST', body: {} }); toast('En cola para una nueva lectura con IA'); quitar([f.id]); });
+    const bd = $('#nf-desc'); if (bd) bd.onclick = () => conBoton(bd, async () => { await api('/api/facturas/descartar', { method: 'POST', body: { ids: [f.id] } }); quitar([f.id]); });
+  };
+  const pintar = (conPdf) => {
+    const fs = filtradas();
+    if (sel && !fs.some(f => f.id === sel)) sel = fs[0]?.id || null;
+    const bt = $('#b-desc-todas');
+    if (bt) { bt.textContent = `Descartar ${q ? 'filtrados' : 'todos'} (${fs.length})`; bt.hidden = !fs.length; }
+    $('#nf-items').innerHTML = fs.length ? fs.map(f => `<button type="button" class="nf-item ${f.id === sel ? 'on' : ''}" data-id="${f.id}" role="option" aria-selected="${f.id === sel}">
+        <span class="t">${esc(f.archivo_nombre || 'archivo #' + f.id)}</span><span class="d">${esc(corto(f.rechazo_motivo) || '—')} · ${de(f.mail_from)}</span></button>`).join('')
+      : '<div class="vacio">Sin documentos pendientes.</div>';
+    $$('.nf-item', el).forEach(b => b.onclick = () => { sel = Number(b.dataset.id); pintar(true); });
+    pintarCab();
+    if (conPdf && sel) { $('#visor').innerHTML = '<div class="vacio"><span><span class="cargando"></span> Cargando…</span></div>'; cargarPdf(sel); }
+  };
+  $('#q-nf').oninput = (e) => { q = e.target.value.trim().toLowerCase(); pintar(true); };
   const bt = $('#b-desc-todas');
   if (bt) bt.onclick = () => conBoton(bt, async () => {
     const fs = filtradas();
-    if (!fs.length || !await confirmar(`¿Descartás ${fs.length} archivo(s)? Quedan como rechazados (“no es factura”) y se pueden reabrir.`, { boton: 'Descartar', peligro: true })) return;
+    if (!fs.length || !await confirmar(`¿Descartar ${fs.length} archivo(s)? Quedarán rechazados con el motivo “no es factura” y podrán reabrirse desde Todas las facturas.`, { boton: 'Descartar', peligro: true })) return;
     const x = await api('/api/facturas/descartar', { method: 'POST', body: { ids: fs.map(f => f.id) } });
-    const ids = new Set(fs.map(f => f.id)); r.facturas = r.facturas.filter(f => !ids.has(f.id));
-    toast(`Descartadas: ${x.descartadas}`); S.cnt = null; contadores(); pintar();
+    toast(`Descartados: ${x.descartadas}`); quitar(fs.map(f => f.id));
   });
-  pintar();
+  pintar(true);
 }

@@ -692,3 +692,19 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 @media (max-width: 860px) { .firma-wrap { justify-content: center; } }
 .txt-ok { color: var(--ok, #2e7d32); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; } .txt-ok svg { width: 14px; height: 14px; }
 .b-no_factura { background: var(--surface-2); color: var(--muted); }
+/* No son facturas: lista compacta + vista previa */
+.nf-grid { display: grid; grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.nf-lista { overflow: hidden; }
+.nf-buscar { padding: 12px; border-bottom: 1px solid var(--line); }
+#nf-items { max-height: calc(100vh - var(--top-h) - 230px); overflow: auto; }
+.nf-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 11px 14px; cursor: pointer; font: inherit; color: var(--text); }
+.nf-item:hover { background: var(--surface-2); }
+.nf-item.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.nf-item .t { display: block; font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nf-item .d { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nf-ver { display: flex; flex-direction: column; gap: 12px; min-width: 0; position: sticky; top: calc(var(--top-h) + 16px); }
+.nf-cab { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.nf-cab-t { min-width: 0; flex: 1; } .nf-cab-t b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .nf-cab-t small { color: var(--muted); font-size: 12.5px; }
+.nf-ver .visor { position: relative; top: 0; height: calc(100vh - var(--top-h) - 150px); }
+@media (max-width: 860px) { .nf-grid { grid-template-columns: 1fr; } .nf-ver { position: static; } #nf-items { max-height: 38vh; } .nf-ver .visor { height: 65vh; } .nf-cab { flex-wrap: wrap; } }
+@media (max-width: 860px) { .nf-cab-t { flex-basis: 100%; } }
