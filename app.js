@@ -848,17 +848,26 @@ function cargarPdfjs() {
   return _pdfjsCarga;
 }
 
-async function cargarPdf(id) {
+async function cargarPdf(id, intento = 1) {
   if (!$('#visor')) return;
   try {
-    const res = await api(`/api/facturas/${id}/pdf`, { raw: true });
+    let res;
+    try { res = await api(`/api/facturas/${id}/pdf`, { raw: true }); }
+    catch (e) {
+      if (intento < 2) { await new Promise(r => setTimeout(r, 2000)); return cargarPdf(id, intento + 1); }   // reintento automático
+      throw e;
+    }
     const blob = await res.blob();
     if (S.pdfUrl) URL.revokeObjectURL(S.pdfUrl);
     S.pdfUrl = URL.createObjectURL(blob);
     S.pdfBytes = new Uint8Array(await blob.arrayBuffer());
     await mostrarPdf();
   } catch (e) {
-    if ($('#visor')) $('#visor').innerHTML = `<div class="vacio">No se pudo cargar el PDF: ${esc(e.message)}</div>`;
+    const v = $('#visor');
+    if (v) {
+      v.innerHTML = `<div class="vacio"><span>No se pudo cargar el PDF. ${esc(/HTTP 5\d\d/.test(e.message) ? 'El servicio de archivos no respondió.' : e.message)}<br><button class="btn btn-chico" id="pdf-reint" style="margin-top:10px">${ICO.refresh}Reintentar</button></span></div>`;
+      const br = $('#pdf-reint', v); if (br) br.onclick = () => { v.innerHTML = '<div class="vacio"><span><span class="cargando"></span> Cargando PDF</span></div>'; cargarPdf(id); };
+    }
   }
 }
 
