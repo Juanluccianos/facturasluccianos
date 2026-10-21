@@ -1829,10 +1829,19 @@ async function vistaAjustesPagos(el) {
     <section class="cfg-sec"><h3 class="cfg-h">${ICO.chat}Aviso al Director</h3><div class="panel">
       <div class="cfg-row"><div><div class="t">WhatsApp del Director</div><div class="d">El botón “Avisar por WhatsApp” abre el chat con él y el mensaje armado (sin importes, solo el link). Con código de país y área, sin 0 ni 15.</div></div>
         <div class="cfg-ctrl"><span class="muted">${ICO.phone}</span><input id="aj-wsp" value="${esc(c.director_whatsapp || '')}" placeholder="5492235123456" inputmode="tel" style="width:190px"><button class="btn btn-chico btn-negro" id="aj-wsp-ok">Guardar</button></div></div>
+      <div class="cfg-row"><div><div class="t">Aviso por mail</div><div class="d">Cuando enviás una propuesta, al Director le llega un mail con el link (sin importes). Con este botón te mandás un mail de prueba a vos para confirmar que sale.</div><div class="d" id="aj-mail-res"></div></div>
+        <div class="cfg-ctrl"><button class="btn btn-chico" id="aj-mail">${ICO.send}Mandarme un mail de prueba</button></div></div>
       <div class="cfg-row"><div><div class="t">Día fijo de pago</div><div class="d">Cada propuesta nueva sugiere el próximo; si es una excepción, cambiás la fecha en la propuesta.</div></div>
         <div class="cfg-ctrl"><div class="seg" id="aj-dia">${DIAS_SEMANA.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(c.dia_pago) === v ? 'on' : ''}">${t}</button>`).join('')}</div></div></div>
     </div></section>
     <section class="cfg-sec"><h3 class="cfg-h">${ICO.chart}Gastos, Inversión o Materia prima</h3><div class="panel panel-pad" id="aj-cat"><span class="cargando"></span></div></section>`;
+  $('#aj-mail').onclick = () => conBoton($('#aj-mail'), async () => {
+    const r = await api('/api/pagos/probar-mail', { method: 'POST', body: {} });
+    const dirs = (r.directores || []).map(d => `${esc(d.nombre)} (${esc(d.email)})`).join(', ');
+    $('#aj-mail-res').innerHTML = r.ok
+      ? `<span class="txt-ok">${ICO.check} Salió el mail a ${esc(r.para)}. Revisá tu bandeja (y spam).</span> Los avisos van a: <b>${dirs || 'ningún Director activo'}</b>.`
+      : `<span class="txt-neg">No salió el mail: ${esc(r.error || 'error desconocido')}</span>`;
+  });
   $('#aj-wsp-ok').onclick = () => conBoton($('#aj-wsp-ok'), async () => { const x = await api('/api/pagos/config', { method: 'PUT', body: { director_whatsapp: $('#aj-wsp').value } }); $('#aj-wsp').value = x.director_whatsapp || ''; toast('Guardado'); });
   $$('#aj-dia button').forEach(b => b.onclick = async () => {
     try { await api('/api/pagos/config', { method: 'PUT', body: { dia_pago: Number(b.dataset.v) } }); $$('#aj-dia button').forEach(x => x.classList.toggle('on', x === b)); toast('Guardado'); }
@@ -2369,7 +2378,7 @@ async function vistaLote(el, id) {
     <div class="kpis"><div class="kpi"><div class="et">Total propuesto</div><div class="val">${$$corto(R.total)}</div><div class="sub">${R.items} pago(s)${R.alertas_graves ? ` · <b class="txt-neg">${R.alertas_graves} con alerta</b>` : ''}</div>${barraCategorias(R.por_categoria, R.total)}</div>
       ${kpisCategorias(R.por_categoria, R.total)}</div>
     ${['aprobado', 'parcial', 'cerrado', 'rechazado'].includes(L.estado) ? `<div class="kpis"><div class="kpi ok"><div class="et">Aprobado</div><div class="val">${$$corto(R.aprobado)}</div></div><div class="kpi ${R.observado ? 'alerta' : ''}"><div class="et">Observado</div><div class="val">${$$corto(R.observado)}</div></div><div class="kpi"><div class="et">Pagado</div><div class="val">${$$corto(R.pagado)}</div><div class="sub">${R.aprobado - R.pagado > 0.009 ? `falta ${$$m(R.aprobado - R.pagado)}` : 'completo'}</div></div></div>` : ''}
-    ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y vuelve a Pili con tu comentario (es obligatorio). Las alertas en rojo son de CBU: revisalas antes de aprobar.</p>' : ''}
+    ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y vuelve a Pili con tu comentario (es obligatorio). </p>' : ''}
     <div id="secs">${nombreCats.map(seccion).join('')}</div>
     ${aprobando ? `<div class="barra-acciones" id="barra-ap"></div>` : ''}
     ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Tildá los pagos que ya hiciste y marcálos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
@@ -2457,7 +2466,7 @@ function guiaDirector(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Cómo aprobar pagos</h1><p>Tres pasos, desde el celular o la compu.</p></div></div>
     <div class="panel panel-pad guia-txt">
       <p><b>1. Te llega un aviso</b> (mail o WhatsApp) sin importes, solo con el link. Por seguridad, los pagos se aprueban únicamente dentro de la app.</p>
-      <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su factura (tocá “Ver factura”) y las alertas: en rojo, si el CBU del proveedor cambió hace poco o no coincide con el de la factura.</p>
+      <p><b>2. Abrí la propuesta.</b> Arriba ves el total y cuánto es <b>Gastos</b>, <b>Inversión</b> y <b>Materia prima</b>. Abajo, cada pago agrupado por categoría, con su vencimiento y su factura (tocá “Ver factura”).</p>
       <p><b>3. Tildá lo que aprobás</b> y tocá “Aprobar seleccionados”. Lo que destildes queda observado: escribí por qué y le vuelve a Pili. Lo observado se puede volver a proponer más adelante.</p>
       <p class="muted">Una vez aprobada, Pili hace los pagos y los marca como pagados; lo ves en la misma propuesta.</p>
       <p class="muted">Solo ves las propuestas que te enviaron y las facturas que están en ellas.</p></div>
