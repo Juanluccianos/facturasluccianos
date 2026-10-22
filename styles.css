@@ -708,3 +708,4 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 .nf-ver .visor { position: relative; top: 0; height: calc(100vh - var(--top-h) - 150px); }
 @media (max-width: 860px) { .nf-grid { grid-template-columns: 1fr; } .nf-ver { position: static; } #nf-items { max-height: 38vh; } .nf-ver .visor { height: 65vh; } .nf-cab { flex-wrap: wrap; } }
 @media (max-width: 860px) { .nf-cab-t { flex-basis: 100%; } }
+.obs-btn { display: block; margin-top: 4px; text-align: left; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

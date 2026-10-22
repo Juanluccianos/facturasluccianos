@@ -1097,6 +1097,8 @@ function pintarFactura(el, r) {
             <div class="campo" style="grid-column: span 2"><label>Denominación</label><input id="den-cuenta" disabled value="${esc(r.cuenta?.denominacion || nombreCuenta(d.imputacion?.codigo_concepto))}"></div>
           </div>
           <p class="ayuda">Origen: <b>${esc({ regla: 'regla de imputación', shares: 'la que usa en Shares', proveedor: 'cuenta por defecto del proveedor', ia: 'sugerida por Gemini — confirmala', manual: 'elegida por una persona' }[d.imputacion?.origen] || 'sin definir')}</b>${d.imputacion?.detalle ? ' · ' + esc(d.imputacion.detalle) : ''}${d.ia?.motivo_cuenta && d.imputacion?.origen === 'ia' ? ' · ' + esc(d.ia.motivo_cuenta) : ''}</p>
+          <div class="campo" style="margin-top:10px"><label for="obs-sh">Observaciones para Shares <span class="muted small">(opcional, máx. 150 caracteres)</span></label>
+            <textarea id="obs-sh" name="envio.observaciones" maxlength="150" rows="2" placeholder="Se agregan al comienzo de las observaciones del comprobante en Shares" ${dis}>${esc(d.envio?.observaciones || '')}</textarea></div>
           ${d.local_detectado || d.detalle_resumen ? `<p class="small">${d.detalle_resumen ? `<b>Detalle:</b> ${esc(d.detalle_resumen)} ` : ''}${d.local_detectado ? `<b>Local:</b> ${esc(d.local_detectado)}` : ''}</p>` : ''}
           ${editable ? `<label class="check"><input type="checkbox" id="chk-regla"> Guardar como regla para este proveedor</label>
           <div class="campo hidden" id="c-palabra"><label>…solo cuando el detalle/local contenga (opcional)</label><input id="palabra" placeholder="ej. UNICENTER — vacío = siempre"></div>` : ''}
@@ -1345,7 +1347,8 @@ async function vistaShares(el) {
   const [r] = await Promise.all([api('/api/facturas?estado=lista,error_shares&limite=500&orden=vto'), cuentas().catch(() => [])]);
   const ORIG = { manual: 'elegida', regla: 'regla', shares: 'Shares', proveedor: 'maestro', ia: 'Gemini' };
   const celdaCuenta = (f) => `<td class="td-cuenta"><input class="in-cuenta mono" list="dl-cuentas" data-cta="${f.id}" value="${esc(f.cuenta ?? '')}" placeholder="Cuenta" aria-label="Cuenta de la factura #${f.id}">
-    <small class="sub-celda" data-den="${f.id}">${esc(f.cuenta_denominacion || nombreCuenta(f.cuenta) || 'Sin cuenta')}${f.imputacion_origen ? ` · ${esc(ORIG[f.imputacion_origen] || f.imputacion_origen)}` : ''}</small></td>`;
+    <small class="sub-celda" data-den="${f.id}">${esc(f.cuenta_denominacion || nombreCuenta(f.cuenta) || 'Sin cuenta')}${f.imputacion_origen ? ` · ${esc(ORIG[f.imputacion_origen] || f.imputacion_origen)}` : ''}</small>
+    <button type="button" class="btn-link small obs-btn" data-obs="${f.id}" title="${esc(f.obs_shares || 'Agregar observaciones para Shares')}">${f.obs_shares ? 'Obs.: ' + esc(String(f.obs_shares).slice(0, 28)) + (String(f.obs_shares).length > 28 ? '…' : '') : '+ Observaciones'}</button></td>`;
   el.innerHTML = `<div class="encabezado"><div><h1>Enviar a Shares</h1><p>Facturas que superaron todos los controles. Verificá la cuenta contable de cada una (se puede modificar desde esta pantalla). Ningún comprobante se registra sin aprobación.</p></div>
     <div class="acciones"><span class="muted" id="sel-info"></span>
       <span class="lote-cuenta hidden" id="lote"><input class="in-cuenta mono" list="dl-cuentas" id="lote-cta" placeholder="Cuenta para las elegidas"><button class="btn btn-chico" id="b-lote">Cambiar cuenta</button></span>
@@ -1363,6 +1366,18 @@ async function vistaShares(el) {
     if (mal.some(x => x.estado && x.estado !== 'lista')) await vistaShares(el);
     else ids.forEach(id => { const s = $(`[data-den="${id}"]`); if (s) s.textContent = `${res.cuenta?.denominacion || nombreCuenta(cod)} · elegida`; const i = $(`[data-cta="${id}"]`); if (i) i.value = cod; });
   };
+  $$('[data-obs]').forEach(b => b.onclick = async () => {
+    const f = r.facturas.find(x => String(x.id) === b.dataset.obs);
+    const v = await pedirTexto({ titulo: 'Observaciones para Shares', ayuda: 'Se agregan al comienzo de las observaciones del comprobante en Shares, antes del número de comprobante y la referencia a la app. Máximo 150 caracteres. Dejalo vacío para quitarlas.', etiqueta: 'Observaciones', boton: 'Guardar', minimo: 0, valor: f?.obs_shares || '' });
+    if (v === null) return;
+    try {
+      const x = await api(`/api/facturas/${b.dataset.obs}/observaciones`, { method: 'POST', body: { texto: v.slice(0, 150) } });
+      if (f) f.obs_shares = x.observaciones;
+      b.textContent = x.observaciones ? 'Obs.: ' + x.observaciones.slice(0, 28) + (x.observaciones.length > 28 ? '…' : '') : '+ Observaciones';
+      b.title = x.observaciones || 'Agregar observaciones para Shares';
+      toast(x.observaciones ? 'Observaciones guardadas' : 'Observaciones eliminadas');
+    } catch (e) { toast(e.message, true); }
+  });
   $$('[data-cta]').forEach(inp => {
     inp.onclick = (e) => e.stopPropagation();
     inp.onfocus = () => { inp.dataset.ant = inp.value; };
