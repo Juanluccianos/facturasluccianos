@@ -2122,7 +2122,44 @@ const EST_LOTE = {
   parcial: ['Aprobada en parte', 'b-ok'], rechazado: ['Observada', 'b-critica'], cerrado: ['Pagada', 'b-cargada'],
 };
 const EST_PAGO_F = { propuesta: ['En propuesta', 'b-aviso'], en_aprobacion: ['En aprobación', 'b-warn'], aprobada: ['Pago aprobado', 'b-ok'], pagada: ['Pagada', 'b-cargada'] };
-const MEDIOS_PAGO = ['Transferencia', 'E-cheq', 'Cheque', 'Efectivo', 'Débito automático', 'Otro'];
+const MEDIOS_PAGO = ['Transferencia', 'eCheq', 'Cheque', 'Cheque de tercero', 'Efectivo', 'Tarjeta de crédito', 'Débito automático', 'Compensación', 'Otro'];
+
+// Paso previo al envío al Director: medio de pago de cada ítem (sugerido por el último usado con el proveedor).
+// Devuelve { [item_id]: { medio, detalle } } o null si se cancela.
+function pasoMediosPago(d) {
+  return new Promise((resolve) => {
+    let listo = false;
+    const its = [...d.items].sort((a, b) => String(a.proveedor).localeCompare(String(b.proveedor), 'es') || a.id - b.id);
+    const sel = Object.fromEntries(its.map(i => [i.id, { medio: i.medio_previsto || i.medio_sugerido || 'Transferencia', detalle: i.medio_detalle || '' }]));
+    const opciones = (v) => MEDIOS_PAGO.map(m => `<option ${m === v ? 'selected' : ''}>${m}</option>`).join('');
+    const resumen = () => {
+      const t = {};
+      for (const i of its) t[sel[i.id].medio] = (t[sel[i.id].medio] || 0) + i.importe;
+      return Object.entries(t).map(([m, v]) => `<span class="tag">${esc(m)}: <b>${$$m(v)}</b></span>`).join(' ');
+    };
+    modal(`<h2>Medios de pago</h2>
+      <p class="muted">Indicá cómo se va a pagar cada ítem antes de enviar la propuesta al Director. Se sugiere el último medio usado con cada proveedor.</p>
+      <div class="medios-todos"><span class="small muted">Aplicar a todos:</span><select id="mp-todos"><option value="">—</option>${opciones('')}</select></div>
+      <div class="medios-lista">${its.map(i => `<div class="medio-fila">
+          <div class="medio-info"><b>${esc(i.proveedor)}</b><small>${esc(i.concepto || '')}</small></div>
+          <div class="medio-imp ${i.importe < 0 ? 'txt-neg' : ''}">${$$m(i.importe)}</div>
+          <select data-mp="${i.id}" aria-label="Medio de pago de ${esc(i.proveedor)}">${opciones(sel[i.id].medio)}</select>
+          <input data-md="${i.id}" maxlength="120" placeholder="Detalle (opcional): banco, n.º de cheque…" value="${esc(sel[i.id].detalle)}"></div>`).join('')}</div>
+      <div class="medios-res" id="mp-res">${resumen()}</div>
+      <div class="acciones" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="mp-no">Volver</button><button class="btn btn-acento" id="mp-ok">${ICO.send}Enviar al Director</button></div>`, {
+      ancho: true,
+      alMontar: (el, cerrar) => {
+        $$('[data-mp]', el).forEach(x => x.onchange = () => { sel[x.dataset.mp].medio = x.value; $('#mp-res', el).innerHTML = resumen(); });
+        $$('[data-md]', el).forEach(x => x.oninput = () => { sel[x.dataset.md].detalle = x.value; });
+        $('#mp-todos', el).onchange = (e) => { const v = e.target.value; if (!v) return; $$('[data-mp]', el).forEach(x => { x.value = v; sel[x.dataset.mp].medio = v; }); $('#mp-res', el).innerHTML = resumen(); };
+        $('#mp-ok', el).onclick = () => { listo = true; cerrar(); resolve(sel); };
+        $('#mp-no', el).onclick = () => { cerrar(); resolve(null); };
+        const obs = new MutationObserver(() => { if ($('#modal').hidden) { obs.disconnect(); if (!listo) resolve(null); } });
+        obs.observe($('#modal'), { attributes: true });
+      },
+    });
+  });
+}
 const esDirector = () => S.user?.rol === 'director';
 const badgeLote = (e) => `<span class="badge ${(EST_LOTE[e] || [])[1] || ''}">${esc((EST_LOTE[e] || [e])[0])}</span>`;
 const dotCat = (k) => `<i class="cat-dot" style="background:${(CAT_PAGO[k] || CAT_PAGO.gasto)[1]}"></i>`;
@@ -2326,6 +2363,12 @@ async function vistaPropuestaEditar(el, id) {
     $('#cand').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
     const r = await api(`/api/pagos/candidatas?empresa=${encodeURIComponent(st.empresa)}&fecha=${encodeURIComponent(st.fecha)}${id ? '&lote=' + id : ''}`);
     st.cand = r.candidatas;
+    if (r.actualizando_pagos && !st.reconsulta) {
+      // Se están verificando pagos en Shares: se recargan las candidatas una vez cuando termina (las pagas desaparecen)
+      st.reconsulta = true;
+      toast(`Verificando en Shares el estado de pago de ${r.actualizando_pagos} factura(s)…`);
+      setTimeout(() => { if ($('#cand')) cargarCand().then(() => toast('Estado de pago actualizado desde Shares')).catch(() => null); }, 30000);
+    }
     const ids = new Set(st.cand.map(c => c.factura_id));
     for (const fid of [...st.sel.keys()]) if (!ids.has(fid)) st.sel.delete(fid);   // cambió la sociedad o ya no está libre
     if (st.primera) { for (const c of st.cand) if (c.sugerida) st.sel.set(c.factura_id, c.categoria); st.primera = false; }
@@ -2338,11 +2381,16 @@ async function vistaPropuestaEditar(el, id) {
     const body = { cuit_empresa: st.empresa, fecha_pago: st.fecha, nota: $('#p-nota').value.trim(),
       facturas: [...st.sel.entries()].map(([factura_id, categoria]) => ({ factura_id, categoria })),
       manuales: st.manuales.filter(m => m.proveedor || m.concepto || m.importe) };
-    if (enviar && !await confirmar(`¿Enviar al Director ${t.n} pago(s) por ${$$m(t.total)}?\n\nDespués de enviarla no se puede editar (la podés retirar mientras no la resuelva).`)) return;
-    const d = await api(id ? '/api/pagos/lotes/' + id : '/api/pagos/lotes', { method: id ? 'PUT' : 'POST', body });
+    let d;
+    try { d = await api(id ? '/api/pagos/lotes/' + id : '/api/pagos/lotes', { method: id ? 'PUT' : 'POST', body }); }
+    catch (err) { if (/paga en Shares/.test(err.message)) cargarCand().catch(() => null); throw err; }   // se quita sola de la lista
     sessionStorage.setItem('prop_empresa', st.empresa);
     if (!enviar) { toast('Borrador guardado'); location.hash = '#/pago/' + d.lote.id; return; }
-    const e = await api(`/api/pagos/lotes/${d.lote.id}/enviar`, { method: 'POST', body: { app_url: appUrl() } });
+    const medios = await pasoMediosPago(d);
+    if (!medios) { toast('La propuesta quedó guardada como borrador.'); location.hash = '#/pago/' + d.lote.id; return; }
+    let e;
+    try { e = await api(`/api/pagos/lotes/${d.lote.id}/enviar`, { method: 'POST', body: { app_url: appUrl(), medios } }); }
+    catch (err) { location.hash = '#/pago/' + d.lote.id; setTimeout(() => toast(err.message, true), 400); return; }
     location.hash = '#/pago/' + d.lote.id;
     setTimeout(() => modalAvisoEnviado(e, e.aviso), 300);
   };
@@ -2379,6 +2427,7 @@ async function vistaLote(el, id) {
       ${aprobando ? `<input type="checkbox" data-ap="${it.id}" ${sel ? 'checked' : ''} aria-label="Aprobar">` : puedePagar ? `<input type="checkbox" data-pg="${it.id}" aria-label="Marcar pagado">` : '<span></span>'}
       <div class="ip-info"><b>${esc(it.proveedor)}</b>
         <small>${esc(it.concepto || '')}${it.fecha_vto ? ` · vence ${fmtF(it.fecha_vto)}` : ''}${it.cbu ? ` · <span class="mono">${esc(it.cbu)}</span>` : ''}</small>
+        ${it.medio_previsto ? `<div class="small medio-prev">${ICO.coin}${esc(it.medio_previsto)}${it.medio_detalle ? ' · ' + esc(it.medio_detalle) : ''}</div>` : ''}
         ${it.alertas?.length ? `<div class="chips">${chipsAlertas(it.alertas)}</div>` : ''}
         ${it.comentario ? `<div class="small con-ico" style="margin-top:4px">${ICO.chat}${esc(it.comentario)}</div>` : ''}
         ${aprobando ? `<input class="ip-coment" data-com="${it.id}" placeholder="${sel ? 'Comentario (opcional)' : 'Por qué no lo aprobás (obligatorio)'}" value="${esc(ap.coment[it.id] || '')}" ${sel ? 'hidden' : ''}>` : ''}
@@ -2464,17 +2513,18 @@ async function vistaLote(el, id) {
   // Acciones de Pili
   const b = (sel, fn) => { const x = $(sel, el); if (x) x.onclick = () => conBoton(x, fn); };
   b('#b-env', async () => {
-    if (!await confirmar(`¿Enviar al Director ${R.items} pago(s) por ${$$m(R.total)}?`)) return;
-    const e = await api(`/api/pagos/lotes/${L.id}/enviar`, { method: 'POST', body: { app_url: appUrl() } });
+    const medios = await pasoMediosPago(d);
+    if (!medios) return;
+    const e = await api(`/api/pagos/lotes/${L.id}/enviar`, { method: 'POST', body: { app_url: appUrl(), medios } });
     await router(); modalAvisoEnviado(e, e.aviso);
   });
   b('#b-ret', async () => { if (!await confirmar('¿Retirar la propuesta? Vuelve a borrador y el Director deja de verla hasta que la reenvíes.')) return; await api(`/api/pagos/lotes/${L.id}/retirar`, { method: 'POST' }); toast('Propuesta retirada'); location.hash = `#/propuesta/${L.id}/editar`; });
   b('#b-del', async () => { if (!await confirmar('¿Borrar este borrador?')) return; await api(`/api/pagos/lotes/${L.id}`, { method: 'DELETE' }); toast('Borrador eliminado'); location.hash = '#/propuestas'; });
   const csv = $('#b-csv', el);
   if (csv) csv.onclick = () => descargarCsv(`pagos_aprobados_${L.id}_${L.fecha_pago}.csv`, [
-    ['Propuesta', 'Sociedad', 'Fecha de pago', 'Categoría', 'CUIT', 'Proveedor', 'Concepto', 'Vencimiento', 'CBU', 'Alias', 'Importe $', 'Moneda', 'Importe original', 'Estado', 'Pagado', 'Medio', 'Referencia', 'Factura ID'],
+    ['Propuesta', 'Sociedad', 'Fecha de pago', 'Categoría', 'CUIT', 'Proveedor', 'Concepto', 'Vencimiento', 'CBU', 'Alias', 'Importe $', 'Moneda', 'Importe original', 'Estado', 'Medio previsto', 'Detalle medio', 'Pagado', 'Medio', 'Referencia', 'Factura ID'],
     ...d.items.filter(i => i.decision === 'aprobado').map(i => [L.id, L.empresa || L.cuit_empresa, L.fecha_pago, nomCat(i.categoria), i.cuit_proveedor || '', i.proveedor, i.concepto || '', i.fecha_vto || '', i.cbu || '', i.alias || '',
-      String(i.importe).replace('.', ','), i.moneda || 'PES', String(i.importe_original ?? '').replace('.', ','), i.pagado_at ? 'Pagado' : 'Por pagar', i.pagado_at || '', i.pago_medio || '', i.pago_ref || '', i.factura_id || '']),
+      String(i.importe).replace('.', ','), i.moneda || 'PES', String(i.importe_original ?? '').replace('.', ','), i.pagado_at ? 'Pagado' : 'Por pagar', i.medio_previsto || '', i.medio_detalle || '', i.pagado_at || '', i.pago_medio || '', i.pago_ref || '', i.factura_id || '']),
   ]);
   const pt = $('#b-pg-todos', el);
   if (pt) pt.onclick = () => $$('[data-pg]', el).forEach(c => { c.checked = true; });
@@ -2485,7 +2535,7 @@ async function vistaLote(el, id) {
     const tot = d.items.filter(i => ids.includes(i.id)).reduce((a, i) => a + i.importe, 0);
     modal(`<h2>Marcar ${ids.length} pago(s) como pagados</h2><p class="muted">Total ${$$m(tot)}</p><form id="f-pg">
       <div class="fila"><div class="campo"><label>Fecha</label><input type="date" name="fecha" value="${new Date().toLocaleDateString('sv-SE')}" required></div>
-      <div class="campo"><label>Medio</label><select name="medio">${MEDIOS_PAGO.map(m => `<option>${m}</option>`).join('')}</select></div></div>
+      <div class="campo"><label>Medio</label><select name="medio"><option value="">El previsto en cada pago</option>${MEDIOS_PAGO.map(m => `<option>${m}</option>`).join('')}</select></div></div>
       <div class="campo"><label>Referencia (opcional)</label><input name="referencia" placeholder="Nº de OP, transferencia o cheque"></div>
       <button class="btn btn-negro" type="submit">${ICO.check}Confirmar</button></form>`, {
       alMontar: (m, cerrar) => { $('#f-pg', m).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api(`/api/pagos/lotes/${L.id}/pagar`, { method: 'POST', body: { ...Object.fromEntries(new FormData(e.target)), items: ids } }); cerrar(); toast('Pagos registrados'); router(); }); }; },

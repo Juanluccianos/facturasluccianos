@@ -709,3 +709,13 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 @media (max-width: 860px) { .nf-grid { grid-template-columns: 1fr; } .nf-ver { position: static; } #nf-items { max-height: 38vh; } .nf-ver .visor { height: 65vh; } .nf-cab { flex-wrap: wrap; } }
 @media (max-width: 860px) { .nf-cab-t { flex-basis: 100%; } }
 .obs-btn { display: block; margin-top: 4px; text-align: left; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Paso "Medios de pago" antes de enviar la propuesta */
+.medios-todos { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; } .medios-todos select { max-width: 220px; }
+.medios-lista { max-height: 52vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+.medio-fila { display: grid; grid-template-columns: minmax(0, 1.4fr) 130px 170px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.medio-fila:last-child { border-bottom: 0; }
+.medio-info { min-width: 0; } .medio-info b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .medio-info small { color: var(--muted); font-size: 12px; }
+.medio-imp { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.medios-res { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.medio-prev { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); margin-top: 3px; } .medio-prev svg { width: 13px; height: 13px; }
+@media (max-width: 860px) { .medio-fila { grid-template-columns: 1fr auto; } .medio-fila select, .medio-fila input { grid-column: 1 / -1; } }
