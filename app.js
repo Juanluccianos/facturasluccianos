@@ -2493,7 +2493,7 @@ async function vistaLote(el, id) {
   const resumenHtml = () => {
     const sel = (i) => !aprobando || ap.sel.has(i.id);
     const filasCat = nombreCats.map(k => { const its = porCat[k]; const t = its.reduce((a, i) => a + i.importe, 0); const ts = its.filter(sel).reduce((a, i) => a + i.importe, 0);
-      return `<tr><td>${dotCat(k)}<b>${esc(nomCat(k))}</b></td><td class="num">${its.length}</td><td class="num">${$$m(t)}</td><td class="num">${aprobando ? $$m(ts) : (R.por_categoria[k] ? $$corto(t) : '—')}</td><td style="width:28%"><div class="medidor"><i style="width:${R.total ? (t / R.total * 100).toFixed(1) : 0}%;background:${colCat(k)}"></i></div></td></tr>`; }).join('');
+      return `<tr><td class="nw">${dotCat(k)}<b>${esc(nomCat(k))}</b></td><td class="num">${its.length}</td><td class="num">${$$m(t)}</td><td class="num">${aprobando ? $$m(ts) : (R.total ? Math.round(t / R.total * 100) + '%' : '—')}</td></tr>`; }).join('');
     const provs = gruposDe(d.items).slice(0, 8);
     const maxP = Math.max(...provs.map(p => p.total), 1);
     const hoyIso = new Date().toLocaleDateString('sv-SE');
@@ -2505,15 +2505,17 @@ async function vistaLote(el, id) {
     const promAprob = previas.length ? previas.reduce((a, x) => a + x.aprobado, 0) / previas.length : null;
     const alertas = d.items.filter(i => i.alertas?.length);
     return `<div class="res-grid">
-      <section class="panel"><div class="panel-titulo"><h2>Por categoría</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Categoría</th><th class="num">Pagos</th><th class="num">Propuesto</th><th class="num">${aprobando ? 'Aprobando' : ''}</th><th></th></tr></thead><tbody>${filasCat}</tbody>
-        <tfoot><tr><td><b>Total</b></td><td class="num">${R.items}</td><td class="num"><b>${$$m(R.total)}</b></td><td class="num">${aprobando ? '<b>' + $$m(totalSel()) + '</b>' : ''}</td><td></td></tr></tfoot></table></div></section>
+      <section class="panel res-ancho"><div class="panel-titulo"><h2>Por categoría</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Categoría</th><th class="num">Pagos</th><th class="num">Propuesto</th><th class="num">${aprobando ? 'Aprobando' : '% del total'}</th></tr></thead><tbody>${filasCat}</tbody>
+        <tfoot><tr><td><b>Total</b></td><td class="num">${R.items}</td><td class="num"><b>${$$m(R.total)}</b></td><td class="num">${aprobando ? '<b>' + $$m(totalSel()) + '</b>' : '100%'}</td></tr></tfoot></table></div></section>
+      <section class="panel"><div class="panel-titulo"><h2>Principales proveedores</h2><span class="muted small">${gruposDe(d.items).length} en total</span></div><div class="panel-pad res-provs">
+        ${provs.map(p => `<div class="rp"><div class="rp-n" title="${esc(p.nombre)}">${dotCat(p.items[0].categoria)}<span>${esc(p.nombre)}</span>${p.items.length > 1 ? `<small class="muted">${p.items.length} fact.</small>` : ''}</div><div class="medidor"><i style="width:${(p.total / maxP * 100).toFixed(1)}%;background:${colCat(p.items[0].categoria)}"></i></div><b>${$$corto(p.total)}</b></div>`).join('')}</div></section>
+      <div class="res-col">
       <section class="panel"><div class="panel-titulo"><h2>Vencimientos</h2><span class="muted small">pago del ${fmtF(L.fecha_pago)}</span></div><div class="panel-pad res-venc">
         ${[['vencidas', 'Ya vencidas', 'txt-neg'], ['hasta', 'Vencen hasta el día de pago', ''], ['despues', 'Vencen después (se adelantan)', 'txt-warn'], ['sin', 'Sin vencimiento', 'muted']].filter(([k]) => venc[k][0]).map(([k, t, c]) => `<div class="rv"><span class="${c}">${t}</span><span class="muted small">${venc[k][0]} pago(s)</span><b>${$$m(venc[k][1])}</b></div>`).join('')}</div></section>
-      <section class="panel"><div class="panel-titulo"><h2>Principales proveedores</h2><span class="muted small">${gruposDe(d.items).length} en total</span></div><div class="panel-pad res-provs">
-        ${provs.map(p => `<div class="rp"><div class="rp-n">${dotCat(p.items[0].categoria)}<span>${esc(p.nombre)}</span><small class="muted">${p.items.length > 1 ? p.items.length + ' fact.' : ''}</small></div><div class="medidor"><i style="width:${(p.total / maxP * 100).toFixed(1)}%;background:${colCat(p.items[0].categoria)}"></i></div><b>${$$corto(p.total)}</b></div>`).join('')}</div></section>
       <section class="panel"><div class="panel-titulo"><h2>Cómo se paga</h2></div><div class="panel-pad res-venc">
         ${Object.entries(medios).sort((a, b) => b[1] - a[1]).map(([m, v]) => `<div class="rv"><span>${esc(m)}</span><span class="muted small">${R.total ? Math.round(v / R.total * 100) : 0}%</span><b>${$$m(v)}</b></div>`).join('')}
         ${alertas.length ? `<div class="rv"><span class="txt-neg">Pagos con alertas</span><span class="muted small">${alertas.length}</span><b>revisalos en su categoría</b></div>` : ''}</div></section>
+      </div>
       ${previas.length ? `<section class="panel res-ancho"><div class="panel-titulo"><h2>Comparado con las propuestas anteriores</h2>${promAprob ? `<span class="muted small">Esta propuesta es ${$$corto(R.total)}; el promedio aprobado de las últimas ${previas.length} fue ${$$corto(promAprob)}</span>` : ''}</div>
         <div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Pago</th><th class="num">Propuesto</th><th class="num">Aprobado</th><th class="num">Observado</th><th>Materia prima / Gastos / Inversión (aprobado)</th></tr></thead><tbody>
         ${previas.map(x => { const mc = (hist.por_mes.find(m => m.mes === String(x.fecha_pago).slice(0, 7)) || {}).por_categoria || {}; return `<tr><td>${fmtF(x.fecha_pago)} <span class="muted small">#${x.id}</span></td><td class="num">${$$corto(x.propuesto)}</td><td class="num">${$$corto(x.aprobado)} <span class="muted small">${x.propuesto ? Math.round(x.aprobado / x.propuesto * 100) : 0}%</span></td><td class="num ${x.observado ? 'txt-neg' : ''}">${x.observado ? $$corto(x.observado) : '—'}</td><td style="width:32%">${barraCategorias(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, v.aprobado])), x.aprobado)}</td></tr>`; }).join('')}
