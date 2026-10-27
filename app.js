@@ -400,6 +400,7 @@ const RUTAS = [
   { re: /^#\/propuestas$/, v: vistaPropuestas, nav: 'propuestas', miga: 'Pagos / <b>Propuestas</b>' },
   { re: /^#\/propuesta\/nueva$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Nueva propuesta</b>' },
   { re: /^#\/propuesta\/(\d+)\/editar$/, v: vistaPropuestaEditar, nav: 'propuestas', miga: 'Pagos / <b>Editar propuesta</b>' },
+  { re: /^#\/analisis-pagos$/, v: vistaAnalisisPagos, nav: 'analisis-pagos', miga: 'Pagos / <b>Análisis de pagos</b>' },
   { re: /^#\/pagos-ajustes$/, v: vistaAjustesPagos, nav: 'propuestas', miga: 'Pagos / <b>Ajustes</b>' },
   { re: /^#\/pago\/(\d+)$/, v: vistaLote, nav: 'propuestas', miga: 'Pagos / <b>Propuesta</b>' },
   { re: /^#\/analisis$/, v: vistaAnalisis, nav: 'analisis', miga: 'Datos / <b>Análisis de compras</b>' },
@@ -418,7 +419,7 @@ function shell(ruta) {
     <aside class="side">
       <a class="brand" href="#/tablero"><img src="logo-negro.png" alt="Lucciano's"><span>Facturas de proveedores</span></a>
       <nav class="nav" aria-label="Secciones">
-        ${dir ? `${it('propuestas', 'coin', 'Aprobar pagos', '<span class="cnt hot" data-cnt="pagos"></span>')}<div class="grp-t">Ayuda</div>${it('guia', 'book', 'Cómo aprobar')}` : `
+        ${dir ? `${it('propuestas', 'coin', 'Aprobar pagos', '<span class="cnt hot" data-cnt="pagos"></span>')}${it('analisis-pagos', 'chart', 'Análisis de pagos')}<div class="grp-t">Ayuda</div>${it('guia', 'book', 'Cómo aprobar')}` : `
         ${it('tablero', 'home', 'Inicio')}
         <div class="grp-t">Trabajo</div>
         ${it('bandeja', 'inbox', 'Para revisar', '<span class="cnt hot" data-cnt="revisar"></span>')}
@@ -427,6 +428,7 @@ function shell(ruta) {
         ${it('facturas', 'doc', 'Todas las facturas')}
         ${it('pagos', 'calendar', 'Agenda de pagos')}
         ${puede('aprobador') ? it('propuestas', 'coin', 'Propuestas de pago', '<span class="cnt" data-cnt="pagos"></span>') : ''}
+        ${puede('aprobador') ? it('analisis-pagos', 'chart', 'Análisis de pagos') : ''}
         <div class="grp-t">Datos</div>
         ${it('proveedores', 'users', 'Proveedores')}
         ${it('analisis', 'chart', 'Análisis de compras')}
@@ -446,6 +448,7 @@ function shell(ruta) {
     </div></div>
     <nav class="mnav" aria-label="Secciones">${dir ? `
       <a href="#/propuestas" class="${a === 'propuestas' ? 'activo' : ''}">${ICO.coin}Aprobar<span class="cnt hot" data-cnt="pagos"></span></a>
+      <a href="#/analisis-pagos" class="${a === 'analisis-pagos' ? 'activo' : ''}">${ICO.chart}Análisis</a>
       <a href="#/guia" class="${a === 'guia' ? 'activo' : ''}">${ICO.book}Ayuda</a>` : `
       <a href="#/tablero" class="${a === 'tablero' ? 'activo' : ''}">${ICO.home}Inicio</a>
       <a href="#/bandeja" class="${a === 'bandeja' ? 'activo' : ''}">${ICO.inbox}Revisar<span class="cnt hot" data-cnt="revisar"></span></a>
@@ -490,7 +493,7 @@ async function router() {
   const h = location.hash || (esDirector() ? '#/propuestas' : '#/tablero');
   const r = RUTAS.find(x => x.re.test(h)) || RUTAS[0];
   // El Director solo ve aprobación de pagos, facturas (lectura), la guía y su cuenta
-  if (esDirector() && (!['propuestas', 'guia', ''].includes(r.nav) || /^#\/(propuesta\/|pagos-ajustes)/.test(h))) { location.replace('#/propuestas'); return; }
+  if (esDirector() && (!['propuestas', 'analisis-pagos', 'guia', ''].includes(r.nav) || /^#\/(propuesta\/|pagos-ajustes)/.test(h))) { location.replace('#/propuestas'); return; }
   const m = h.match(r.re) || [];
   $('#app').innerHTML = shell(r);
   $('#b-salir').onclick = () => salir();
@@ -2427,7 +2430,7 @@ async function vistaPropuestaEditar(el, id) {
 
 // ---- Detalle de una propuesta (y aprobación del Director) ----
 async function vistaLote(el, id) {
-  const d = await api('/api/pagos/lotes/' + id);
+  const [d, hist] = await Promise.all([api('/api/pagos/lotes/' + id), api('/api/pagos/analisis?meses=6').catch(() => null)]);
   const L = d.lote, R = d.resumen;
   const aprobando = d.puede.resolver;
   const porCat = {};
@@ -2437,32 +2440,87 @@ async function vistaLote(el, id) {
 
   // Estado de la aprobación (solo Director)
   const ap = { sel: new Set(d.items.map(i => i.id)), coment: {}, general: '' };
+  const pgSel = new Set();   // pagos tildados para marcar como pagados (se mantienen al cambiar de pestaña)
   const nombreCats = Object.keys(CAT_PAGO).filter(k => porCat[k]).concat(Object.keys(porCat).filter(k => !CAT_PAGO[k]));
+  const colCat = (k) => (CAT_PAGO[k] || CAT_PAGO.gasto)[1];
+  const claveTab = 'lote_tab_' + id;
+  let tab = sessionStorage.getItem(claveTab) || 'resumen';
+  if (tab !== 'resumen' && !porCat[tab]) tab = 'resumen';
 
+  // Una línea por factura (dentro del grupo de su proveedor)
   const filaItem = (it) => {
     const sel = ap.sel.has(it.id);
     const decision = it.decision ? `<span class="badge ${it.decision === 'aprobado' ? 'b-ok' : 'b-critica'}">${it.decision === 'aprobado' ? 'Aprobado' : 'Observado'}</span>` : '';
-    const pagado = it.pagado_at ? `<span class="badge b-cargada">Pagado ${fmtF(it.pagado_at)}</span><small class="sub-celda">${esc(it.pago_medio || '')}${it.pago_ref ? ' · ' + esc(it.pago_ref) : ''}</small>` : '';
+    const pagado = it.pagado_at ? `<span class="badge b-cargada">Pagado ${fmtF(it.pagado_at)}</span>${it.pago_medio || it.pago_ref ? `<small class="muted">${esc(it.pago_medio || '')}${it.pago_ref ? ' · ' + esc(it.pago_ref) : ''}</small>` : ''}` : '';
     const puedePagar = d.puede.pagar && it.decision === 'aprobado' && !it.pagado_at;
-    return `<div class="ip ${aprobando && !sel ? 'apagada' : ''} ${it.alertas?.some(a => a.grave) ? 'grave' : ''}" data-item="${it.id}">
-      ${aprobando ? `<input type="checkbox" data-ap="${it.id}" ${sel ? 'checked' : ''} aria-label="Aprobar">` : puedePagar ? `<input type="checkbox" data-pg="${it.id}" aria-label="Marcar pagado">` : '<span></span>'}
-      <div class="ip-info"><b>${esc(it.proveedor)}</b>
-        <small>${esc(it.concepto || '')}${it.fecha_vto ? ` · vence ${fmtF(it.fecha_vto)}` : ''}${it.cbu ? ` · <span class="mono">${esc(it.cbu)}</span>` : ''}</small>
-        ${it.medio_previsto ? `<div class="small medio-prev">${ICO.coin}${esc(it.medio_previsto)}${it.medio_detalle ? ' · ' + esc(it.medio_detalle) : ''}</div>` : ''}
-        ${it.alertas?.length ? `<div class="chips">${chipsAlertas(it.alertas)}</div>` : ''}
-        ${it.comentario ? `<div class="small con-ico" style="margin-top:4px">${ICO.chat}${esc(it.comentario)}</div>` : ''}
-        ${aprobando ? `<input class="ip-coment" data-com="${it.id}" placeholder="${sel ? 'Comentario (opcional)' : 'Por qué no lo aprobás (obligatorio)'}" value="${esc(ap.coment[it.id] || '')}" ${sel ? 'hidden' : ''}>` : ''}
-        <div class="chips" style="margin-top:4px">${decision}${pagado}${it.factura_id ? `<button class="btn-link small" data-pdf="${it.factura_id}">Ver factura</button>` : ''}</div></div>
-      <div class="ip-monto ${it.importe < 0 ? 'txt-neg' : ''}">${$$m(it.importe)}${it.moneda && it.moneda !== 'PES' ? `<small>${esc(it.moneda)} ${fmtNum.format(it.importe_original)}</small>` : ''}</div></div>`;
+    const vencida = it.fecha_vto && it.fecha_vto < L.fecha_pago;
+    return `<div class="fl ${aprobando && !sel ? 'apagada' : ''} ${it.alertas?.some(a => a.grave) ? 'grave' : ''}" data-item="${it.id}">
+      ${aprobando ? `<input type="checkbox" data-ap="${it.id}" ${sel ? 'checked' : ''} aria-label="Aprobar">` : puedePagar ? `<input type="checkbox" data-pg="${it.id}" ${pgSel.has(it.id) ? 'checked' : ''} aria-label="Marcar pagado">` : '<span></span>'}
+      <div class="fl-info"><div class="fl-l1"><span class="fl-cbte">${esc(it.concepto || '')}</span>${it.fecha_vto ? `<span class="fl-vto ${vencida ? 'txt-neg' : ''}">${vencida ? 'venció' : 'vence'} ${fmtF(it.fecha_vto)}</span>` : ''}${it.medio_previsto ? `<span class="fl-medio">${esc(it.medio_previsto)}${it.medio_detalle ? ' · ' + esc(it.medio_detalle) : ''}</span>` : ''}${it.cbu ? `<span class="mono fl-cbu">${esc(it.cbu)}</span>` : ''}${it.factura_id ? `<button class="btn-link small" data-pdf="${it.factura_id}">Ver factura</button>` : ''}</div>
+        ${it.alertas?.length || decision || pagado ? `<div class="chips">${chipsAlertas(it.alertas)}${decision}${pagado}</div>` : ''}
+        ${it.comentario ? `<div class="small con-ico fl-com">${ICO.chat}${esc(it.comentario)}</div>` : ''}
+        ${aprobando ? `<input class="ip-coment" data-com="${it.id}" placeholder="Por qué no lo aprobás (obligatorio)" value="${esc(ap.coment[it.id] || '')}" ${sel ? 'hidden' : ''}>` : ''}</div>
+      <div class="fl-monto ${it.importe < 0 ? 'txt-neg' : ''}">${$$m(it.importe)}${it.moneda && it.moneda !== 'PES' ? `<small>${esc(it.moneda)} ${fmtNum.format(it.importe_original)}</small>` : ''}</div></div>`;
+  };
+  // Facturas agrupadas por proveedor
+  const gruposDe = (its) => {
+    const m = new Map();
+    for (const it of its) { const k = it.cuit_proveedor || it.proveedor; if (!m.has(k)) m.set(k, []); m.get(k).push(it); }
+    return [...m.entries()].map(([k, v]) => ({ k, nombre: v[0].proveedor, items: v, total: v.reduce((a, i) => a + i.importe, 0) })).sort((a, b) => b.total - a.total);
   };
   const seccion = (k) => {
     const its = porCat[k];
     const tot = its.reduce((a, i) => a + i.importe, 0);
     const selT = its.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
-    return `<section class="panel cat-sec"><div class="panel-titulo"><h2>${aprobando ? `<input type="checkbox" data-apcat="${k}" ${its.every(i => ap.sel.has(i.id)) ? 'checked' : ''} aria-label="Aprobar toda la categoría"> ` : ''}${dotCat(k)}${esc(nomCat(k))} <span class="muted small">${its.length}</span></h2>
-      <b>${aprobando && selT !== tot ? `<span class="muted small">${$$m(selT)} de </span>` : ''}${$$m(tot)}</b></div>
-      <div class="ips">${its.map(filaItem).join('')}</div></section>`;
+    const grupos = gruposDe(its);
+    return `<section class="panel cat-panel" style="--c:${colCat(k)}">
+      <div class="cat-cab"><h2>${aprobando ? `<input type="checkbox" data-apcat="${k}" ${its.every(i => ap.sel.has(i.id)) ? 'checked' : ''} aria-label="Aprobar toda la categoría">` : ''}${esc(nomCat(k))}<span class="muted small">${its.length} factura(s) · ${grupos.length} proveedor(es)</span></h2>
+        <div class="cat-tot">${aprobando && Math.abs(selT - tot) > .005 ? `<span class="muted small">aprobás ${$$m(selT)} de</span> ` : ''}<b>${$$m(tot)}</b></div></div>
+      ${grupos.map(g => {
+        const todos = g.items.every(i => ap.sel.has(i.id)), alguno = g.items.some(i => ap.sel.has(i.id));
+        return `<div class="pg ${aprobando && !alguno ? 'apagada' : ''}"><div class="pg-cab">${aprobando ? `<input type="checkbox" data-approv="${esc(g.k)}" data-cat="${k}" ${todos ? 'checked' : ''} aria-label="Aprobar todo ${esc(g.nombre)}">` : '<span></span>'}
+          <div class="pg-n"><b>${esc(g.nombre)}</b>${g.items.length > 1 ? `<small>${g.items.length} facturas</small>` : ''}</div><div class="pg-tot">${$$m(g.total)}</div></div>
+          <div class="pg-items">${g.items.map(filaItem).join('')}</div></div>`;
+      }).join('')}</section>`;
   };
+  // Pestañas: Resumen + una por categoría (con su color)
+  const pestanas = () => `<div class="cat-tabs" role="tablist">
+      <button role="tab" data-tab="resumen" class="cat-tab ${tab === 'resumen' ? 'on' : ''}" style="--c:var(--ink)"><span class="ct-t">${ICO.chart}Resumen</span><span class="ct-v">${$$corto(R.total)}</span><span class="ct-s">${R.items} pago(s) en total</span></button>
+      ${nombreCats.map(k => { const its = porCat[k]; const tot = its.reduce((a, i) => a + i.importe, 0); const nSel = its.filter(i => ap.sel.has(i.id)).length;
+        return `<button role="tab" data-tab="${k}" class="cat-tab ${tab === k ? 'on' : ''}" style="--c:${colCat(k)}"><span class="ct-t">${dotCat(k)}${esc(nomCat(k))}</span><span class="ct-v">${$$corto(tot)}</span>
+          <span class="ct-s">${its.length} pago(s) · ${R.total ? Math.round(tot / R.total * 100) : 0}%${aprobando && nSel < its.length ? ` · <b class="txt-neg">${its.length - nSel} sin aprobar</b>` : ''}</span></button>`; }).join('')}</div>`;
+  // ---- Resumen de la propuesta
+  const resumenHtml = () => {
+    const sel = (i) => !aprobando || ap.sel.has(i.id);
+    const filasCat = nombreCats.map(k => { const its = porCat[k]; const t = its.reduce((a, i) => a + i.importe, 0); const ts = its.filter(sel).reduce((a, i) => a + i.importe, 0);
+      return `<tr><td>${dotCat(k)}<b>${esc(nomCat(k))}</b></td><td class="num">${its.length}</td><td class="num">${$$m(t)}</td><td class="num">${aprobando ? $$m(ts) : (R.por_categoria[k] ? $$corto(t) : '—')}</td><td style="width:28%"><div class="medidor"><i style="width:${R.total ? (t / R.total * 100).toFixed(1) : 0}%;background:${colCat(k)}"></i></div></td></tr>`; }).join('');
+    const provs = gruposDe(d.items).slice(0, 8);
+    const maxP = Math.max(...provs.map(p => p.total), 1);
+    const hoyIso = new Date().toLocaleDateString('sv-SE');
+    const venc = { vencidas: [0, 0], hasta: [0, 0], despues: [0, 0], sin: [0, 0] };
+    for (const i of d.items) { const b = !i.fecha_vto ? 'sin' : i.fecha_vto < hoyIso ? 'vencidas' : i.fecha_vto <= L.fecha_pago ? 'hasta' : 'despues'; venc[b][0]++; venc[b][1] += i.importe; }
+    const medios = {};
+    for (const i of d.items) { const m = i.medio_previsto || 'Sin indicar'; medios[m] = (medios[m] || 0) + i.importe; }
+    const previas = (hist?.lotes || []).filter(x => x.id !== L.id && x.estado !== 'enviado').slice(0, 4);
+    const promAprob = previas.length ? previas.reduce((a, x) => a + x.aprobado, 0) / previas.length : null;
+    const alertas = d.items.filter(i => i.alertas?.length);
+    return `<div class="res-grid">
+      <section class="panel"><div class="panel-titulo"><h2>Por categoría</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Categoría</th><th class="num">Pagos</th><th class="num">Propuesto</th><th class="num">${aprobando ? 'Aprobando' : ''}</th><th></th></tr></thead><tbody>${filasCat}</tbody>
+        <tfoot><tr><td><b>Total</b></td><td class="num">${R.items}</td><td class="num"><b>${$$m(R.total)}</b></td><td class="num">${aprobando ? '<b>' + $$m(totalSel()) + '</b>' : ''}</td><td></td></tr></tfoot></table></div></section>
+      <section class="panel"><div class="panel-titulo"><h2>Vencimientos</h2><span class="muted small">pago del ${fmtF(L.fecha_pago)}</span></div><div class="panel-pad res-venc">
+        ${[['vencidas', 'Ya vencidas', 'txt-neg'], ['hasta', 'Vencen hasta el día de pago', ''], ['despues', 'Vencen después (se adelantan)', 'txt-warn'], ['sin', 'Sin vencimiento', 'muted']].filter(([k]) => venc[k][0]).map(([k, t, c]) => `<div class="rv"><span class="${c}">${t}</span><span class="muted small">${venc[k][0]} pago(s)</span><b>${$$m(venc[k][1])}</b></div>`).join('')}</div></section>
+      <section class="panel"><div class="panel-titulo"><h2>Principales proveedores</h2><span class="muted small">${gruposDe(d.items).length} en total</span></div><div class="panel-pad res-provs">
+        ${provs.map(p => `<div class="rp"><div class="rp-n">${dotCat(p.items[0].categoria)}<span>${esc(p.nombre)}</span><small class="muted">${p.items.length > 1 ? p.items.length + ' fact.' : ''}</small></div><div class="medidor"><i style="width:${(p.total / maxP * 100).toFixed(1)}%;background:${colCat(p.items[0].categoria)}"></i></div><b>${$$corto(p.total)}</b></div>`).join('')}</div></section>
+      <section class="panel"><div class="panel-titulo"><h2>Cómo se paga</h2></div><div class="panel-pad res-venc">
+        ${Object.entries(medios).sort((a, b) => b[1] - a[1]).map(([m, v]) => `<div class="rv"><span>${esc(m)}</span><span class="muted small">${R.total ? Math.round(v / R.total * 100) : 0}%</span><b>${$$m(v)}</b></div>`).join('')}
+        ${alertas.length ? `<div class="rv"><span class="txt-neg">Pagos con alertas</span><span class="muted small">${alertas.length}</span><b>revisalos en su categoría</b></div>` : ''}</div></section>
+      ${previas.length ? `<section class="panel res-ancho"><div class="panel-titulo"><h2>Comparado con las propuestas anteriores</h2>${promAprob ? `<span class="muted small">Esta propuesta es ${$$corto(R.total)}; el promedio aprobado de las últimas ${previas.length} fue ${$$corto(promAprob)}</span>` : ''}</div>
+        <div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Pago</th><th class="num">Propuesto</th><th class="num">Aprobado</th><th class="num">Observado</th><th>Materia prima / Gastos / Inversión (aprobado)</th></tr></thead><tbody>
+        ${previas.map(x => { const mc = (hist.por_mes.find(m => m.mes === String(x.fecha_pago).slice(0, 7)) || {}).por_categoria || {}; return `<tr><td>${fmtF(x.fecha_pago)} <span class="muted small">#${x.id}</span></td><td class="num">${$$corto(x.propuesto)}</td><td class="num">${$$corto(x.aprobado)} <span class="muted small">${x.propuesto ? Math.round(x.aprobado / x.propuesto * 100) : 0}%</span></td><td class="num ${x.observado ? 'txt-neg' : ''}">${x.observado ? $$corto(x.observado) : '—'}</td><td style="width:32%">${barraCategorias(Object.fromEntries(Object.entries(mc).map(([k, v]) => [k, v.aprobado])), x.aprobado)}</td></tr>`; }).join('')}
+        </tbody></table></div></section>` : ''}
+    </div>`;
+  };
+  const contenido = () => tab === 'resumen' ? resumenHtml() : seccion(tab);
   const totalSel = () => d.items.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
 
   const acciones = [];
@@ -2478,11 +2536,11 @@ async function vistaLote(el, id) {
       ${acciones.length ? `<div class="acciones">${acciones.join('')}</div>` : ''}</div>
     ${L.nota ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Nota:</b> ${esc(L.nota)}</div>` : ''}
     ${L.comentario_director ? `<div class="panel panel-pad" style="margin-bottom:16px"><b>Comentario del Director:</b> ${esc(L.comentario_director)}</div>` : ''}
-    <div class="kpis"><div class="kpi"><div class="et">Total propuesto</div><div class="val">${$$corto(R.total)}</div><div class="sub">${R.items} pago(s)${R.alertas_graves ? ` · <b class="txt-neg">${R.alertas_graves} con alerta</b>` : ''}</div>${barraCategorias(R.por_categoria, R.total)}</div>
-      ${kpisCategorias(R.por_categoria, R.total)}</div>
+    ${R.alertas_graves ? `<div class="panel panel-pad txt-neg" style="margin-bottom:12px"><b>${R.alertas_graves} pago(s) con alerta.</b> Revisalos en su categoría antes de aprobar.</div>` : ''}
+    <div id="tabs-cat">${pestanas()}</div>
     ${['aprobado', 'parcial', 'cerrado', 'rechazado'].includes(L.estado) ? `<div class="kpis"><div class="kpi ok"><div class="et">Aprobado</div><div class="val">${$$corto(R.aprobado)}</div></div><div class="kpi ${R.observado ? 'alerta' : ''}"><div class="et">Observado</div><div class="val">${$$corto(R.observado)}</div></div><div class="kpi"><div class="et">Pagado</div><div class="val">${$$corto(R.pagado)}</div><div class="sub">${R.aprobado - R.pagado > 0.009 ? `falta ${$$m(R.aprobado - R.pagado)}` : 'completo'}</div></div></div>` : ''}
     ${aprobando ? '<p class="muted">Tildá lo que aprobás. Lo que destildes queda <b>observado</b> y se devuelve al área de Pagos con tu comentario (obligatorio). </p>' : ''}
-    <div id="secs">${nombreCats.map(seccion).join('')}</div>
+    <div id="secs">${contenido()}</div>
     ${aprobando ? `<div class="barra-acciones" id="barra-ap"></div>` : ''}
     ${d.puede.pagar && d.items.some(i => i.decision === 'aprobado' && !i.pagado_at) ? `<div class="barra-acciones"><div class="principal small muted">Seleccioná los pagos realizados y marcalos como pagados.</div><button class="btn btn-chico" id="b-pg-todos">Tildar todos</button><button class="btn btn-negro" id="b-pagar">${ICO.check}Marcar pagados</button></div>` : ''}
     ${firmaDirector(L, d, R)}
@@ -2521,14 +2579,20 @@ async function vistaLote(el, id) {
       repintarAp(iid);
     });
     $$('[data-apcat]', el).forEach(c => c.onchange = () => { for (const it of porCat[c.dataset.apcat]) c.checked ? ap.sel.add(it.id) : ap.sel.delete(it.id); repintarAp(); });
+    $$('[data-approv]', el).forEach(c => c.onchange = () => { for (const it of porCat[c.dataset.cat].filter(i => (i.cuit_proveedor || i.proveedor) === c.dataset.approv)) c.checked ? ap.sel.add(it.id) : ap.sel.delete(it.id); repintarAp(); });
     $$('[data-com]', el).forEach(i => i.oninput = () => { ap.coment[i.dataset.com] = i.value; });
   };
+  const conectarPg = () => $$('[data-pg]', el).forEach(c => c.onchange = () => { const i = Number(c.dataset.pg); c.checked ? pgSel.add(i) : pgSel.delete(i); });
+  const conectarTabs = () => { conectarPg(); $$('[data-tab]', el).forEach(b => b.onclick = () => { tab = b.dataset.tab; sessionStorage.setItem(claveTab, tab); repintarAp(); window.scrollTo({ top: $('#tabs-cat').offsetTop - 70, behavior: 'smooth' }); }); };
   const repintarAp = (foco) => {
-    $('#secs').innerHTML = nombreCats.map(seccion).join('');
+    $('#tabs-cat').innerHTML = pestanas();
+    $('#secs').innerHTML = contenido();
+    conectarTabs();
     $$('[data-pdf]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.pdf));
-    conectarAp(); pintarBarraAp();
+    if (aprobando) { conectarAp(); pintarBarraAp(); }
     if (foco && !ap.sel.has(foco)) $(`[data-com="${foco}"]`)?.focus();
   };
+  conectarTabs();
   if (aprobando) { conectarAp(); pintarBarraAp(); }
 
   // Acciones de Pili
@@ -2548,10 +2612,10 @@ async function vistaLote(el, id) {
       String(i.importe).replace('.', ','), i.moneda || 'PES', String(i.importe_original ?? '').replace('.', ','), i.pagado_at ? 'Pagado' : 'Por pagar', i.medio_previsto || '', i.medio_detalle || '', i.pagado_at || '', i.pago_medio || '', i.pago_ref || '', i.factura_id || '']),
   ]);
   const pt = $('#b-pg-todos', el);
-  if (pt) pt.onclick = () => $$('[data-pg]', el).forEach(c => { c.checked = true; });
+  if (pt) pt.onclick = () => { for (const i of d.items) if (d.puede.pagar && i.decision === 'aprobado' && !i.pagado_at) pgSel.add(i.id); $$('[data-pg]', el).forEach(c => { c.checked = true; }); toast(`${pgSel.size} pago(s) tildados en todas las categorías`); };
   const pg = $('#b-pagar', el);
   if (pg) pg.onclick = () => {
-    const ids = $$('[data-pg]:checked', el).map(c => Number(c.dataset.pg));
+    const ids = [...pgSel];
     if (!ids.length) return toast('Seleccioná los pagos realizados.', true);
     const tot = d.items.filter(i => ids.includes(i.id)).reduce((a, i) => a + i.importe, 0);
     modal(`<h2>Marcar ${ids.length} pago(s) como pagados</h2><p class="muted">Total ${$$m(tot)}</p><form id="f-pg">
@@ -2566,6 +2630,52 @@ async function vistaLote(el, id) {
 const safeParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
 
 // ---- Guía para el Director ----
+// ---- Análisis de pagos: lo propuesto, aprobado, observado y pagado por mes, categoría y proveedor ----
+async function vistaAnalisisPagos(el) {
+  let meses = Number(sessionStorage.getItem('anp_meses')) || 6;
+  const pintar = async () => {
+    const a = await api('/api/pagos/analisis?meses=' + meses);
+    const T = a.total, pct = (x, y) => (y ? Math.round(x / y * 100) : 0);
+    const resueltas = a.lotes.filter(l => l.horas_resolucion != null);
+    const horas = resueltas.length ? resueltas.reduce((s, l) => s + l.horas_resolucion, 0) / resueltas.length : null;
+    const maxMes = Math.max(...a.por_mes.map(m => m.propuesto), 1);
+    const nomMes = (k) => new Date(k + '-15T12:00:00').toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }).replace('.', '');
+    const cats = Object.keys(CAT_PAGO);
+    el.innerHTML = `<div class="encabezado"><div><h1>Análisis de pagos</h1><p>Lo que se propuso, se aprobó, se observó y se pagó en las propuestas enviadas.</p></div>
+      <div class="seg" id="seg-meses">${[3, 6, 12].map(m => `<button data-m="${m}" class="${m === meses ? 'on' : ''}">${m} meses</button>`).join('')}</div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="et">Propuesto</div><div class="val">${$$corto(T.propuesto)}</div><div class="sub">${T.n} pago(s) en ${a.lotes.length} propuesta(s)</div></div>
+        <div class="kpi ok"><div class="et">Aprobado</div><div class="val">${$$corto(T.aprobado)}</div><div class="sub">${pct(T.aprobado, T.propuesto)}% de lo propuesto · ${T.n_aprobado} pago(s)</div></div>
+        <div class="kpi ${T.observado ? 'alerta' : ''}"><div class="et">Observado</div><div class="val">${$$corto(T.observado)}</div><div class="sub">${pct(T.observado, T.propuesto)}% · ${T.n_observado} pago(s)</div></div>
+        <div class="kpi"><div class="et">Pagado</div><div class="val">${$$corto(T.pagado)}</div><div class="sub">${pct(T.pagado, T.aprobado)}% de lo aprobado${T.en_aprobacion ? ' · ' + $$corto(T.en_aprobacion) + ' esperando aprobación' : ''}</div></div>
+        <div class="kpi"><div class="et">Tiempo de aprobación</div><div class="val">${horas == null ? '—' : horas < 24 ? Math.round(horas) + ' h' : (horas / 24).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' días'}</div><div class="sub">promedio entre el envío y la respuesta</div></div>
+      </div>
+      <section class="panel" style="margin-bottom:16px"><div class="panel-titulo"><h2>Por mes</h2><div class="leyenda small"><span><i style="background:var(--pos)"></i>Aprobado</span><span><i style="background:var(--neg)"></i>Observado</span><span><i style="background:var(--line-strong)"></i>Esperando aprobación</span></div></div>
+        <div class="panel-pad"><div class="barras-mes">${a.por_mes.map(m => `<div class="bm" title="${esc(nomMes(m.mes))}: propuesto ${esc($$m(m.propuesto))}">
+          <div class="bm-val">${m.propuesto ? $$corto(m.propuesto) : ''}</div>
+          <div class="bm-col" style="height:${(m.propuesto / maxMes * 100).toFixed(1)}%">${[['aprobado', 'var(--pos)'], ['observado', 'var(--neg)'], ['en_aprobacion', 'var(--line-strong)']].map(([k, c]) => m[k] ? `<i style="flex:${m[k]};background:${c}"></i>` : '').join('')}</div>
+          <div class="bm-mes">${esc(nomMes(m.mes))}</div></div>`).join('')}</div></div></section>
+      <div class="res-grid">
+        <section class="panel"><div class="panel-titulo"><h2>Por categoría</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Categoría</th><th class="num">Propuesto</th><th class="num">Aprobado</th><th class="num">Observado</th></tr></thead><tbody>
+          ${cats.filter(k => a.por_categoria[k]).map(k => { const c = a.por_categoria[k]; return `<tr><td>${dotCat(k)}<b>${esc(nomCat(k))}</b></td><td class="num">${$$corto(c.propuesto)}</td><td class="num">${$$corto(c.aprobado)} <span class="muted small">${pct(c.aprobado, c.propuesto)}%</span></td><td class="num ${c.observado ? 'txt-neg' : ''}">${c.observado ? $$corto(c.observado) : '—'}</td></tr>`; }).join('') || '<tr><td colspan="4" class="vacio">Sin datos</td></tr>'}
+          </tbody></table></div>
+          <div class="panel-pad"><div class="small muted" style="margin-bottom:6px">Aprobado por mes y categoría</div>${a.por_mes.map(m => `<div class="rp-mes"><span class="small">${esc(nomMes(m.mes))}</span>${barraCategorias(Object.fromEntries(Object.entries(m.por_categoria).map(([k, v]) => [k, v.aprobado])), m.aprobado)}<b class="small">${m.aprobado ? $$corto(m.aprobado) : '—'}</b></div>`).join('')}</div></section>
+        <section class="panel"><div class="panel-titulo"><h2>Proveedores con más pagos aprobados</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Proveedor</th><th class="num">Aprobado</th><th class="num">Observado</th></tr></thead><tbody>
+          ${a.proveedores.map(p => `<tr><td>${dotCat(p.categoria)}${esc(p.proveedor)} <span class="muted small">${p.n} pago(s)</span></td><td class="num">${$$corto(p.aprobado)}</td><td class="num ${p.observado ? 'txt-neg' : ''}">${p.observado ? $$corto(p.observado) : '—'}</td></tr>`).join('') || '<tr><td colspan="3" class="vacio">Sin datos</td></tr>'}
+          </tbody></table></div></section>
+        <section class="panel res-ancho"><div class="panel-titulo"><h2>Propuestas</h2></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Pago</th><th>Sociedad</th><th>Estado</th><th class="num">Propuesto</th><th class="num">Aprobado</th><th class="num">Observado</th><th class="num">Pagado</th><th class="num">Respuesta</th></tr></thead><tbody>
+          ${a.lotes.map(l => `<tr class="click" data-l="${l.id}"><td>${fmtF(l.fecha_pago)} <span class="muted small">#${l.id}</span></td><td>${esc(l.empresa || '')}</td><td>${badgeLote(l.estado)}</td><td class="num">${$$corto(l.propuesto)}</td><td class="num">${l.aprobado ? $$corto(l.aprobado) + ` <span class="muted small">${pct(l.aprobado, l.propuesto)}%</span>` : '—'}</td><td class="num ${l.observado ? 'txt-neg' : ''}">${l.observado ? $$corto(l.observado) : '—'}</td><td class="num">${l.pagado ? $$corto(l.pagado) : '—'}</td><td class="num muted">${l.horas_resolucion == null ? '—' : l.horas_resolucion < 24 ? Math.round(l.horas_resolucion) + ' h' : Math.round(l.horas_resolucion / 24) + ' d'}</td></tr>`).join('') || '<tr><td colspan="8" class="vacio">Todavía no hay propuestas enviadas en este período.</td></tr>'}
+          </tbody></table></div></section>
+        <section class="panel res-ancho"><div class="panel-titulo"><h2>Pagos observados</h2><span class="muted small">los últimos ${a.observados.length}</span></div><div class="tabla-wrap"><table class="tabla-res"><thead><tr><th>Pago</th><th>Proveedor</th><th>Comprobante</th><th class="num">Importe</th><th>Motivo</th></tr></thead><tbody>
+          ${a.observados.map(o => `<tr class="click" data-l="${o.lote_id}"><td>${fmtF(o.fecha_pago)}</td><td>${dotCat(o.categoria)}${esc(o.proveedor)}</td><td class="mono small">${esc(o.concepto || '')}</td><td class="num">${$$m(o.importe)}</td><td>${esc(o.comentario || '—')}</td></tr>`).join('') || '<tr><td colspan="5" class="vacio">No hubo pagos observados en este período.</td></tr>'}
+          </tbody></table></div></section>
+      </div>`;
+    $$('#seg-meses button', el).forEach(b => b.onclick = () => { meses = Number(b.dataset.m); sessionStorage.setItem('anp_meses', meses); pintar().catch(e => toast(e.message, true)); });
+    $$('[data-l]', el).forEach(tr => tr.onclick = () => { location.hash = '#/pago/' + tr.dataset.l; });
+  };
+  await pintar();
+}
+
 function guiaDirector(el) {
   el.innerHTML = `<div class="encabezado"><div><h1>Cómo aprobar pagos</h1><p>Tres pasos, desde el celular o la computadora.</p></div></div>
     <div class="panel panel-pad guia-txt">
