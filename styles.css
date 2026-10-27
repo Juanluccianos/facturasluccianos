@@ -795,3 +795,17 @@ th.ordenable[data-dir="asc"]::after { content: '↑'; opacity: .9; color: var(--
 .rp-mes span { text-transform: capitalize; color: var(--muted); }
 .rp-mes b { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .barras-mes { gap: 6px; height: 190px; } .bm-val { font-size: 10px; } }
+
+/* 2.5.0: una sola página; proveedores plegables */
+.pg-cab { grid-template-columns: 22px minmax(0, 1fr) auto; padding: 8px 18px; }
+.pg-tog { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: left; background: none; border: 0; padding: 4px 0; font: inherit; color: inherit; cursor: pointer; flex-wrap: wrap; }
+.pg-tog:hover .pg-n b { text-decoration: underline; text-underline-offset: 3px; }
+.pg-chev { display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 18px; line-height: 1; color: var(--muted); transition: transform .15s; flex: none; }
+.pg.abierto .pg-chev { transform: rotate(90deg); }
+.pg-n { display: flex; flex-direction: column; min-width: 0; }
+.pg-n small { margin-left: 0; color: var(--muted); font-size: 12px; font-family: var(--sans); }
+.pg-est { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.pg.abierto { background: color-mix(in srgb, var(--c, var(--accent)) 3%, transparent); }
+.pg-items { padding: 0 18px 10px 78px; }
+#cat-resumen { scroll-margin-top: 70px; }
+@media (max-width: 760px) { .pg-items { padding: 0 14px 8px 14px; } .pg-cab { padding: 8px 14px; } }

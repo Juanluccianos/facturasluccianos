@@ -428,7 +428,7 @@ function shell(ruta) {
         ${it('facturas', 'doc', 'Todas las facturas')}
         ${it('pagos', 'calendar', 'Agenda de pagos')}
         ${puede('aprobador') ? it('propuestas', 'coin', 'Propuestas de pago', '<span class="cnt" data-cnt="pagos"></span>') : ''}
-        ${puede('aprobador') ? it('analisis-pagos', 'chart', 'Análisis de pagos') : ''}
+        ${puede('admin') ? it('analisis-pagos', 'chart', 'Análisis de pagos') : ''}
         <div class="grp-t">Datos</div>
         ${it('proveedores', 'users', 'Proveedores')}
         ${it('analisis', 'chart', 'Análisis de compras')}
@@ -2430,7 +2430,7 @@ async function vistaPropuestaEditar(el, id) {
 
 // ---- Detalle de una propuesta (y aprobación del Director) ----
 async function vistaLote(el, id) {
-  const [d, hist] = await Promise.all([api('/api/pagos/lotes/' + id), api('/api/pagos/analisis?meses=6').catch(() => null)]);
+  const [d, hist] = await Promise.all([api('/api/pagos/lotes/' + id), (esDirector() || puede('admin')) ? api('/api/pagos/analisis?meses=6').catch(() => null) : null]);
   const L = d.lote, R = d.resumen;
   const aprobando = d.puede.resolver;
   const porCat = {};
@@ -2443,9 +2443,6 @@ async function vistaLote(el, id) {
   const pgSel = new Set();   // pagos tildados para marcar como pagados (se mantienen al cambiar de pestaña)
   const nombreCats = Object.keys(CAT_PAGO).filter(k => porCat[k]).concat(Object.keys(porCat).filter(k => !CAT_PAGO[k]));
   const colCat = (k) => (CAT_PAGO[k] || CAT_PAGO.gasto)[1];
-  const claveTab = 'lote_tab_' + id;
-  let tab = sessionStorage.getItem(claveTab) || 'resumen';
-  if (tab !== 'resumen' && !porCat[tab]) tab = 'resumen';
 
   // Una línea por factura (dentro del grupo de su proveedor)
   const filaItem = (it) => {
@@ -2468,26 +2465,39 @@ async function vistaLote(el, id) {
     for (const it of its) { const k = it.cuit_proveedor || it.proveedor; if (!m.has(k)) m.set(k, []); m.get(k).push(it); }
     return [...m.entries()].map(([k, v]) => ({ k, nombre: v[0].proveedor, items: v, total: v.reduce((a, i) => a + i.importe, 0) })).sort((a, b) => b.total - a.total);
   };
+  // Proveedores cerrados por defecto; se abren tocándolos (o solos si tienen algo sin aprobar)
+  const abiertos = new Set();
+  const puedePagarIt = (it) => d.puede.pagar && it.decision === 'aprobado' && !it.pagado_at;
   const seccion = (k) => {
     const its = porCat[k];
     const tot = its.reduce((a, i) => a + i.importe, 0);
     const selT = its.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
     const grupos = gruposDe(its);
-    return `<section class="panel cat-panel" style="--c:${colCat(k)}">
-      <div class="cat-cab"><h2>${aprobando ? `<input type="checkbox" data-apcat="${k}" ${its.every(i => ap.sel.has(i.id)) ? 'checked' : ''} aria-label="Aprobar toda la categoría">` : ''}${esc(nomCat(k))}<span class="muted small">${its.length} factura(s) · ${grupos.length} proveedor(es)</span></h2>
+    return `<section class="panel cat-panel" id="cat-${k}" style="--c:${colCat(k)}">
+      <div class="cat-cab"><h2>${aprobando ? `<input type="checkbox" data-apcat="${k}" ${its.every(i => ap.sel.has(i.id)) ? 'checked' : ''} aria-label="Aprobar toda la categoría">` : ''}${dotCat(k)}${esc(nomCat(k))}<span class="muted small">${grupos.length} proveedor(es) · ${its.length} factura(s)</span></h2>
         <div class="cat-tot">${aprobando && Math.abs(selT - tot) > .005 ? `<span class="muted small">aprobás ${$$m(selT)} de</span> ` : ''}<b>${$$m(tot)}</b></div></div>
       ${grupos.map(g => {
+        const gk = k + '|' + g.k;
         const todos = g.items.every(i => ap.sel.has(i.id)), alguno = g.items.some(i => ap.sel.has(i.id));
-        return `<div class="pg ${aprobando && !alguno ? 'apagada' : ''}"><div class="pg-cab">${aprobando ? `<input type="checkbox" data-approv="${esc(g.k)}" data-cat="${k}" ${todos ? 'checked' : ''} aria-label="Aprobar todo ${esc(g.nombre)}">` : '<span></span>'}
-          <div class="pg-n"><b>${esc(g.nombre)}</b>${g.items.length > 1 ? `<small>${g.items.length} facturas</small>` : ''}</div><div class="pg-tot">${$$m(g.total)}</div></div>
-          <div class="pg-items">${g.items.map(filaItem).join('')}</div></div>`;
+        const abierto = abiertos.has(gk) || (aprobando && !todos);
+        const uno = g.items.length === 1 ? g.items[0] : null;
+        const pagables = g.items.filter(puedePagarIt);
+        const nAp = g.items.filter(i => i.decision === 'aprobado').length, nObs = g.items.filter(i => i.decision === 'observado').length, nPag = g.items.filter(i => i.pagado_at).length;
+        const estado = !aprobando && (nAp || nObs || nPag) ? `<span class="pg-est">${nPag ? `<span class="badge b-cargada">${nPag === g.items.length ? 'Pagado' : nPag + ' pagada(s)'}</span>` : ''}${nAp && nPag < nAp ? `<span class="badge b-ok">${nAp === g.items.length ? 'Aprobado' : nAp + ' aprobada(s)'}</span>` : ''}${nObs ? `<span class="badge b-critica">${nObs === g.items.length ? 'Observado' : nObs + ' observada(s)'}</span>` : ''}</span>` : '';
+        const alerta = g.items.some(i => i.alertas?.length) ? `<span class="badge ${g.items.some(i => i.alertas?.some(a => a.grave)) ? 'b-critica' : 'b-warn'}">con alertas</span>` : '';
+        const chk = aprobando ? `<input type="checkbox" data-approv="${esc(g.k)}" data-cat="${k}" ${todos ? 'checked' : ''} aria-label="Aprobar todo ${esc(g.nombre)}">`
+          : pagables.length ? `<input type="checkbox" data-pgprov="${esc(gk)}" ${pagables.every(i => pgSel.has(i.id)) ? 'checked' : ''} aria-label="Marcar pagado todo ${esc(g.nombre)}">` : '<span></span>';
+        return `<div class="pg ${aprobando && !alguno ? 'apagada' : ''} ${abierto ? 'abierto' : ''}"><div class="pg-cab">${chk}
+          <button type="button" class="pg-tog" data-tog="${esc(gk)}" aria-expanded="${abierto}"><span class="pg-chev">›</span><span class="pg-n"><b>${esc(g.nombre)}</b><small>${uno ? esc(uno.concepto || '') + (uno.fecha_vto ? ' · vence ' + fmtF(uno.fecha_vto) : '') : g.items.length + ' facturas'}</small></span>${alerta}${estado}</button>
+          <div class="pg-tot">${$$m(g.total)}</div></div>
+          ${abierto ? `<div class="pg-items">${g.items.map(filaItem).join('')}</div>` : ''}</div>`;
       }).join('')}</section>`;
   };
-  // Pestañas: Resumen + una por categoría (con su color)
-  const pestanas = () => `<div class="cat-tabs" role="tablist">
-      <button role="tab" data-tab="resumen" class="cat-tab ${tab === 'resumen' ? 'on' : ''}" style="--c:var(--ink)"><span class="ct-t">${ICO.chart}Resumen</span><span class="ct-v">${$$corto(R.total)}</span><span class="ct-s">${R.items} pago(s) en total</span></button>
+  // Tarjetas de arriba: atajos a cada bloque (todo está en la misma página)
+  const pestanas = () => `<div class="cat-tabs">
+      <button type="button" data-ir="resumen" class="cat-tab" style="--c:var(--ink)"><span class="ct-t">${ICO.chart}Total</span><span class="ct-v">${$$corto(R.total)}</span><span class="ct-s">${R.items} pago(s)${aprobando && ap.sel.size < d.items.length ? ` · <b class="txt-neg">${d.items.length - ap.sel.size} sin aprobar</b>` : ''}</span></button>
       ${nombreCats.map(k => { const its = porCat[k]; const tot = its.reduce((a, i) => a + i.importe, 0); const nSel = its.filter(i => ap.sel.has(i.id)).length;
-        return `<button role="tab" data-tab="${k}" class="cat-tab ${tab === k ? 'on' : ''}" style="--c:${colCat(k)}"><span class="ct-t">${dotCat(k)}${esc(nomCat(k))}</span><span class="ct-v">${$$corto(tot)}</span>
+        return `<button type="button" data-ir="${k}" class="cat-tab" style="--c:${colCat(k)}"><span class="ct-t">${dotCat(k)}${esc(nomCat(k))}</span><span class="ct-v">${$$corto(tot)}</span>
           <span class="ct-s">${its.length} pago(s) · ${R.total ? Math.round(tot / R.total * 100) : 0}%${aprobando && nSel < its.length ? ` · <b class="txt-neg">${its.length - nSel} sin aprobar</b>` : ''}</span></button>`; }).join('')}</div>`;
   // ---- Resumen de la propuesta
   const resumenHtml = () => {
@@ -2522,7 +2532,7 @@ async function vistaLote(el, id) {
         </tbody></table></div></section>` : ''}
     </div>`;
   };
-  const contenido = () => tab === 'resumen' ? resumenHtml() : seccion(tab);
+  const contenido = () => `<div id="cat-resumen">${resumenHtml()}</div>${nombreCats.map(seccion).join('')}`;
   const totalSel = () => d.items.filter(i => ap.sel.has(i.id)).reduce((a, i) => a + i.importe, 0);
 
   const acciones = [];
@@ -2559,7 +2569,8 @@ async function vistaLote(el, id) {
       $('#ap-gral').oninput = (e) => { ap.general = e.target.value; };
       $('#b-resolver').onclick = () => resolver();
     }
-    $('#ap-tot').innerHTML = `<div class="small muted">Aprobás ${n} de ${d.items.length} pago(s)</div><div style="font:800 22px var(--display)">${$$m(tot)} <span class="small muted" style="font-weight:500">de ${$$m(R.total)}</span></div>`;
+    const obsCat = nombreCats.map(k => [k, porCat[k].filter(i => !ap.sel.has(i.id)).length]).filter(x => x[1]).map(([k, c]) => `${c} en ${nomCat(k)}`).join(', ');
+    $('#ap-tot').innerHTML = `<div class="small muted">Aprobás ${n} de ${d.items.length} pago(s)${obsCat ? ` · <b class="txt-neg">sin aprobar: ${esc(obsCat)}</b>` : ''}</div><div style="font:800 22px var(--display)">${$$m(tot)} <span class="small muted" style="font-weight:500">de ${$$m(R.total)}</span></div>`;
     const br = $('#b-resolver');
     br.className = `btn ${n ? 'btn-acento' : 'btn-rojo'} btn-grande`;
     br.innerHTML = n ? `${ICO.check}${n === d.items.length ? 'Aprobar todo' : 'Aprobar seleccionados'}` : 'Observar todo';
@@ -2584,11 +2595,21 @@ async function vistaLote(el, id) {
     $$('[data-approv]', el).forEach(c => c.onchange = () => { for (const it of porCat[c.dataset.cat].filter(i => (i.cuit_proveedor || i.proveedor) === c.dataset.approv)) c.checked ? ap.sel.add(it.id) : ap.sel.delete(it.id); repintarAp(); });
     $$('[data-com]', el).forEach(i => i.oninput = () => { ap.coment[i.dataset.com] = i.value; });
   };
-  const conectarPg = () => $$('[data-pg]', el).forEach(c => c.onchange = () => { const i = Number(c.dataset.pg); c.checked ? pgSel.add(i) : pgSel.delete(i); });
-  const conectarTabs = () => { conectarPg(); $$('[data-tab]', el).forEach(b => b.onclick = () => { tab = b.dataset.tab; sessionStorage.setItem(claveTab, tab); repintarAp(); window.scrollTo({ top: $('#tabs-cat').offsetTop - 70, behavior: 'smooth' }); }); };
+  const conectarPg = () => {
+    $$('[data-pg]', el).forEach(c => c.onchange = () => { const i = Number(c.dataset.pg); c.checked ? pgSel.add(i) : pgSel.delete(i); repintarAp(); });
+    $$('[data-pgprov]', el).forEach(c => c.onchange = () => { const v = c.dataset.pgprov, k = v.split('|')[0], gk = v.slice(v.indexOf('|') + 1);
+      for (const it of porCat[k].filter(i => (i.cuit_proveedor || i.proveedor) === gk && puedePagarIt(i))) c.checked ? pgSel.add(it.id) : pgSel.delete(it.id); repintarAp(); });
+  };
+  const conectarTabs = () => {
+    conectarPg();
+    $$('[data-ir]', el).forEach(b => b.onclick = () => { const t = $('#cat-' + b.dataset.ir); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' }); });
+    $$('[data-tog]', el).forEach(b => b.onclick = () => { const gk = b.dataset.tog; abiertos.has(gk) ? abiertos.delete(gk) : abiertos.add(gk); repintarAp(); });
+  };
   const repintarAp = (foco) => {
+    const y = window.scrollY;
     $('#tabs-cat').innerHTML = pestanas();
     $('#secs').innerHTML = contenido();
+    window.scrollTo(0, y);
     conectarTabs();
     $$('[data-pdf]', el).forEach(b => b.onclick = () => abrirPdfFactura(b.dataset.pdf));
     if (aprobando) { conectarAp(); pintarBarraAp(); }
@@ -2614,7 +2635,7 @@ async function vistaLote(el, id) {
       String(i.importe).replace('.', ','), i.moneda || 'PES', String(i.importe_original ?? '').replace('.', ','), i.pagado_at ? 'Pagado' : 'Por pagar', i.medio_previsto || '', i.medio_detalle || '', i.pagado_at || '', i.pago_medio || '', i.pago_ref || '', i.factura_id || '']),
   ]);
   const pt = $('#b-pg-todos', el);
-  if (pt) pt.onclick = () => { for (const i of d.items) if (d.puede.pagar && i.decision === 'aprobado' && !i.pagado_at) pgSel.add(i.id); $$('[data-pg]', el).forEach(c => { c.checked = true; }); toast(`${pgSel.size} pago(s) tildados en todas las categorías`); };
+  if (pt) pt.onclick = () => { for (const i of d.items) if (puedePagarIt(i)) pgSel.add(i.id); repintarAp(); toast(`${pgSel.size} pago(s) tildados`); };
   const pg = $('#b-pagar', el);
   if (pg) pg.onclick = () => {
     const ids = [...pgSel];
