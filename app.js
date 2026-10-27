@@ -473,6 +473,15 @@ async function contadores(t = null) {
     pintarContadores(S.cnt);
   } catch { /* no es crítico */ }
 }
+// Filtro propio de la pantalla abierta (si es una lista). En "Enviar a Shares" se filtran las filas de la tabla.
+function filtroLocal() {
+  const v = $('#vista');
+  if (!v) return null;
+  const inp = $('#q-nf', v) || $('#q', v);
+  if (inp) return inp;
+  if (/^#\/shares$/.test(location.hash) && $('tbody tr', v)) return { tabla: true };
+  return null;
+}
 function pintarContadores(c) { $$('[data-cnt]').forEach(x => { const n = c[x.dataset.cnt]; x.textContent = n ? n : ''; }); }
 
 async function router() {
@@ -492,14 +501,24 @@ async function router() {
     if (e.key !== 'Enter' || !bg.value.trim()) return;
     const q = bg.value.trim();
     if (/^#?\d{1,6}$/.test(q)) { location.hash = '#/factura/' + q.replace('#', ''); return; }
+    if (filtroLocal()) return;   // en una lista, filtra mientras se escribe (no sale de la pantalla)
     sessionStorage.setItem('facturas_q', q);
     if (location.hash === '#/facturas') router(); else location.hash = '#/facturas';
+  };
+  if (bg) bg.oninput = () => {
+    const f = filtroLocal();
+    if (!f) return;
+    if (f.tabla) { const q = bg.value.trim().toLowerCase(); $$('#vista tbody tr').forEach(tr => tr.classList.toggle('hidden', !!q && !(tr.textContent + ' ' + $$('input', tr).map(i => i.value).join(' ')).toLowerCase().includes(q))); return; }
+    f.value = bg.value; f.dispatchEvent(new Event('input'));
   };
   S.vista = h;
   window.scrollTo(0, 0);
   if (r.nav !== 'tablero' || esDirector()) contadores();
   try { await r.v($('#vista'), ...m.slice(1)); }
   catch (e) { if (S.token && $('#vista')) { $('#vista').innerHTML = `<div class="panel panel-pad"><h2>No se pudo cargar</h2><p class="muted">${esc(e.message)}</p><button class="btn btn-acento" id="b-reint">${ICO.refresh}Reintentar</button></div>`; $('#b-reint').onclick = router; } }
+  // Buscador de arriba: en las listas filtra la lista abierta; en el resto busca en todas las facturas
+  const bgp = $('#buscar-global');
+  if (bgp && S.vista === h) bgp.placeholder = filtroLocal() ? 'Filtrar esta lista…' : 'Buscar factura, proveedor o CUIT…';
 }
 
 // ---- Actualizar: trae datos frescos y, si hay una versión nueva de la app, la carga ----
@@ -2384,6 +2403,8 @@ async function vistaPropuestaEditar(el, id) {
     let d;
     try { d = await api(id ? '/api/pagos/lotes/' + id : '/api/pagos/lotes', { method: id ? 'PUT' : 'POST', body }); }
     catch (err) { if (/paga en Shares/.test(err.message)) cargarCand().catch(() => null); throw err; }   // se quita sola de la lista
+    // Ya existe: si se vuelve a guardar o enviar desde esta misma pantalla, se actualiza esa propuesta (no se crea otra)
+    if (!id && d?.lote?.id) id = d.lote.id;
     sessionStorage.setItem('prop_empresa', st.empresa);
     if (!enviar) { toast('Borrador guardado'); location.hash = '#/pago/' + d.lote.id; return; }
     const medios = await pasoMediosPago(d);
