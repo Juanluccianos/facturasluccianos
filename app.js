@@ -2121,7 +2121,7 @@ async function vistaPagos(el) {
   $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
   $('#q').oninput = () => datos && pintar();
   const bs = $('#b-sync-pagos');
-  if (bs) bs.onclick = () => conBoton(bs, async () => { const x = await api('/api/pagos/sincronizar', { method: 'POST' }); toast(x.mensaje); setTimeout(() => { if ($('#b-sync-pagos')) cargar(); }, 25000); });
+  if (bs) bs.onclick = () => conBoton(bs, async () => { const x = await api('/api/pagos/sincronizar', { method: 'POST' }); toast(x.mensaje); setTimeout(() => { if ($('#b-sync-pagos')) cargar(); }, 18000); });
   $('#chk-pag').onchange = (e) => { verPagadas = e.target.checked; sessionStorage.setItem('pagos_ver_pagadas', verPagadas ? '1' : '0'); pintar(); };
   $('#chk-carg').onchange = (e) => { incluirCargadas = e.target.checked; sessionStorage.setItem('pagos_cargadas', incluirCargadas ? '1' : '0'); pintar(); };
   $('#b-csv').onclick = () => descargarCsv(`agenda_pagos_${new Date().toISOString().slice(0, 10)}.csv`, [
@@ -2389,7 +2389,7 @@ async function vistaPropuestaEditar(el, id) {
       // Se están verificando pagos en Shares: se recargan las candidatas una vez cuando termina (las pagas desaparecen)
       st.reconsulta = true;
       toast(`Verificando en Shares el estado de pago de ${r.actualizando_pagos} factura(s)…`);
-      setTimeout(() => { if ($('#cand')) cargarCand().then(() => toast('Estado de pago actualizado desde Shares')).catch(() => null); }, 30000);
+      setTimeout(() => { if ($('#cand')) cargarCand().then(() => toast('Estado de pago actualizado desde Shares')).catch(() => null); }, 18000);
     }
     const ids = new Set(st.cand.map(c => c.factura_id));
     for (const fid of [...st.sel.keys()]) if (!ids.has(fid)) st.sel.delete(fid);   // cambió la sociedad o ya no está libre
