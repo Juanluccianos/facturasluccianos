@@ -579,6 +579,57 @@ window.addEventListener('resize', () => { clearTimeout(_pdfResize); _pdfResize =
 document.addEventListener('DOMContentLoaded', iniciar);
 
 // Atajos: Ctrl K busca; en "Para revisar" J/K se mueven, Enter abre, / busca
+// ---------------------------------------------------------------------------
+//  Calendario propio para los campos de fecha (el del navegador no respeta la letra ni los colores del sistema).
+//  En la compu reemplaza al nativo; en el celular se deja el del teléfono, que es más cómodo.
+// ---------------------------------------------------------------------------
+const CAL_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function cerrarCalendario() { $('#cal-pop')?.remove(); document.removeEventListener('mousedown', calFuera, true); window.removeEventListener('scroll', cerrarCalendario, true); window.removeEventListener('resize', cerrarCalendario); }
+function calFuera(e) { if (!e.target.closest('#cal-pop') && !e.target.closest('input[type="date"]')) cerrarCalendario(); }
+function abrirCalendario(inp) {
+  cerrarCalendario();
+  const hoy = new Date().toLocaleDateString('sv-SE');
+  const sel = /^\d{4}-\d{2}-\d{2}$/.test(inp.value) ? inp.value : '';
+  let ver = new Date((sel || hoy).slice(0, 7) + '-01T12:00:00');
+  const pop = document.createElement('div');
+  pop.id = 'cal-pop'; pop.className = 'cal-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Elegir fecha');
+  document.body.appendChild(pop);
+  const fuera = (iso) => (inp.min && iso < inp.min) || (inp.max && iso > inp.max);
+  const elegir = (iso) => { inp.value = iso; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); cerrarCalendario(); inp.focus(); };
+  const pintar = () => {
+    const y = ver.getFullYear(), m = ver.getMonth();
+    const ini = new Date(y, m, 1, 12), corr = (ini.getDay() + 6) % 7;   // la semana empieza el lunes
+    const dias = [];
+    for (let i = 0; i < 42; i++) { const d = new Date(y, m, 1 - corr + i, 12); dias.push(d); }
+    pop.innerHTML = `<div class="cal-cab"><button type="button" class="cal-nav" data-n="-1" aria-label="Mes anterior">‹</button><b>${CAL_MESES[m]} ${y}</b><button type="button" class="cal-nav" data-n="1" aria-label="Mes siguiente">›</button></div>
+      <div class="cal-sem">${['lu', 'ma', 'mi', 'ju', 'vi', 'sá', 'do'].map(d => `<span>${d}</span>`).join('')}</div>
+      <div class="cal-dias">${dias.map(d => { const iso = d.toLocaleDateString('sv-SE'); return `<button type="button" data-d="${iso}" class="${d.getMonth() !== m ? 'otro' : ''} ${iso === hoy ? 'hoy' : ''} ${iso === sel ? 'sel' : ''}" ${fuera(iso) ? 'disabled' : ''}>${d.getDate()}</button>`; }).join('')}</div>
+      <div class="cal-pie"><button type="button" class="btn-link" data-hoy ${fuera(hoy) ? 'disabled' : ''}>Hoy</button>${inp.required ? '' : '<button type="button" class="btn-link muted" data-borrar>Borrar</button>'}</div>`;
+    $$('.cal-nav', pop).forEach(b => b.onclick = () => { ver = new Date(ver.getFullYear(), ver.getMonth() + Number(b.dataset.n), 1, 12); pintar(); });
+    $$('[data-d]', pop).forEach(b => b.onclick = () => elegir(b.dataset.d));
+    const bh = $('[data-hoy]', pop); if (bh) bh.onclick = () => elegir(hoy);
+    const bb = $('[data-borrar]', pop); if (bb) bb.onclick = () => elegir('');
+  };
+  pintar();
+  const r = inp.getBoundingClientRect(), alto = pop.offsetHeight, ancho = pop.offsetWidth;
+  const arriba = r.bottom + alto + 8 > window.innerHeight && r.top - alto - 8 > 0;
+  pop.style.top = `${arriba ? r.top - alto - 6 : r.bottom + 6}px`;
+  pop.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8))}px`;
+  setTimeout(() => { document.addEventListener('mousedown', calFuera, true); window.addEventListener('scroll', cerrarCalendario, true); window.addEventListener('resize', cerrarCalendario); }, 0);
+}
+const CAL_PROPIO = window.matchMedia?.('(pointer: fine)').matches;
+document.addEventListener('click', (e) => {
+  if (!CAL_PROPIO) return;
+  const inp = e.target.closest?.('input[type="date"]');
+  if (!inp || inp.disabled || inp.readOnly) return;
+  e.preventDefault();
+  if ($('#cal-pop')) cerrarCalendario(); else abrirCalendario(inp);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('#cal-pop')) { cerrarCalendario(); return; }
+  if (CAL_PROPIO && e.target.matches?.('input[type="date"]') && (e.key === 'F4' || (e.altKey && e.key === 'ArrowDown'))) { e.preventDefault(); abrirCalendario(e.target); }
+}, true);
+
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { const b = $('#buscar-global'); if (b) { e.preventDefault(); b.focus(); b.select(); } return; }
   if (location.hash !== '#/bandeja' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || !$('#modal').hidden) return;
@@ -2057,56 +2108,69 @@ async function vistaFicha(el, cuit) {
 const isoMas = (dias) => { const d = new Date(); d.setDate(d.getDate() + dias); return d.toLocaleDateString('sv-SE'); };
 function lunesDe(iso) { const d = new Date(iso + 'T12:00:00'); const dia = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dia); return d.toLocaleDateString('sv-SE'); }
 async function vistaPagos(el) {
-  const RANGOS = { vencidas: ['Vencidas (30 días)', -30, -1], semana: ['Esta semana', 0, 6], quince: ['Próximos 15 días', 0, 15], mes: ['Próximos 30 días', 0, 30], todo: ['−30 a +60 días', -30, 60] };
-  let rango = sessionStorage.getItem('pagos_rango') || 'quince';
-  let incluirCargadas = sessionStorage.getItem('pagos_cargadas') !== '0';
-  let verPagadas = sessionStorage.getItem('pagos_ver_pagadas') === '1';
-  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Vencimientos agrupados por semana, con el CBU de cada proveedor. Las facturas pagadas (en Shares o desde “Propuestas de pago”) no se muestran; las incluidas en una propuesta se indican.</p></div>
-    <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-sync-pagos">${ICO.refresh}Actualizar pagos desde Shares</button>` : ''}<button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
+  // Períodos por fecha de vencimiento. "Vencidas" trae todo lo vencido (sin límite hacia atrás).
+  const hoy0 = isoMas(0);
+  const domingo = (() => { const d = new Date(hoy0 + 'T12:00:00'); d.setDate(d.getDate() + (7 - d.getDay()) % 7); return d.toLocaleDateString('sv-SE'); })();
+  const RANGOS = {
+    vencidas: ['Vencidas', '2000-01-01', isoMas(-1)],
+    semana: ['Esta semana', hoy0, domingo],
+    quince: ['Próximos 15 días', hoy0, isoMas(15)],
+    mes: ['Próximos 30 días', hoy0, isoMas(30)],
+    todo: ['Todo (vencidas + 60 días)', '2000-01-01', isoMas(60)],
+  };
+  // Filtros del encabezado
+  const F_ESTADO = { '': 'Todos los estados', mano: 'Cargadas a mano en Shares', cargada: 'Cargadas en Shares por la app', lista: 'Listas para enviar a Shares', revisar: 'En revisión (todavía no en Shares)' };
+  const F_PAGO = { '': 'Todas', sin: 'Sin proponer', propuesta: 'En una propuesta (borrador)', en_aprobacion: 'Esperando aprobación', aprobada: 'Aprobadas para pagar' };
+  const estadoDe = (f) => f.origen === 'shares' ? 'mano' : f.estado === 'cargada' ? 'cargada' : ['lista', 'en_cola', 'enviando', 'error_shares'].includes(f.estado) ? 'lista' : 'revisar';
+  const pagoDe = (f) => f.pago_estado && F_PAGO[f.pago_estado] ? f.pago_estado : 'sin';
+  let rango = sessionStorage.getItem('pagos_rango2') || 'quince';
+  if (!RANGOS[rango]) rango = 'quince';
+  let fEstado = sessionStorage.getItem('pagos_f_estado') || '', fPago = sessionStorage.getItem('pagos_f_pago') || '';
+  el.innerHTML = `<div class="encabezado"><div><h1>Agenda de pagos</h1><p>Lo que falta pagar, por fecha de vencimiento y con el CBU de cada proveedor. Incluye las facturas cargadas a mano en Shares; las ya pagadas no se muestran.</p></div>
+    <div class="acciones">${puede('aprobador') ? `<button class="btn" id="b-sync-pagos">${ICO.refresh}Actualizar desde Shares</button>` : ''}<button class="btn" id="b-csv">${ICO.doc}Exportar CSV</button></div></div>
     <p class="small muted" id="sync-info" style="margin:-6px 0 12px"></p>
     <div class="seg" id="seg">${Object.entries(RANGOS).map(([k, r]) => `<button data-r="${k}" class="${k === rango ? 'on' : ''}">${r[0]}</button>`).join('')}</div>
     <div class="kpis" id="kp"></div>
-    <div class="panel"><div class="cola-bar"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor o CUIT" aria-label="Filtrar"></label>
-      <label class="check" style="margin:0"><input type="checkbox" id="chk-carg" ${incluirCargadas ? 'checked' : ''}> Incluir todas (no solo las cargadas/listas)</label>
-      <label class="check" style="margin:0"><input type="checkbox" id="chk-pag" ${verPagadas ? 'checked' : ''}> Mostrar las ya pagadas</label></div>
+    <div class="panel"><div class="cola-bar agenda-filtros"><label class="campo-buscar">${ICO.search}<input id="q" placeholder="Filtrar por proveedor o CUIT" aria-label="Filtrar"></label>
+      <label class="filtro-sel"><span>Estado</span><select id="f-estado"></select></label>
+      <label class="filtro-sel"><span>Propuesta</span><select id="f-pago"></select></label>
+      <button class="btn btn-ghost btn-chico hidden" id="b-limpiar">Limpiar filtros</button></div>
       <div id="lista"><div class="vacio"><span class="cargando"></span></div></div></div>`;
   let datos = null;
+  const pesosDe = (f) => (f.ps_estado === 'parcial' && f.ps_pendiente != null ? Number(f.ps_pendiente) : (Number(f.total) || 0) * (f.moneda && f.moneda !== 'PES' && Number(f.cotizacion) > 1 ? Number(f.cotizacion) : 1)) * (TIPOS_NC_F.includes(Number(f.tipo_cbte_arca)) ? -1 : 1);
   const pintar = () => {
     const q = $('#q').value.trim().toLowerCase();
     const hoy = datos.hoy;
-    const pagadaF = (f) => f.ps_estado === 'pagada' || f.pago_estado === 'pagada';
-    // Resumen de lo que dijo Shares sobre las facturas cargadas del período
-    const carg = datos.facturas.filter(f => f.estado === 'cargada');
-    const cnt = (e) => carg.filter(f => f.ps_estado === e).length;
-    const resSh = { pagada: cnt('pagada'), parcial: cnt('parcial'), pendiente: cnt('pendiente'), sin_confirmar: cnt('sin_confirmar'), error: cnt('error') + cnt('sin_datos'), sin_consultar: carg.filter(f => !f.ps_estado).length };
-    const fs = datos.facturas.filter(f => verPagadas || !pagadaF(f)).filter(f => (incluirCargadas || ['lista', 'cargada', 'error_shares'].includes(f.estado)))
-      .filter(f => !q || String(f.razon_social_emisor || '').toLowerCase().includes(q) || String(f.cuit_emisor || '').includes(q.replace(/-/g, '')))
-      .map(f => ({ ...f, pesos: (f.ps_estado === 'parcial' && f.ps_pendiente != null ? Number(f.ps_pendiente) : (Number(f.total) || 0) * (f.moneda && f.moneda !== 'PES' && Number(f.cotizacion) > 1 ? Number(f.cotizacion) : 1)) * (TIPOS_NC_F.includes(Number(f.tipo_cbte_arca)) ? -1 : 1) }));
-    const aPagar = fs.filter(f => !pagadaF(f));
-    const total = aPagar.reduce((a, f) => a + f.pesos, 0);
-    const venc = aPagar.filter(f => f.fecha_vto < hoy), vencT = venc.reduce((a, f) => a + f.pesos, 0);
+    const base = datos.facturas.map(f => ({ ...f, pesos: pesosDe(f), _est: estadoDe(f), _pago: pagoDe(f) }))
+      .filter(f => !q || String(f.razon_social_emisor || '').toLowerCase().includes(q) || String(f.cuit_emisor || '').includes(q.replace(/-/g, '')));
+    // Opciones de los filtros con su cantidad (según el otro filtro y la búsqueda)
+    const cuenta = (campo, val, otroCampo, otroVal) => base.filter(f => (!otroVal || f[otroCampo] === otroVal) && (!val || f[campo] === val)).length;
+    $('#f-estado').innerHTML = Object.entries(F_ESTADO).map(([k, t]) => `<option value="${k}" ${k === fEstado ? 'selected' : ''}>${esc(t)} (${cuenta('_est', k, '_pago', fPago)})</option>`).join('');
+    $('#f-pago').innerHTML = Object.entries(F_PAGO).map(([k, t]) => `<option value="${k}" ${k === fPago ? 'selected' : ''}>${esc(t)} (${cuenta('_pago', k, '_est', fEstado)})</option>`).join('');
+    $('#b-limpiar').classList.toggle('hidden', !fEstado && !fPago && !q);
+    const fs = base.filter(f => (!fEstado || f._est === fEstado) && (!fPago || f._pago === fPago));
+    const total = fs.reduce((a, f) => a + f.pesos, 0);
+    const venc = fs.filter(f => f.fecha_vto < hoy), vencT = venc.reduce((a, f) => a + f.pesos, 0);
+    const prop = fs.filter(f => f._pago !== 'sin'), propT = prop.reduce((a, f) => a + f.pesos, 0);
     const provs = new Set(fs.map(f => f.cuit_emisor)).size;
-    const sinCbu = fs.filter(f => !(f.cbu_maestro || f.cbu_factura)).length;
     $('#kp').innerHTML = `<div class="kpi"><div class="et">A pagar en el período</div><div class="val">${$$corto(total)}</div><div class="sub">${fs.length} comprobante(s) · ${provs} proveedor(es)</div></div>
       <div class="kpi ${venc.length ? 'alerta' : ''}"><div class="et">Ya vencido</div><div class="val">${$$corto(vencT)}</div><div class="sub">${venc.length} comprobante(s)</div></div>
-      <div class="kpi"><div class="et">Sin CBU cargado</div><div class="val">${sinCbu}</div><div class="sub">completalo en la ficha del proveedor</div></div>
-      <div class="kpi"><div class="et">Según Shares (cargadas)</div><div class="val">${resSh.pagada} pagas</div><div class="sub">${resSh.parcial} en parte · ${resSh.pendiente} impagas · ${resSh.sin_confirmar} sin aprobar en Agente IA${resSh.error ? ` · <span class="txt-neg">${resSh.error} con error</span>` : ''}${resSh.sin_consultar ? ` · ${resSh.sin_consultar} sin consultar todavía` : ''}${resSh.pagada && !verPagadas ? '<br><button class="btn-link" id="b-ver-pag">ver las pagadas</button>' : ''}</div></div>`;
-    const bvp = $('#b-ver-pag'); if (bvp) bvp.onclick = () => { $('#chk-pag').checked = true; $('#chk-pag').onchange({ target: $('#chk-pag') }); };
+      <div class="kpi"><div class="et">Ya en propuestas de pago</div><div class="val">${$$corto(propT)}</div><div class="sub">${prop.length} comprobante(s) · ${fs.filter(f => f._pago === 'aprobada').length} aprobado(s)</div></div>`;
     const sem = {};
     fs.forEach(f => { const k = lunesDe(f.fecha_vto); (sem[k] = sem[k] || []).push(f); });
     const claves = Object.keys(sem).sort();
     $('#lista').innerHTML = claves.length ? claves.map(k => {
       const fin = new Date(k + 'T12:00:00'); fin.setDate(fin.getDate() + 6);
-      const st = sem[k].filter(f => !pagadaF(f)).reduce((a, f) => a + f.pesos, 0);
+      const st = sem[k].reduce((a, f) => a + f.pesos, 0);
       const esta = k === lunesDe(hoy);
-      return `<div class="semana ${esta ? 'esta' : ''}"><div class="semana-t"><b>${esta ? 'Esta semana' : k < lunesDe(hoy) ? 'Semana vencida' : 'Semana'} · ${fmtF(k).slice(0, 5)} al ${fmtF(fin.toLocaleDateString('sv-SE')).slice(0, 5)}</b><span>${sem[k].length} · <b>${$$m(st)}</b></span></div>
+      return `<div class="semana ${esta ? 'esta' : ''}"><div class="semana-t"><b>${esta ? 'Esta semana' : k < lunesDe(hoy) ? 'Semana vencida' : 'Semana'} · ${fmtF(k).slice(0, 5)} al ${fmtF(fin.toLocaleDateString('sv-SE')).slice(0, 5)}${k.slice(0, 4) !== hoy.slice(0, 4) ? '/' + k.slice(2, 4) : ''}</b><span>${sem[k].length} · <b>${$$m(st)}</b></span></div>
         <div class="tabla-wrap"><table class="tabla-agenda"><colgroup><col style="width:92px"><col><col style="width:230px"><col style="width:270px"><col style="width:160px"></colgroup><tbody>${sem[k].map(f => { const cbu = f.cbu_maestro || f.cbu_factura, alias = f.alias_maestro || f.alias_factura, difCbu = f.cbu_maestro && f.cbu_factura && f.cbu_maestro !== f.cbu_factura;
-          return `<tr class="${f.id ? 'click' : ''} ${pagadaF(f) ? 'fila-pagada' : ''}" ${f.id ? `data-id="${f.id}"` : ''}><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
+          return `<tr class="${f.id ? 'click' : ''}" ${f.id ? `data-id="${f.id}"` : ''}><td style="width:92px"><span class="mono ${f.fecha_vto < hoy ? 'txt-neg' : ''}">${fmtF(f.fecha_vto).slice(0, 5)}</span><small class="sub-celda">${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][new Date(f.fecha_vto + 'T12:00:00').getDay()]}</small></td>
           <td><div class="prov">${cuad(f.razon_social_emisor || '?')}<div><b>${esc(f.razon_social_emisor || 'Sin identificar')}</b><small class="mono">${esc(f.tipo_txt || TIPOS[f.tipo_cbte_arca] || '')} ${nroCbte(f)}</small></div></div></td>
-          <td>${f.origen === 'shares' ? '<span class="badge b-recibida" title="Cargada a mano en Shares: no pasó por la app">Cargada a mano en Shares</span>' : badgeEstado(f.estado)}${f.pago_estado && EST_PAGO_F[f.pago_estado] ? `<br><span class="badge ${EST_PAGO_F[f.pago_estado][1]}" style="margin-top:4px">${EST_PAGO_F[f.pago_estado][0]}</span>` : ''}${f.ps_estado && ['parcial', 'pagada'].includes(f.ps_estado) ? `<br><span class="badge ${EST_PAGO_SH[f.ps_estado][1]}" style="margin-top:4px">${EST_PAGO_SH[f.ps_estado][0]}</span>${f.ps_op ? `<small class="sub-celda">${esc(f.ps_op)} · ${fmtF(f.ps_fecha)}</small>` : ''}` : ''}</td>
+          <td>${f.origen === 'shares' ? '<span class="badge b-recibida" title="Cargada a mano en Shares: no pasó por la app">Cargada a mano en Shares</span>' : badgeEstado(f.estado)}${f._pago !== 'sin' ? `<br><span class="badge ${EST_PAGO_F[f._pago][1]}" style="margin-top:4px">${EST_PAGO_F[f._pago][0]}</span>` : ''}${f.ps_estado === 'parcial' ? `<br><span class="badge ${EST_PAGO_SH.parcial[1]}" style="margin-top:4px">${EST_PAGO_SH.parcial[0]}</span>` : ''}</td>
           <td>${cbu ? `<span class="mono">${esc(cbu)}</span> <button class="btn-link" data-copiar="${esc(cbu)}">copiar</button>${difCbu ? `<small class="sub-celda txt-neg con-ico">${ICO.alert}distinto al de la factura</small>` : alias ? `<small class="sub-celda">${esc(alias)}</small>` : ''}` : '<span class="muted">sin CBU</span>'}</td>
           <td class="num"><b>${$$m(f.pesos)}</b>${f.ps_estado === 'parcial' ? `<small class="sub-celda">falta de ${$$m(f.total)}</small>` : f.moneda && f.moneda !== 'PES' ? `<small class="sub-celda">${esc(f.moneda)} ${fmtNum.format(f.total)}</small>` : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
-    }).join('') : '<div class="vacio"><span class="grande">Nada vence en este período</span>Probá con otro período.</div>';
+    }).join('') : `<div class="vacio"><span class="grande">${fEstado || fPago || q ? 'Nada coincide con los filtros' : 'Nada vence en este período'}</span>${fEstado || fPago || q ? 'Probá sacando algún filtro.' : 'Probá con otro período.'}</div>`;
     $$('#lista tr[data-id]').forEach(tr => tr.onclick = (e) => { if (e.target.closest('[data-copiar]')) return; location.hash = '#/factura/' + tr.dataset.id; });
     $$('#lista [data-copiar]').forEach(b => b.onclick = (e) => { e.stopPropagation(); copiar(b.dataset.copiar); });
     pintar.filas = fs;
@@ -2114,19 +2178,20 @@ async function vistaPagos(el) {
   const cargar = async () => {
     const r = RANGOS[rango];
     $('#lista').innerHTML = '<div class="vacio"><span class="cargando"></span></div>';
-    datos = await api(`/api/pagos?desde=${isoMas(r[1])}&hasta=${isoMas(r[2])}&pagadas=1`);
-    const si = $('#sync-info'); if (si) si.innerHTML = datos.shares_sync ? `Pagos informados por Shares: las facturas pagadas no se muestran y las pagadas parcialmente indican el saldo pendiente. Última consulta: ${fmtFH(datos.shares_sync).replace(/\.$/, '')}.${datos.impagas_at ? ` Incluye las facturas cargadas a mano en Shares (actualizado ${fmtFH(datos.impagas_at).replace(/\.$/, '')}).` : ''}` : 'Todavía no se consultaron los pagos en Shares.';
+    datos = await api(`/api/pagos?desde=${r[1]}&hasta=${r[2]}`);
+    const si = $('#sync-info'); if (si) si.innerHTML = datos.impagas_at || datos.shares_sync ? `Saldos según Shares, actualizados ${fmtFH(datos.impagas_at || datos.shares_sync).replace(/\.$/, '')}. Se renuevan solos cada 30 minutos.` : 'Todavía no se consultó Shares.';
     pintar();
   };
-  $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
+  $$('#seg button').forEach(b => b.onclick = () => { rango = b.dataset.r; sessionStorage.setItem('pagos_rango2', rango); $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); cargar(); });
   $('#q').oninput = () => datos && pintar();
+  $('#f-estado').onchange = (e) => { fEstado = e.target.value; sessionStorage.setItem('pagos_f_estado', fEstado); pintar(); };
+  $('#f-pago').onchange = (e) => { fPago = e.target.value; sessionStorage.setItem('pagos_f_pago', fPago); pintar(); };
+  $('#b-limpiar').onclick = () => { fEstado = ''; fPago = ''; $('#q').value = ''; sessionStorage.removeItem('pagos_f_estado'); sessionStorage.removeItem('pagos_f_pago'); pintar(); };
   const bs = $('#b-sync-pagos');
   if (bs) bs.onclick = () => conBoton(bs, async () => { const x = await api('/api/pagos/sincronizar', { method: 'POST' }); toast(x.mensaje); setTimeout(() => { if ($('#b-sync-pagos')) cargar(); }, 18000); });
-  $('#chk-pag').onchange = (e) => { verPagadas = e.target.checked; sessionStorage.setItem('pagos_ver_pagadas', verPagadas ? '1' : '0'); pintar(); };
-  $('#chk-carg').onchange = (e) => { incluirCargadas = e.target.checked; sessionStorage.setItem('pagos_cargadas', incluirCargadas ? '1' : '0'); pintar(); };
   $('#b-csv').onclick = () => descargarCsv(`agenda_pagos_${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'Pago', 'CBU', 'Alias', 'Moneda', 'Total original', 'Total en pesos', 'ID'],
-    ...(pintar.filas || []).map(f => [f.fecha_vto, f.cuit_emisor, f.razon_social_emisor, `${TIPOS[f.tipo_cbte_arca] || ''} ${nroCbte(f)}`, ESTADOS[f.estado] || f.estado, (EST_PAGO_F[f.pago_estado] || [''])[0], f.cbu_maestro || f.cbu_factura || '', f.alias_maestro || f.alias_factura || '', f.moneda || 'PES', String(f.total ?? '').replace('.', ','), String(Math.round(f.pesos * 100) / 100).replace('.', ','), f.id]),
+    ['Vencimiento', 'CUIT', 'Proveedor', 'Comprobante', 'Estado', 'Propuesta', 'CBU', 'Alias', 'Moneda', 'Total original', 'A pagar en pesos', 'ID app', 'Registro Shares'],
+    ...(pintar.filas || []).map(f => [f.fecha_vto, f.cuit_emisor, f.razon_social_emisor, `${f.tipo_txt || TIPOS[f.tipo_cbte_arca] || ''} ${nroCbte(f)}`, f.origen === 'shares' ? 'Cargada a mano en Shares' : (ESTADOS[f.estado] || f.estado), f._pago === 'sin' ? '' : (EST_PAGO_F[f._pago] || [''])[0], f.cbu_maestro || f.cbu_factura || '', f.alias_maestro || f.alias_factura || '', f.moneda || 'PES', String(f.total ?? '').replace('.', ','), String(Math.round(f.pesos * 100) / 100).replace('.', ','), f.id || '', f.shares_nro_reg || '']),
   ]);
   await cargar();
 }
