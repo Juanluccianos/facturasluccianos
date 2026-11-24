@@ -6,6 +6,22 @@
  * ============================================================================= */
 'use strict';
 
+/* Entrada desde Herramientas: si en este navegador quedó la sesión de OTRA persona (o una sesión vieja,
+   anterior al login único), se descarta y el portal consigue la de quien está usando la compu. */
+(function controlarCuenta() {
+  const m = location.hash.match(/^#portal(?:!(\d+))?(?:=.*)?$/);
+  if (!m) return;
+  try {
+    const uid = m[1], claves = ['facturas_token'];
+    const tok = localStorage.getItem(claves[0]) || '';
+    const token = (() => { try { const j = JSON.parse(tok); return (j && j.token) || j || ''; } catch { return tok; } })();
+    const central = /^[A-Za-z0-9_-]{43}$/.test(String(token));
+    const dueno = localStorage.getItem('herr_uid');
+    if (token && (!central || (uid && dueno !== uid))) { claves.forEach(k => localStorage.removeItem(k)); localStorage.removeItem('herr_uid'); }
+    if (uid) history.replaceState(null, '', location.pathname + location.search + location.hash.replace('!' + uid, ''));
+  } catch (e) { /* sin storage */ }
+})();
+
 // ---------------------------------------------------------------------------
 //  Estado y utilidades
 // ---------------------------------------------------------------------------
@@ -205,8 +221,11 @@ async function salir(llamarApi = true) {
 
 // Llegada desde el portal: si ya tiene sesión entra al instante; si no, el portal le consigue una y lo devuelve
 async function canjearAcceso() {
-  if (location.hash === '#portal') {
-    history.replaceState(null, '', location.pathname + location.search + '');
+  // #portal o #portal=<ruta>: llega desde Herramientas (con la ruta a abrir, si vino del buscador o de un pendiente)
+  const mPortal = location.hash.match(/^#portal(?:=(.+))?$/);
+  if (mPortal) {
+    const destino = mPortal[1] ? decodeURIComponent(mPortal[1]) : '';
+    history.replaceState(null, '', location.pathname + location.search + destino);
     if (!S.token) { location.replace(PORTAL + '/#ir=' + ACCESO_APP); return 'redirigiendo'; }
     return;
   }
@@ -221,6 +240,7 @@ async function canjearAcceso() {
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(r.error || 'No se pudo ingresar.');
     guardarToken(r.token);
+    try { localStorage.setItem('herr_uid', String(r.usuario?.id || '')); } catch (e2) { /* sin storage */ }
   } catch (e) {
     setTimeout(() => toast(e.message.includes('fetch') ? 'No se pudo conectar para ingresar. Volvé a entrar desde el portal.' : e.message, true), 400);
   }
@@ -3155,3 +3175,34 @@ async function vistaNoFacturas(el) {
   });
   pintar(true);
 }
+
+/* Marco común de Herramientas: botón negro "‹ Herramientas" arriba de la barra lateral y la ruta
+   "Herramientas / Facturas / …" en la barra de arriba. No aparece para quien usa una sola app (operativos). */
+(function marcoHerramientas() {
+  try { if (localStorage.getItem('herr_portal') === '0') return; } catch (e) { /* sin storage */ }
+  document.head.insertAdjacentHTML('beforeend', `<style id="herr-marco">
+    .herr-volver { display: flex !important; align-items: center; gap: 9px; margin: 0 0 14px; padding: 10px 12px !important; border-radius: 12px !important; background: #15140f !important; color: #fff !important; text-decoration: none !important; font: 600 14px/1.1 'Instrument Sans', system-ui, sans-serif !important; box-shadow: none !important; }
+    .herr-volver:hover { background: #2c2a22 !important; }
+    .herr-volver svg { width: 16px !important; height: 16px !important; flex: none; color: #fff !important; }
+    .herr-volver b { flex: 1; font-weight: 600; }
+    .herr-ruta { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+    .herr-ruta a { color: inherit; opacity: .6; text-decoration: none; }
+    .herr-ruta a:hover { opacity: 1; text-decoration: underline; }
+    .herr-ruta i { font-style: normal; opacity: .45; }
+    
+  </style>`);
+  const FLECHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  const GRILLA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
+  const poner = () => {
+    document.querySelectorAll('aside.side').forEach(s => {
+      if (s.querySelector('.herr-volver')) return;
+      const br = s.querySelector(':scope > .brand, :scope > .v-brand');
+      (br || s).insertAdjacentHTML(br ? 'afterend' : 'afterbegin', `<a class="herr-volver" href="https://herramientas.luccianos.com.ar" title="Volver a Herramientas">${FLECHA}<b>Herramientas</b>${GRILLA}</a>`);
+    });
+    document.querySelectorAll('header.top .crumbs').forEach(c => {
+      if (!c.querySelector('.herr-ruta')) c.insertAdjacentHTML('afterbegin', `<span class="herr-ruta"><a href="https://herramientas.luccianos.com.ar">Herramientas</a><i>/</i><span>Facturas</span><i>/</i></span> `);
+    });
+  };
+  new MutationObserver(poner).observe(document.documentElement, { childList: true, subtree: true });
+  poner();
+})();
