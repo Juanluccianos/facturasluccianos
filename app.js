@@ -39,7 +39,7 @@ const PORTAL = 'https://herramientas.luccianos.com.ar';
 const ACCESO_API = 'https://acceso-api.lucciano-viaticos.workers.dev';
 const ACCESO_APP = 'facturas';
 // Transición: mientras sea true se puede seguir entrando con la clave vieja de Facturas. Al terminar, pasarlo a false.
-const LOGIN_VIEJO = false;   // claves viejas apagadas (25/11): solo se entra desde el portal
+const LOGIN_VIEJO = true;
 const esTokenViejo = (t) => /^[a-f0-9]{64}$/i.test(t || '');
 
 const S = { token: null, user: null, arca: 'off', cuentas: null, pdfUrl: null, vista: null };
@@ -1852,6 +1852,86 @@ async function vistaAdmin(el) {
   ir(0);
 }
 
+// ---------------------------------------------------------------------------
+//  Estado de la lectura automática (worker gemini-luccianos) — mismo bloque en las tres apps
+//  g = respuesta de /salud de gemini-luccianos para esta app; extras = [[título, valor], ...]
+// ---------------------------------------------------------------------------
+const SG_ICO = {
+  ok: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  pausa: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  mal: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
+};
+const SG_ESTADOS = {
+  disponible: ['ok', 'Disponible'], cuota_diaria_agotada: ['mal', 'Cuota diaria agotada'], sin_cuota_gratuita: ['pausa', 'Sin cuota gratuita'],
+  en_pausa_por_minuto: ['pausa', 'En pausa (cuota por minuto)'], enfermo: ['pausa', 'En pausa por fallas'], no_disponible: ['mal', 'Ya no existe'],
+  sin_credito: ['mal', 'Sin crédito o facturación'],
+};
+const SG_CATEGORIAS = {
+  cuota_minuto: 'Cuota por minuto', cuota_dia: 'Cuota diaria agotada', sin_acceso_gratis: 'Sin cuota gratuita', sobrecarga: 'Saturado',
+  error_servidor: 'Error del servicio (500)', sin_credito: 'Sin crédito o facturación', tope_mensual: 'Tope mensual alcanzado', config_temperatura: 'Configuración no aceptada', timeout: 'No respondió a tiempo', red: 'Sin conexión', sin_tiempo: 'Se acabó el tiempo',
+  modelo_inexistente: 'Modelo inexistente', sin_modelos: 'Sin modelos disponibles', archivo_invalido: 'Archivo ilegible', archivo_grande: 'Archivo muy grande',
+  bloqueo_seguridad: 'Bloqueo de seguridad', respuesta_cortada: 'Respuesta cortada', json_invalido: 'JSON inválido', respuesta_invalida: 'Respuesta inválida',
+  respuesta_vacia: 'Respuesta vacía', clave_invalida: 'Clave inválida', region_no_soportada: 'Región no habilitada', solicitud_invalida: 'Solicitud inválida',
+  config_thinking: 'Configuración no aceptada', config_esquema: 'Configuración no aceptada',
+};
+function htmlSaludGemini(g, extras = []) {
+  const e = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fecha = (s) => { const d = new Date(String(s || '').replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(String(s)) ? '' : 'Z')); return isNaN(d) ? e(s) : d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }); };
+  const tono = { ok: 'color:#2e7d32;background:rgba(46,125,50,.10)', pausa: 'color:#9a6a12;background:rgba(179,121,31,.12)', mal: 'color:#b3261e;background:rgba(179,38,30,.10)' };
+  const chip = (t, txt) => `<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;${tono[t]}">${SG_ICO[t]}${e(txt)}</span>`;
+  const caja = 'border:1px solid rgba(127,127,127,.22);border-radius:12px;padding:14px 16px;margin:0 0 12px';
+  const th = 'text-align:left;font-size:12px;font-weight:600;opacity:.65;padding:6px 8px;border-bottom:1px solid rgba(127,127,127,.22)';
+  const td = 'padding:7px 8px;border-bottom:1px solid rgba(127,127,127,.12);vertical-align:top';
+  if (!g || g.error) return `<div style="${caja}"><b>Lectura automática</b><p style="margin:6px 0 0">${chip('mal', 'Sin conexión')} ${e(g?.error || 'El servicio de lectura no respondió.')}</p></div>`;
+  const filas = (lista) => (lista || []).map(m => {
+    const [t, txt] = SG_ESTADOS[m.estado] || ['pausa', m.estado];
+    return `<tr><td style="${td};font-family:ui-monospace,monospace;font-size:12.5px">${e(m.modelo)}</td><td style="${td}">${e(m.familia)}</td>
+      <td style="${td}">${chip(t, txt)}${m.hasta_ar ? `<div style="font-size:12px;opacity:.7;margin-top:3px">hasta ${e(m.hasta_ar)}</div>` : ''}${m.ultimo_error && m.estado === 'enfermo' ? `<div style="font-size:12px;opacity:.7">${e(SG_CATEGORIAS[m.ultimo_error] || m.ultimo_error)}</div>` : ''}</td>
+      <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${m.llamadas_hoy}${m.limite_dia ? ` <span style="opacity:.6">/ ${m.limite_dia}</span>` : ''}</td>
+      <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${m.errores_hoy}</td></tr>`;
+  }).join('');
+  const disponibles = (g.cadena_rapido || []).filter(m => m.estado === 'disponible').length;
+  const estadoGeneral = !g.clave_cargada ? chip('mal', 'Falta la clave') : disponibles ? chip('ok', `${disponibles} de ${(g.cadena_rapido || []).length} modelos disponibles`) : chip('mal', 'Ningún modelo disponible ahora');
+  const dato = (t, v) => `<div style="min-width:120px"><div style="font-size:12px;opacity:.65">${e(t)}</div><div style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums">${v}</div></div>`;
+  const usd = (n) => n == null ? '—' : 'US$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const p = g.pago || {};
+  const nombresApp = { efectivo: 'Facturas efectivo', viaticos: 'Viáticos', facturas: 'Facturas de proveedores' };
+  const bloqueGasto = !p.activo ? '' : (() => {
+    const pct = Math.min(100, Number(p.porcentaje) || 0);
+    const t = pct >= 100 ? 'mal' : pct >= 80 ? 'pausa' : 'ok';
+    const txt = pct >= 100 ? 'Tope alcanzado: hasta el día 1 se lee con el respaldo gratuito y todo va a revisión' : pct >= 80 ? 'Cerca del tope' : 'Dentro del tope';
+    const color = { ok: '#2e7d32', pausa: '#b3791f', mal: '#b3261e' }[t];
+    return `<div style="${caja}">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between"><b style="font-size:15px">Gasto del mes en lectura paga</b>${chip(t, txt)}</div>
+      <div style="height:8px;border-radius:99px;background:rgba(127,127,127,.18);margin:12px 0 4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color}"></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:22px;margin-top:10px">
+        ${dato('Gastado este mes (todas las apps)', usd(p.gastado_usd))}${dato('Tope mensual', usd(p.tope_usd))}${dato('Usado', (Number(p.porcentaje) || 0).toLocaleString('es-AR') + ' %')}
+        ${dato('Proyección a fin de mes', usd(p.proyeccion_usd))}${dato('Costo promedio por lectura', p.costo_promedio_usd == null ? '—' : 'US$ ' + Number(p.costo_promedio_usd).toLocaleString('es-AR', { maximumFractionDigits: 4 }))}${dato('Esta app', usd(p.gasto_app_usd))}
+      </div>
+      ${(p.por_app || []).length ? `<p style="font-size:12.5px;opacity:.75;margin:10px 0 0">Por app: ${p.por_app.map(x => `${e(nombresApp[x.app] || x.app)} ${usd(x.usd)}`).join(' · ')}${(p.por_modelo || []).length ? ` — Por modelo: ${p.por_modelo.map(x => `${e(x.modelo)} ${usd(x.usd)}`).join(' · ')}` : ''}</p>` : ''}
+      <p style="font-size:12px;opacity:.65;margin:8px 0 0">Mes calendario (se reinicia el día 1). Precios cargados al ${p.precios_al ? e(String(p.precios_al).split('-').reverse().join('/')) : '—'}: si Google o Anthropic los cambian, se actualizan en la tabla de precios. ${p.claude ? '' : 'Falta la clave de Claude. '}${p.gemini ? '' : 'Falta la clave paga de Gemini.'}</p>
+    </div>`;
+  })();
+  return `${bloqueGasto}<div style="${caja}">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between"><b style="font-size:15px">Lectura automática${p.activo ? ' (pago)' : ' (Gemini)'}</b>${estadoGeneral}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:22px;margin-top:12px">
+        ${dato('Llamadas a la IA hoy', g.hoy?.llamadas ?? 0)}${dato('Errores hoy', g.hoy?.errores ?? 0)}${dato('Tasa de error 24 h', (g.tasa_error_24h ?? 0).toLocaleString('es-AR') + ' %')}
+        ${dato('Tokens hoy', Number(g.hoy?.tokens ?? 0).toLocaleString('es-AR'))}${extras.map(([t, v]) => dato(t, e(v))).join('')}
+      </div>
+      <p style="font-size:12.5px;opacity:.7;margin:10px 0 0">${p.activo ? 'Orden: Claude, después Gemini pago y, si los dos fallan, el respaldo gratuito de Cloudflare.' : `La cuota gratuita se renueva todos los días a las ${e(g.reinicio_cuota_ar || '—')} (hora argentina). Lista de modelos actualizada ${g.modelos_at ? fecha(g.modelos_at).replace(/\.$/, '') : '—'}.`}${g.version ? ` Servicio v${e(g.version)}.` : ''}</p>
+      ${g.modelos_error ? `<p style="font-size:13px;margin:8px 0 0">${chip('mal', 'Aviso')} ${e(g.modelos_error)}</p>` : ''}
+    </div>
+    <div style="${caja}"><b>Modelos en uso, en el orden en que se prueban</b>
+      <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13.5px"><thead><tr><th style="${th}">Modelo</th><th style="${th}">Familia</th><th style="${th}">Estado</th><th style="${th};text-align:right">Llamadas hoy</th><th style="${th};text-align:right">Errores hoy</th></tr></thead>
+      <tbody>${filas(g.cadena_rapido) || `<tr><td colspan="5" style="${td}">Sin modelos.</td></tr>`}</tbody></table></div>
+      <p style="font-size:12px;opacity:.65;margin:8px 0 0">Cada reintento cuenta como una llamada.${(g.cadena_rapido || []).some(m => m.limite_dia) ? ' El número después de la barra es el límite diario de Google: lo informa recién cuando se alcanza por primera vez.' : ''}</p></div>
+    <div style="${caja}"><b>Últimos errores</b>
+      ${(g.ultimos_errores || []).length ? `<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="${th}">Fecha</th><th style="${th}">Archivo</th><th style="${th}">Modelo</th><th style="${th}">Qué pasó</th></tr></thead><tbody>
+        ${g.ultimos_errores.map(x => `<tr><td style="${td};white-space:nowrap">${fecha(x.fecha)}</td><td style="${td}">${e(x.archivo || '—')}</td><td style="${td};font-family:ui-monospace,monospace;font-size:12px;white-space:nowrap">${e(x.modelo || '—')}${x.http ? `<div style="opacity:.6">HTTP ${x.http}</div>` : ''}</td>
+          <td style="${td}"><b>${e(SG_CATEGORIAS[x.categoria] || x.categoria)}</b><div style="opacity:.8">${e(x.mensaje || '')}</div></td></tr>`).join('')}
+      </tbody></table></div>` : '<p style="margin:6px 0 0;opacity:.7">Sin errores registrados.</p>'}</div>`;
+}
+
 async function adminSalud(el) {
   const s = await api('/api/salud');
   const fila = (ok, t, det, prueba) => `<tr><td>${ok ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-normal">Falta</span>'}</td><td><b>${t}</b><div class="small muted">${det}</div></td><td>${prueba ? `<button class="btn btn-chico" data-probar="${prueba}">Probar</button>` : ''}</td></tr>`;
@@ -1870,7 +1950,8 @@ async function adminSalud(el) {
     ${fila(s.empresas > 0, 'Empresas del grupo', `${s.empresas} cargadas`)}
     ${fila(s.cuentas > 0, 'Plan de cuentas', `${s.cuentas} cuentas`)}
     ${fila(s.proveedores > 0, 'Maestro de proveedores', `${s.proveedores} proveedores`)}
-  </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>`;
+  </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>
+  ${s.gemini_salud ? `<div style="margin-top:16px">${htmlSaludGemini(s.gemini_salud, [['Facturas por leer', String(s.cola_lectura?.pendientes ?? 0)], ['IA en pausa hasta', s.gemini_pausa_hasta || '—']])}</div>` : ''}`;
   $$('[data-probar]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const r = await api('/api/probar/' + b.dataset.probar, { method: 'POST' }); toast(r.mensaje); }));
 }
 
