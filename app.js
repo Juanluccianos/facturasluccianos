@@ -3255,3 +3255,61 @@ async function vistaNoFacturas(el) {
   new MutationObserver(poner).observe(document.documentElement, { childList: true, subtree: true });
   poner();
 })();
+
+/* ---- Aviso de versión nueva (igual en todas las herramientas): si mientras la app está abierta se publica una
+   versión nueva, aparece abajo "Hay una versión nueva" con el botón Actualizar. Se revisa cada 5 minutos y al volver a la pestaña. ---- */
+(function avisoVersionNueva() {
+  const APP = 'Facturas', MODO = 'v', BUILD = '';   // BUILD = nombre de la versión de esta copia (el mismo que CACHE en sw.js)
+  let mostrado = false, base = null;
+  async function hayNueva() {
+    if (MODO === 'v') {
+      const s = document.querySelector('script[src*="app.js"]');
+      const actual = s && (s.getAttribute('src').match(/[?&]v=([^&]+)/) || [])[1];
+      if (!actual) return false;
+      const html = await (await fetch('index.html', { cache: 'no-store' })).text();
+      const nueva = (html.match(/app\.js\?v=([^"'&]+)/) || [])[1];
+      return !!nueva && nueva !== actual;
+    }
+    if (MODO === 'sw') {
+      const txt = await (await fetch('sw.js', { cache: 'no-store' })).text();
+      const nombre = (txt.match(/CACHE\s*=\s*["']([^"']+)["']/) || [])[1];
+      // si ya se intentó actualizar a esa versión en esta pestaña, no se insiste (evita avisos repetidos)
+      let ya = null; try { ya = sessionStorage.getItem('herr_v_intento'); } catch (e) { /* sin storage */ }
+      return !!nombre && nombre !== BUILD && nombre !== ya;
+    }
+    const html = await (await fetch(location.pathname, { cache: 'no-store' })).text();
+    if (base === null) { base = html; return false; }
+    return html !== base;
+  }
+  async function actualizar(b) {
+    b.disabled = true; b.textContent = 'Actualizando…';
+    if (MODO === 'sw') { try { const t = await (await fetch('sw.js', { cache: 'no-store' })).text(); sessionStorage.setItem('herr_v_intento', (t.match(/CACHE\s*=\s*["']([^"']+)["']/) || [])[1] || ''); } catch (e) { /* nada */ } }
+    try {
+      if (navigator.serviceWorker) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+      if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
+    } catch (e) { /* igual se recarga */ }
+    location.reload();
+  }
+  function mostrar() {
+    if (mostrado) return; mostrado = true;
+    document.head.insertAdjacentHTML('beforeend', `<style id="herr-version">
+      .herr-version { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 9999;
+        display: flex; align-items: center; gap: 14px; padding: 10px 10px 10px 18px; border-radius: 999px; background: #15140f; color: #fff;
+        font: 500 14px/1.2 'Instrument Sans', system-ui, sans-serif; box-shadow: 0 14px 34px rgba(21,20,15,.25); animation: herr-v-in .35s cubic-bezier(.16,1,.3,1); max-width: calc(100vw - 24px); }
+      .herr-version b { font-weight: 600; }
+      .herr-version button { border: 0; border-radius: 999px; padding: 9px 16px; background: #A8C686; color: #1d2f0d; font: 700 13.5px 'Instrument Sans', system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+      .herr-version button:hover { background: #b9d59a; }
+      @keyframes herr-v-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+      @media (max-width: 860px) { .herr-version { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); } }
+    </style>`);
+    const d = document.createElement('div');
+    d.className = 'herr-version'; d.setAttribute('role', 'status');
+    d.innerHTML = `<span><b>Hay una versión nueva</b> de ${APP}</span><button type="button">Actualizar</button>`;
+    d.querySelector('button').onclick = (e) => actualizar(e.currentTarget);
+    document.body.appendChild(d);
+  }
+  const revisar = () => { if (!mostrado && navigator.onLine !== false) hayNueva().then(n => { if (n) mostrar(); }).catch(() => null); };
+  setTimeout(revisar, 4000);
+  setInterval(revisar, 5 * 60e3);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisar(); });
+})();
