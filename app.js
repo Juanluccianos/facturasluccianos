@@ -38,8 +38,8 @@ const API = (() => {
 const PORTAL = 'https://herramientas.luccianos.com.ar';
 const ACCESO_API = 'https://acceso-api.lucciano-viaticos.workers.dev';
 const ACCESO_APP = 'facturas';
-// Transición: mientras sea true se puede seguir entrando con la clave vieja de Facturas. Al terminar, pasarlo a false.
-const LOGIN_VIEJO = true;
+// Se entra solo desde el portal de Herramientas: los usuarios y las claves se manejan ahí.
+const LOGIN_VIEJO = false;
 const esTokenViejo = (t) => /^[a-f0-9]{64}$/i.test(t || '');
 
 const S = { token: null, user: null, arca: 'off', cuentas: null, pdfUrl: null, vista: null };
@@ -1840,9 +1840,9 @@ function modalImportar(tipo, alTerminar) {
 //  Admin
 // ---------------------------------------------------------------------------
 async function vistaAdmin(el) {
-  el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, usuarios, plan de cuentas, configuración y auditoría.</p></div></div>
-    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Usuarios', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
-  const tabs = [adminSalud, adminUsuarios, adminCuentas, adminConfig, adminAuditoria];
+  el.innerHTML = `<div class="encabezado"><div><h1>Administración</h1><p>Conexiones, plan de cuentas, configuración y auditoría.</p></div></div>
+    <div class="panel"><div class="tabs" id="atabs">${['Salud', 'Cuentas', 'Configuración', 'Auditoría'].map((t, i) => `<button class="${i ? '' : 'activo'}" data-t="${i}">${t}</button>`).join('')}</div><div id="acont" class="panel-pad"></div></div>`;
+  const tabs = [adminSalud, adminCuentas, adminConfig, adminAuditoria];
   const ir = async (i) => {
     $$('#atabs button').forEach(b => b.classList.toggle('activo', b.dataset.t === String(i)));
     $('#acont').innerHTML = '<span class="cargando"></span>';
@@ -1953,40 +1953,6 @@ async function adminSalud(el) {
   </tbody></table><p class="small muted">Versión ${esc(s.version)}</p>
   ${s.gemini_salud ? `<div style="margin-top:16px">${htmlSaludGemini(s.gemini_salud, [['Facturas por leer', String(s.cola_lectura?.pendientes ?? 0)], ['IA en pausa hasta', s.gemini_pausa_hasta || '—']])}</div>` : ''}`;
   $$('[data-probar]', el).forEach(b => b.onclick = () => conBoton(b, async () => { const r = await api('/api/probar/' + b.dataset.probar, { method: 'POST' }); toast(r.mensaje); }));
-}
-
-async function adminUsuarios(el) {
-  const aviso = `<div class="panel panel-pad" style="margin-bottom:14px"><h2 style="margin-bottom:6px">Los usuarios se administran desde el portal</h2>
-    <p class="muted" style="margin:0 0 12px">Ahí se da acceso a Facturas y se elige el rol de cada persona (carga, aprobador o admin, y si es Director). Vale para todas las herramientas.</p>
-    <a class="btn btn-negro" href="${PORTAL}" style="text-decoration:none">Abrir el portal</a></div>`;
-  if (!LOGIN_VIEJO) { el.innerHTML = aviso; return; }
-  await adminUsuariosViejo(el);
-  el.insertAdjacentHTML('afterbegin', aviso + '<h3 style="margin:0 0 10px">Claves anteriores de Facturas (se dejan de usar al terminar la migración)</h3>');
-}
-
-async function adminUsuariosViejo(el) {
-  const r = await api('/api/usuarios');
-  el.innerHTML = `<div class="acciones" style="margin-bottom:12px"><button class="btn btn-negro" id="b-nu">Nuevo usuario</button></div>
-    <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>2FA</th><th>Estado</th><th></th></tr></thead><tbody>
-    ${r.usuarios.map(u => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.email)}</td>
-      <td><select data-rol="${u.id}">${['carga', 'aprobador', 'admin', 'director'].map(x => `<option ${u.rol === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
-      <td>${u.totp_activo ? '<span class="badge b-ok">activo</span>' : '<span class="badge b-aviso">no</span>'}</td>
-      <td>${u.activo ? 'Activo' : '<span class="muted">Inactivo</span>'}</td>
-      <td class="acciones"><button class="btn btn-chico" data-pass="${u.id}">Resetear clave</button>${u.totp_activo ? `<button class="btn btn-chico" data-totp="${u.id}">Resetear 2FA</button>` : ''}<button class="btn btn-chico" data-act="${u.id}" data-v="${u.activo ? 0 : 1}">${u.activo ? 'Desactivar' : 'Activar'}</button></td></tr>`).join('')}
-    </tbody></table><p class="small muted">Roles: <b>carga</b> resuelve excepciones · <b>aprobador</b> además envía a Shares y edita proveedores · <b>admin</b> todo, incluido CBU y configuración · <b>director</b> solo aprueba pagos y consulta facturas (no puede aprobar propuestas que arme él).</p>`;
-  const put = (id, body) => api('/api/usuarios/' + id, { method: 'PUT', body }).then(() => { toast('Guardado'); adminUsuarios(el); }).catch(e => toast(e.message, true));
-  $$('[data-rol]', el).forEach(s => s.onchange = () => put(s.dataset.rol, { rol: s.value }));
-  $$('[data-act]', el).forEach(b => b.onclick = () => put(b.dataset.act, { activo: b.dataset.v === '1' }));
-  $$('[data-totp]', el).forEach(b => b.onclick = async () => await confirmar('¿Resetear el doble factor de este usuario?') && put(b.dataset.totp, { reset_totp: true }));
-  $$('[data-pass]', el).forEach(b => b.onclick = async () => { const p = await pedirTexto({ titulo: 'Nueva contraseña', etiqueta: 'Contraseña (mínimo 10 caracteres)', boton: 'Guardar', minimo: 10 }); if (p) put(b.dataset.pass, { password: p }); });
-  $('#b-nu', el).onclick = () => modal(`<h2>Nuevo usuario</h2><form id="f-nu">
-      <div class="campo"><label>Nombre</label><input name="nombre" required></div>
-      <div class="campo"><label>Email</label><input name="email" type="email" required></div>
-      <div class="campo"><label>Rol</label><select name="rol"><option>carga</option><option>aprobador</option><option>admin</option><option>director</option></select></div>
-      <div class="campo"><label>Contraseña inicial</label><input name="password" type="text" minlength="10" required><div class="ayuda">Comunicala por un canal seguro; el usuario puede cambiarla desde “Mi cuenta”.</div></div>
-      <button class="btn btn-negro" type="submit">Crear</button></form>`, {
-    alMontar: (m, cerrar) => { $('#f-nu', m).onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/usuarios', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); cerrar(); toast('Usuario creado'); adminUsuarios(el); }); }; },
-  });
 }
 
 async function adminEmpresas(el) {
@@ -2119,42 +2085,16 @@ async function adminAuditoria(el) {
 }
 
 // ---------------------------------------------------------------------------
-//  Mi cuenta: contraseña y doble factor
+//  Mi cuenta
 // ---------------------------------------------------------------------------
 async function vistaMiCuenta(el) {
-  if (S.user.central) {
-    const inst = typeof bloqueInstalar === 'function' ? bloqueInstalar() : '';
-    el.innerHTML = `<div class="encabezado"><div><h1>Mi cuenta</h1><p>${esc(S.user.email)} · rol ${esc(S.user.rol)}</p></div></div>
-      ${inst}
-      <div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:12px">Usuario y contraseña</h2>
-        <p class="muted">Usás el mismo usuario en todas las herramientas de Lucciano's. La contraseña y los permisos se manejan desde el portal.</p>
-        <a class="btn btn-negro" href="${PORTAL}" style="text-decoration:none">Ir al portal</a></div>`;
-    if (typeof montarInstalar === 'function') montarInstalar(el);
-    return;
-  }
+  const inst = typeof bloqueInstalar === 'function' ? bloqueInstalar() : '';
   el.innerHTML = `<div class="encabezado"><div><h1>Mi cuenta</h1><p>${esc(S.user.email)} · rol ${esc(S.user.rol)}</p></div></div>
-    ${bloqueInstalar()}
-    <div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:12px">Doble factor</h2>
-      ${S.user.totp_activo ? '<p><span class="badge b-ok">Activo</span> Al ingresar se solicitará el código de tu aplicación autenticadora.</p>'
-      : '<p class="muted">Usá Google Authenticator, Microsoft Authenticator o similar.</p><button class="btn btn-negro" id="b-2fa">Activar doble factor</button><div id="c-2fa"></div>'}
-    </div>
-    <form class="panel panel-pad" style="max-width:560px" id="f-pass"><h2 style="margin-bottom:12px">Cambiar contraseña</h2>
-      <div class="campo"><label>Actual</label><input type="password" name="actual" required autocomplete="current-password"></div>
-      <div class="campo"><label>Nueva (mínimo 10 caracteres)</label><input type="password" name="nueva" minlength="10" required autocomplete="new-password"></div>
-      <button class="btn btn-negro" type="submit">Cambiar</button></form>`;
-  $('#f-pass').onsubmit = (e) => { e.preventDefault(); conBoton($('button', e.target), async () => { await api('/api/yo/password', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); e.target.reset(); toast('Contraseña cambiada'); }); };
-  montarInstalar(el);
-  const b = $('#b-2fa');
-  if (b) b.onclick = () => conBoton(b, async () => {
-    const r = await api('/api/yo/totp/iniciar', { method: 'POST' });
-    $('#c-2fa').innerHTML = `<p>1. Escaneá este QR con la app:</p><div id="qr" style="background:#fff;padding:12px;display:inline-block;border-radius:8px"></div>
-      <p class="small muted">o ingresá la clave manualmente: <span class="mono">${esc(r.secret)}</span></p>
-      <p>2. Escribí el código de 6 dígitos que muestra la app:</p><div class="fila"><input id="code" inputmode="numeric" maxlength="6" class="mono"><button class="btn btn-negro" id="b-conf">Confirmar</button></div>`;
-    if (window.QRCode) new QRCode($('#qr'), { text: r.otpauth, width: 180, height: 180 });
-    else $('#qr').textContent = r.otpauth;
-    b.remove();
-    $('#b-conf').onclick = () => conBoton($('#b-conf'), async () => { await api('/api/yo/totp/confirmar', { method: 'POST', body: { code: $('#code').value } }); S.user.totp_activo = true; toast('Doble factor activado'); vistaMiCuenta(el); });
-  });
+    ${inst}
+    <div class="panel panel-pad" style="max-width:560px"><h2 style="margin-bottom:12px">Usuario y contraseña</h2>
+      <p class="muted">Usás el mismo usuario en todas las herramientas de Lucciano's. La contraseña y los permisos se manejan desde el portal.</p>
+      <a class="btn btn-negro" href="${PORTAL}" style="text-decoration:none">Ir al portal</a></div>`;
+  if (typeof montarInstalar === 'function') montarInstalar(el);
 }
 
 // ---------------------------------------------------------------------------
