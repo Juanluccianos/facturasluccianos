@@ -838,3 +838,7 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
 .cal-dias button.sel { background: var(--accent); color: var(--on-accent); font-weight: 700; box-shadow: none; }
 .cal-dias button:disabled { opacity: .3; cursor: not-allowed; }
 .cal-pie { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+
+/* Tablas con alto máximo (plan de cuentas, listas largas): se desplazan ADENTRO de su recuadro, no se salen */
+.tabla-wrap[style*="max-height"] { overflow: auto !important; overscroll-behavior: contain; }
+.tabla-wrap[style*="max-height"] thead th { position: sticky; top: 0; z-index: 1; }
