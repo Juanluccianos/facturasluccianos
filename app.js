@@ -86,6 +86,28 @@ function toast(msg, error = false) {
   toast._t = setTimeout(() => { t.className = ''; }, error ? 6000 : 3000);
 }
 
+/* Redibujo suave: cuando llegan datos nuevos de fondo, la pantalla se actualiza sin saltos (sin animaciones,
+   en el mismo lugar del scroll). Si la persona está escribiendo o tiene una ventana abierta, espera a que termine. */
+let redibujoPendiente = null;
+function ocupadoParaRedibujar() {
+  const a = document.activeElement;
+  if (a && a.matches && a.matches('input, textarea, select, [contenteditable="true"]')) return true;
+  return !!document.querySelector('dialog[open], .modal-bg:not(.hidden), .modal.abierto, .hoja.abierta, .overlay.abierto, [aria-modal="true"]:not([hidden])');
+}
+function redibujoSuave(dibujar) {
+  clearTimeout(redibujoPendiente);
+  if (ocupadoParaRedibujar()) { redibujoPendiente = setTimeout(() => redibujoSuave(dibujar), 2500); return; }
+  if (!document.getElementById('estilo-redibujo')) document.head.insertAdjacentHTML('beforeend', '<style id="estilo-redibujo">.redibujo-suave *, .redibujo-suave *::before, .redibujo-suave *::after { animation: none !important; transition: none !important; }</style>');
+  const y = window.scrollY, raiz = document.documentElement;
+  const scrolls = [...document.querySelectorAll('main, .main, .contenido, .tabla-wrap')].map(e => [e, e.scrollTop]);
+  raiz.classList.add('redibujo-suave');
+  Promise.resolve().then(dibujar).catch(() => null).then(() => new Promise(r => setTimeout(r, 60))).then(() => {
+    window.scrollTo(0, y);
+    scrolls.forEach(([e, t]) => { if (e.isConnected) e.scrollTop = t; });
+    requestAnimationFrame(() => requestAnimationFrame(() => raiz.classList.remove('redibujo-suave')));
+  });
+}
+
 /* ---- Pantallas rápidas: el inicio y la salud muestran al instante lo último que se vio y se actualizan solas
    de fondo (si llegó algo nuevo, la pantalla se vuelve a dibujar). Se guarda en este navegador, por persona. ---- */
 const RAPIDAS = /^\/api\/(tablero|salud)(\?|$)|^\/api\/facturas\?(limite=6&orden=id|estado=excepcion&limite=500&orden=id)$/;
@@ -114,7 +136,7 @@ async function api(path, opts = {}) {
     apiRed(path, opts).then(d => {
       const cambio = JSON.stringify(d) !== JSON.stringify(c.data);
       rapidaGuardar(k, d);
-      if (cambio && location.hash === hash) { clearTimeout(rapidaRedibujo); rapidaRedibujo = setTimeout(() => { if (typeof router === 'function') router(); }, 150); }
+      if (cambio && location.hash === hash) { clearTimeout(rapidaRedibujo); rapidaRedibujo = setTimeout(() => redibujoSuave(() => { if (typeof router === 'function') return router(); }), 150); }
     }).catch(() => { /* sin conexión: queda lo guardado */ }).finally(() => rapidaEnCurso.delete(k));
   }
   return c.data;
