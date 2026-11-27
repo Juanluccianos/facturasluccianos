@@ -96,7 +96,13 @@ function rapidaClave(path) { let u = ''; try { u = localStorage.getItem('herr_ui
 function rapidaGuardar(k, d) { try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), data: d })); } catch (e) { /* sin lugar: se ignora */ } }
 async function api(path, opts = {}) {
   const metodo = String(opts.method || 'GET').toUpperCase();
-  if (metodo !== 'GET' || opts.raw || !RAPIDAS.test(path)) return apiRed(path, opts);
+  if (metodo !== 'GET') {
+    // se cambió algo: lo guardado de las pantallas rápidas (tablero, contadores) ya no vale
+    const r = await apiRed(path, opts);
+    try { const pre = rapidaClave(''); Object.keys(localStorage).filter(k => k.startsWith(pre)).forEach(k => localStorage.removeItem(k)); } catch (e) { /* sin storage */ }
+    return r;
+  }
+  if (opts.raw || !RAPIDAS.test(path)) return apiRed(path, opts);
   const k = rapidaClave(path);
   let c = null;
   try { c = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { c = null; }
