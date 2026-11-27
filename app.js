@@ -2013,10 +2013,11 @@ async function adminSalud(el) {
   el.insertAdjacentHTML('beforeend', `<div class="panel" style="margin-top:16px;padding:16px 18px"><b>Sociedades de otros países (prueba)</b>
     <p class="small muted" style="margin:4px 0 10px">Consulta a Shares cómo vienen los conceptos, proveedores y facturas de una sociedad de afuera. Solo lectura.</p>
     <div class="acciones"><select id="pp-pais">${['U','U2','ESP','ESP2','ESP3','ESP4','ITA','ITA2','USA','USA2','USA3','USA4'].map(x => `<option>${x}</option>`).join('')}</select>
+    <input id="pp-prov" placeholder="Proveedor (opcional): partita IVA, NIF, EIN o n.º en Shares" style="min-width:300px">
     <button class="btn btn-chico" id="pp-ir">Consultar</button><button class="btn btn-chico btn-ghost" id="pp-copiar" hidden>Copiar resultado</button></div>
     <pre id="pp-res" class="small" style="white-space:pre-wrap;max-height:50vh;overflow:auto;margin-top:10px" hidden></pre></div>`);
   $('#pp-ir', el).onclick = () => conBoton($('#pp-ir', el), async () => {
-    const r = await api('/api/admin/probar-pais?pais=' + $('#pp-pais', el).value);
+    const r = await api('/api/admin/probar-pais?pais=' + $('#pp-pais', el).value + '&proveedor=' + encodeURIComponent($('#pp-prov', el).value.trim()));
     const pre = $('#pp-res', el); pre.hidden = false; pre.textContent = JSON.stringify(r, null, 2); $('#pp-copiar', el).hidden = false;
   });
   $('#pp-copiar', el).onclick = async () => { await navigator.clipboard.writeText($('#pp-res', el).textContent); toast('Copiado'); };
